@@ -168,6 +168,17 @@ html{-webkit-text-size-adjust:100%}
 .cell.th-roll{outline:3px solid #ffe14d;outline-offset:-3px;box-shadow:inset 0 0 16px #ffe14daa;filter:brightness(1.4)}
 .cell.th-hit{background:linear-gradient(145deg,#fff6b0,#e8b820)!important;box-shadow:inset 0 0 22px #fffbe0;animation:thflash .3s ease-in-out 3}
 @keyframes thflash{50%{filter:brightness(1.7)}}
+
+.gameover{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:#000c}
+.gobox{text-align:center;padding:28px 34px;border:2px solid var(--gold);background:linear-gradient(#22262a,#14171a);border-radius:10px;box-shadow:0 0 40px #000;max-width:92vw}
+.gobig{font-family:'Noto Serif JP',serif;font-size:34px;font-weight:700;color:var(--gold);margin-bottom:10px}
+.gameover.lose .gobig{color:#c46a6a}
+.gosub{font-size:16px;margin:6px 0}.gosub.small{font-size:13px;opacity:.8;margin-bottom:16px}
+@media(max-width:700px){.gobig{font-size:26px}}
+
+.coin{color:#e8c55a}
+.shop{margin-top:6px}.shoprow{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px}.shoprow .n{flex:1}.shoprow small{opacity:.7}.shoprow.sold{opacity:.45}
+.chip.sell{background:#4a3a14;color:#f1d98a}
 </style></head>
 <body>
 <header><h1>⚔ 対戦ボードゲーム</h1><nav>
@@ -190,32 +201,33 @@ CH('slime', { name: 'スライム', cat: 'モンスター', race: 'ウーズ', l
 CH('vetAdv', { name: 'ベテラン冒険者', cat: 'ヒューマノイド', race: 'ヒューム', lp: 4000, op: 500, dp: 500, sc: 2, spc: 0, weapon: true, txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '武器を装備できる。'] });
 CH('vetMage', { name: 'ベテラン魔法使い', cat: 'ヒューマノイド', race: 'ヒューム', lp: 2500, op: 0, dp: 1000, sc: 2, spc: 2, weapon: true, ab: ['wizDice'], txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '武器を装備できる。'] });
 CH('dwarf', { name: 'ドワーフの戦士', cat: 'ヒューマノイド', race: 'ドワーフ', rank: 2, lp: 4000, op: 0, dp: 1000, sc: 1, spc: 0, weapon: true, ab: ['dwarf'], txt: ['庇護：相手が自分のキャラクターを対象にアイテムを使用する際、ゲーム中に1度だけ、その対象をこのキャラクターに強制変更する。相手が相手自身のキャラクターを対象にする場合は発動しない。', '武器を装備できる。'] });
-CH('gobWiz', { name: 'ゴブリンウィザード', cat: 'モンスター', race: 'ゴブリン', lp: 1500, op: 0, dp: 0, sc: 2, spc: 1, weapon: true, ab: ['wizDice'], txt: ['武器装備：このキャラクターは武器を装備できる。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '（OP・DPは未指定のため暫定で0）'] });
+CH('gobWiz', { name: 'ゴブリンウィザード', cat: 'モンスター', race: 'ゴブリン', lp: 1500, op: 0, dp: 0, sc: 2, spc: 1, weapon: true, ab: ['wizDice'], txt: ['武器装備：このキャラクターは武器を装備できる。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。'] });
 CH('ogre', { name: 'オーガ', cat: 'モンスター', race: 'ジャイアント', rank: 2, lp: 5000, op: 0, dp: 0, sc: 2, spc: 2, weapon: true, ab: ['sacrifice'], txt: ['生贄：自分のキャラクターをLP合計1500以上になるよう破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。', '武器を装備できる。'] });
 CH('redBoar', { name: 'レッドボア', cat: 'モンスター', race: 'ワイルド', rank: 2, lp: 4500, op: 500, dp: 0, sc: 4, spc: 1, ab: ['berserk'], txt: ['狂乱：1マスの代わりに必ず2マス動かなければならない。1ターンに一度、必ず移動しなければならない（SCが足りなければ不要）。移動に使うSCは通常より1つ増える。', '味方は通過できるが同じマスには停止できない。敵は飛び越せない。盤面端が移動先なら1マスで停止できる。'] });
 CH('elfMage', { name: 'エルフの魔法使い', cat: 'ヒューマノイド', race: 'エルフ', rank: 2, lp: 2500, op: 0, dp: 2500, sc: 3, spc: 3, weapon: true, ab: ['magicResist', 'wizDice'], txt: ['魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '武器を装備できる。'] });
 CH('redDragon', { name: 'レッドドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 3, lp: 6000, op: 0, dp: 0, sc: 4, spc: 3, ab: ['incinerate', 'flight', 'magicResist'], txt: ['焼却（永続）：正面にいる相手キャラクターを破壊し、正面の設置を破壊する。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
 CH('troll', { name: 'トロール', cat: 'モンスター', race: 'ジャイアント', rank: 2, lp: 5000, op: 0, dp: 0, sc: 1, spc: 0, ab: ['regen'], txt: ['再生：ダメージを受けた後、LPを500回復する（LPが元の値を超えることはない）。'] });
-CH('iceWitch', { name: '氷の魔女（ウィッチ）', cat: 'モンスター／ヒューマノイド', race: 'ウィッチ', rank: 3, lp: 4500, op: 0, dp: 1500, sc: 2, spc: 5, weapon: true, ab: ['witchEtb', 'witchChill', 'superResist'], txt: ['配置時：デッキからランク2のスペルをランダムに1枚手札に加える。ランク2のスペルがデッキになければ、代わりにランク1のスペルをランダムに2枚手札に加える。', '自分がランク2のスペルを使った時、またはランク1のスペルをそのターン中に偶数回目に使った時、その度に相手のキャラクターをランダムに1体「しもやけ」状態にする。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。', 'モンスターとヒューマノイドの両方の特性をもつ（武器を装備できる）。', '（OPは未指定のため暫定で0）'] });
+CH('iceWitch', { name: '氷の魔女（アイスウィッチ）', cat: 'モンスター／ヒューマノイド', race: 'アイスウィッチ', rank: 3, lp: 4500, op: 0, dp: 1500, sc: 2, spc: 5, weapon: true, ab: ['witchEtb', 'witchChill', 'superResist'], txt: ['配置時：デッキからランク2のスペルをランダムに1枚手札に加える。ランク2のスペルがデッキになければ、代わりにランク1のスペルをランダムに2枚手札に加える。', '自分がランク2のスペルを使った時、またはランク1のスペルをそのターン中に偶数回目に使った時、その度に相手のキャラクターをランダムに1体「しもやけ」状態にする。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。', 'モンスターとヒューマノイドの両方の特性をもつ（武器を装備できる）。'] });
 CH('golem1', { name: 'ゴーレム（ステップ1）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, txt: ['配置時に「装甲」2000を得る。', 'ゴーレムは、魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない（残りのSpCは耐性専用）。', '「クリエイトゴーレム」で出る。場に自分のゴーレムがいるなら、新しく出す代わりにステップを1つ進められる。'] });
 CH('golem2', { name: 'ゴーレム（ステップ2）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 4000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['magicResist'], txt: ['ステップ1からLP+2000、SC+2、SpC+1。', '魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。'] });
 CH('golem3', { name: 'ゴーレム（ステップ3）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 6000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['superResist'], txt: ['ステップ2からLP+2000、SC+2、SpC+1。最終形態。', '魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。'] });
-CH('moonDragon', { name: 'ムーンライトドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 2, lp: 5000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['moonCond', 'moonReset'], txt: ['配置条件：このゲーム中に自分がスペルを3回以上使用していないと盤に出せない。', '月光：このゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らして使える（盤面のこのカードを押すと使うか選べる）。互いに手札を山札に戻してシャッフルし、その後互いにカードを3枚引く。', '（OP・DP・種族は未指定のため、OP/DP=0・種族ドラゴンで暫定）'] });
+CH('moonDragon', { name: 'ムーンライトドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 2, lp: 5000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['moonCond', 'moonReset'], txt: ['配置条件：このゲーム中に自分がスペルを3回以上使用していないと盤に出せない。', '月光：このゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らして使える（盤面のこのカードを押すと使うか選べる）。互いに手札を山札に戻してシャッフルし、その後互いにカードを3枚引く。'] });
 CH('stormEagle', { name: '天空の覇者（ストームイーグル）', cat: 'モンスター', race: 'ワイルド', rank: 3, lp: 5000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['haste', 'twoActions', 'magicResist', 'flight'], txt: ['出たターンから移動できる。2回行動できる。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
 CH('blackWolf', { name: 'ブラックウルフ', cat: 'モンスター', race: 'ワイルド', lp: 2000, op: 1000, dp: 0, sc: 2, spc: 1, ab: ['haste'], txt: ['出たターンから移動できる。'] });
-CH('killerTiger', { name: 'キラータイガー', cat: 'モンスター', race: 'ワイルド', lp: 4000, op: 0, dp: 0, sc: 3, spc: 1, ab: ['tigerCond'], txt: ['配置条件：デッキに種族ワイルドのキャラクターが10体以上いないと配置できない。', '（OP・DPは未指定のため暫定で0）'] });
+CH('killerTiger', { name: 'キラータイガー', cat: 'モンスター', race: 'ワイルド', lp: 4000, op: 0, dp: 0, sc: 3, spc: 1, ab: ['tigerCond'], txt: ['配置条件：デッキに種族ワイルドのキャラクターが10体以上いないと配置できない。'] });
 CH('bloodSnake', { name: 'ブラッドスネーク', cat: 'モンスター', race: 'ワイルド', lp: 1500, op: 1500, dp: 0, sc: 2, spc: 0, ab: ['stealth', 'poisonTouch'], txt: ['潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', 'このカードとバトルした相手を「毒」状態にする。'] });
 CH('greatMonkey', { name: 'グレートモンキー', cat: 'モンスター', race: 'ワイルド', rank: 2, lp: 4500, op: 0, dp: 0, sc: 3, spc: 1, ab: ['throw'], txt: ['投擲：ゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らし、手札にアイテム「投石」を1枚出現させる。'] });
-CH('vampire', { name: 'ヴァンパイア', cat: 'モンスター', race: 'アンデット', rank: 3, lp: 5000, op: 0, dp: 0, sc: 3, spc: 3, weapon: true, ab: ['sacrifice', 'superRegen', 'magicResist', 'flight'], txt: ['生贄：LP合計1500以上になるよう自分のキャラクターを破壊して配置。生贄にしたキャラ1体につきDPを500増やす（LP3000以上のキャラなら1000）。', '超再生：ダメージを受けた後、LPを1500回復する（元の値を超えない）。', '魔法耐性／飛翔。武器を装備できる。'] });
+CH('vampire', { name: 'ヴァンパイア', cat: 'モンスター', race: 'アンデット', rank: 3, lp: 5000, op: 0, dp: 0, sc: 3, spc: 3, weapon: true, ab: ['sacrifice', 'superRegen', 'magicResist', 'flight'], txt: ['生贄：LP合計1500以上になるよう自分のキャラクターを破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。生贄にしたキャラ1体につきDPを500増やす（LP3000以上のキャラなら1000）。', '超再生：ダメージを受けた後、LPを1500回復する（元の値を超えない）。', '魔法耐性／飛翔。武器を装備できる。'] });
 CH('cockatrice', { name: 'コカトリス', cat: 'モンスター', race: 'マジカルビースト', rank: 2, lp: 3500, op: 0, dp: 0, sc: 2, spc: 1, ab: ['backBattle', 'petrify', 'poisonTouch'], txt: ['後方にもバトルできる。', '目の前のマスに相手キャラクターが入った時、対象を次の相手のターン終了時まで「石化」状態にする。', 'バトルするキャラクターを「毒」状態にする。'] });
 
 /* スペル */
 const SP = (id, o) => D(id, Object.assign({ kind: 'spell' }, o));
-SP('createGolem', { name: 'クリエイトゴーレム', cost: 'SpC2', txt: ['「ゴーレム（ステップ1）」を自分にいちばん近い列のどこかに出す。', '場に自分のゴーレムがいるなら、新しく出す代わりに、場のゴーレムを1体選んでステップを1つ次に進めてもよい。ステップを進める場合は必要なSpCが増える（ステップ2へ：SpC3、ステップ3へ：SpC4）。', '使用後、墓地に置く代わりにデッキに戻して山札をシャッフルし、ランダムにカードを1枚引いてもよい。この効果はゲーム中に3回まで（同名カードの使用も合わせて数える）。', '（ランクは未指定のため暫定で1）'] });
+SP('createGolem', { name: 'クリエイトゴーレム', cost: 'SpC2', txt: ['「ゴーレム（ステップ1）」を自分にいちばん近い列のどこかに出す。', '場に自分のゴーレムがいるなら、新しく出す代わりに、場のゴーレムを1体選んでステップを1つ次に進めてもよい。ステップを進める場合は必要なSpCが増える（ステップ2へ：SpC3、ステップ3へ：SpC4）。', '使用後、墓地に置く代わりにデッキに戻して山札をシャッフルし、ランダムにカードを1枚引いてもよい。この効果はゲーム中に3回まで（同名カードの使用も合わせて数える）。'] });
+SP('petrifyRay', { name: '石化光線', cost: 'SpC1', attr: '光', txt: ['相手のキャラクターを1体選ぶ。対象を次のターンの間「石化」状態にする。'] });
 SP('signpost', { name: '道標（マジックサイン）', cost: 'SpC1', txt: ['カードを2枚引く。'] });
 SP('fireball', { name: '火球（ファイアボール）', cost: 'SpC1', attr: '火', txt: ['相手キャラ1体のLPを2000減らし、「やけど」状態にする。'] });
-SP('sandWall', { name: '砂壁（サンドウォール）', cost: 'SpC1', attr: '土', txt: ['設置。空きマス1つに置く。そのマスへ侵入・配置できない。使用ターンを除き自分のターンを数えて3ターン後の終了時に破壊。', '（消費SpCは未記載のため暫定で1）'] });
-SP('freezeWind', { name: 'フリーズウインド', cost: 'SpC1', attr: '風・雪', txt: ['相手キャラ1体のSCを4減らし、「しもやけ」状態にする（すでにしもやけなら「凍傷」状態）。', '（消費SpCは未記載のため暫定で1）'] });
+SP('sandWall', { name: '砂壁（サンドウォール）', cost: 'SpC1', attr: '土', txt: ['設置。空きマス1つに置く。そのマスへ侵入・配置できない。使用ターンを除き自分のターンを数えて3ターン後の終了時に破壊。'] });
+SP('freezeWind', { name: 'フリーズウインド', cost: 'SpC1', attr: '風・雪', txt: ['相手キャラ1体のSCを4減らし、「しもやけ」状態にする（すでにしもやけなら「凍傷」状態）。'] });
 SP('shiftForm', { name: '形質変化', cost: 'SpC1', txt: ['自分のキャラクターまたはアバターにつけて発動する。つけた次のターンから、所持者は斜め前と斜め後ろにだけ動けるようになる（前後にも左右にも動けない）。'] });
 SP('teleport', { name: 'テレポート', cost: 'SpC2', txt: ['自分のキャラクターを2体選び、それらの位置を入れ替える。'] });
 SP('reinforce', { name: '増援召喚', cost: 'SpC2', txt: ['カードを1枚引く。このターン、キャラクターをもう1体追加で召喚できる。'] });
@@ -230,19 +242,22 @@ SP('windSlash', { name: 'ウインドスラッシュ', cost: 'SpC1', attr: '風'
 
 /* アイテム */
 const IT = (id, o) => D(id, Object.assign({ kind: 'item', cost: '' }, o));
-IT('swordFine', { name: '上等な剣', weapon: true, wop: 1000, wdp: 1000, txt: ['武器。装備者のOPとDPをそれぞれ1000増やす。'] });
-IT('wandFine', { name: '上等な魔杖', weapon: true, wspc: 1, txt: ['武器。装備者のSpCの基礎値を1上げる（現在のSpCも1増える）。', 'SpCの基礎値が1以上あるキャラクターにしか使えない。'] });
-IT('shieldFine', { name: '上等な盾', weapon: true, wdp: 500, txt: ['武器。装備者のDPを500上げ、装甲値1500を与える。', '装甲が0になっても、このカードは破壊されず装備したままになる（DP+500は残る）。', '装甲値：LPとは別の値。自分のターン中も相手のターン中も、あらゆるダメージを先に代わりに受ける（使い切りで、ターン終了時にも回復しない）。'] });
-IT('stoneThrow', { name: '投石', txt: ['対象のキャラクターのLPを1500減らす。'] });
-IT('staminaPotion', { name: 'スタミナポーション', txt: ['対象のSCを2増やし、LPを1000回復する（元のLPを超えない）。'] });
-IT('magicPotion', { name: 'マジックポーション', txt: ['対象のSpCを1増やし、LPを1000回復する（元のLPを超えない）。'] });
-IT('hyperPotion', { name: 'ハイパーポーション', txt: ['対象の「状態異常」をランダムに1つ治療したのち、LPを2000回復する（元のLPを超えない）。'] });
-IT('gobFlute', { name: 'ゴブリンの笛', txt: ['自分のデッキまたは墓地からランダムに種族ゴブリンのカードを2枚手札に加える。'] });
+IT('swordFine', { name: '上等な剣', sell: 3, weapon: true, wop: 1000, wdp: 1000, txt: ['武器。装備者のOPとDPをそれぞれ1000増やす。'] });
+IT('wandFine', { name: '上等な魔杖', sell: 4, weapon: true, wspc: 1, txt: ['武器。装備者のSpCの基礎値を1上げる（現在のSpCも1増える）。', 'SpCの基礎値が1以上あるキャラクターにしか使えない。'] });
+IT('shieldFine', { name: '上等な盾', sell: 3, weapon: true, wdp: 500, txt: ['武器。装備者のDPを500上げ、装甲値1500を与える。', '装甲が0になっても、このカードは破壊されず装備したままになる（DP+500は残る）。', '装甲値：LPとは別の値。自分のターン中も相手のターン中も、あらゆるダメージを先に代わりに受ける（使い切りで、ターン終了時にも回復しない）。'] });
+IT('stoneThrow', { name: '投石', sell: 0, txt: ['対象のキャラクターのLPを1500減らす。'] });
+IT('staminaPotion', { name: 'スタミナポーション', sell: 2, txt: ['対象のSCを2増やし、LPを1000回復する（元のLPを超えない）。'] });
+IT('magicPotion', { name: 'マジックポーション', sell: 2, txt: ['対象のSpCを1増やし、LPを1000回復する（元のLPを超えない）。'] });
+IT('shopTicket', { name: 'ショップチケット', sell: 0, noSell: true, txt: ['購入権利を1つ獲得できる。このカードを使用してカードを購入した際、このカードは消費される。', 'このカードは売ることができない。', '（カードを売るたびに1枚手に入る。ゲーム中1回だけの無料の購入権を使い切ったあとは、購入にこのカードが必要）'] });
+IT('elixir', { name: 'エリクサー', sell: 5, rank: 2, txt: ['対象の「状態異常」を全て「治療」し、LPを全て回復する。'] });
+IT('hyperPotion', { name: 'ハイパーポーション', sell: 2, txt: ['対象の「状態異常」をランダムに1つ治療したのち、LPを2000回復する（元のLPを超えない）。'] });
+IT('gobFlute', { name: 'ゴブリンの笛', sell: 0, txt: ['自分のデッキまたは墓地からランダムに種族ゴブリンのカードを2枚手札に加える。'] });
 
 /* テクニック */
 const TE = (id, o) => D(id, Object.assign({ kind: 'tech' }, o));
 TE('gobParade', { name: 'ゴブリンパレード', rank: 2, cost: 'SC1', cond: '盤面に種族ゴブリンのモンスターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['名前にゴブリンのつくモンスターは盤面にいる限り永続的にLPが1500上がる。今後出すカードにも適用される。'] });
-TE('assault', { name: '突撃司令', rank: 2, cost: 'SC1', cond: '同じ種族のキャラクターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['このターン、選んだキャラクターと同じ種族のキャラクターは、1マスの代わりに2マス進み、前方向にしか動かせない。必ず移動しなければならない（出したターンでも）。移動時はSCが0でも移動できる。相手のアバターとはバトルできない。', 'このターン、効果を受けたキャラクターはこの移動以外の移動ができない（2回行動やハンティングも使えない）。'] });
+TE('assault', { name: '突撃司令', rank: 2, cost: 'SC1', cond: '同じ種族のキャラクターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['このターン、選んだキャラクターと同じ種族の、ホームテリトリーまたはボーダーゾーンにいるキャラクターだけが対象になり、1マスの代わりに2マス進み、前方向にしか動かせない。必ず移動しなければならない（出したターンでも）。移動時はSCが0でも移動できる。相手のアバターとはバトルできない。', 'このターン、効果を受けたキャラクターはこの移動以外の移動ができない（2回行動やハンティングも使えない）。'] });
+TE('ferocious', { name: '獰猛なる覇者の加護', cost: 'SC1／SpC1', cond: '自分のホームテリトリーに、種族ワイルドで現在のSCとSpCが1以上のキャラクターがいる。', txt: ['カードを1枚引く。その後、自分のホームテリトリーにいる種族ワイルドのモンスター1体を対象にし、対象に「装甲」1500を与え、LPを500上昇させる。この装甲は、そのキャラクターがエネミーテリトリーに入ると消える。', '対象となったキャラクターのSCとSpCをそれぞれ1ずつ消費する。'] });
 TE('fightSpirit', { name: '闘争心', cost: 'SC1', cond: '場に種族ワイルドのキャラクターがおり、そのモンスターの現在のSpCが1以上。対象にした自分のキャラクターのSCを1消費する。', txt: ['武器のように装備できる。OPを500増やす。つけた次のターンから「ハンティング」を得る。', 'ハンティング：移動した後、1マス以内の行動範囲に相手キャラがいれば、そこへ移動して攻撃してもよい（SCは支払う）。行動済みでも使える。'] });
 
 const KIND_LABEL = { char: 'キャラクター', avatar: 'アバター', spell: 'スペル', item: 'アイテム', tech: 'テクニック' };
@@ -252,7 +267,7 @@ const mk = o => Object.entries(o).flatMap(([k, n]) => Array(n).fill(k));
 const PRESETS = [
   { id: 'p_oudo', name: '王道デッキ', preset: true, list: { rookieAdv: 1, rookieMage: 2, vetAdv: 3, vetMage: 2, elfMage: 1, dwarf: 2, redDragon: 1, signpost: 3, fireball: 3, sandWall: 2, freezeWind: 2, shiftForm: 1, teleport: 1, goldenBody: 1, swordFine: 2, stoneThrow: 3 } },
   { id: 'p_gob', name: 'ゴブリンデッキ', preset: true, list: { normalGob: 3, hobGob: 3, gobWiz: 3, ogre: 2, vampire: 1, signpost: 3, fireball: 1, freezeWind: 1, chaosHand: 2, shiftForm: 1, reinforce: 2, gobFlute: 3, gobParade: 1, assault: 1, stoneThrow: 3 } },
-  { id: 'p_wild', name: 'ワイルドデッキ', preset: true, list: { stormEagle: 1, blackWolf: 3, killerTiger: 3, bloodSnake: 2, greatMonkey: 1, redBoar: 1, signpost: 3, windSlash: 3, sandWall: 2, freezeWind: 1, shiftForm: 1, teleport: 1, assault: 1, fightSpirit: 2, instinct: 1, reinforce: 1, stoneThrow: 3 } },
+  { id: 'p_wild', name: 'ワイルドデッキ', preset: true, list: { stormEagle: 1, blackWolf: 3, killerTiger: 3, bloodSnake: 2, greatMonkey: 1, redBoar: 1, signpost: 3, windSlash: 2, sandWall: 1, freezeWind: 1, shiftForm: 1, teleport: 1, assault: 1, fightSpirit: 2, instinct: 1, ferocious: 3, stoneThrow: 3 } },
 ];
 const deckSize = l => Object.values(l).reduce((a, b) => a + b, 0);
 function validateDeck(list) {
@@ -343,6 +358,9 @@ const MOT = {
   gobFlute: () => R(40, 62, 120, 12, '#c9a46a') + Ci(60, 68, 3, '#3a2a14') + Ci(80, 68, 3, '#3a2a14') + Ci(100, 68, 3, '#3a2a14') + St('M168 56 Q182 44 176 30 M174 70 Q192 66 190 48', '#9fd05a', 3) + gobHead(40, 36, .6),
   gobParade: () => R(60, 20, 4, 96, '#6b4a2a') + Pa('M64 24 L150 34 L64 56Z', '#5a8a2a') + gobHead(40, 100, .7) + gobHead(80, 106, .7) + gobHead(124, 102, .7) + Ci(104, 36, 6, '#ffe14d'),
   assault: () => St('M30 90 L170 90', '#c43a2e', 6) + Pa('M170 70 L196 90 L170 110Z', '#c43a2e') + St('M30 60 L150 60 M30 120 L150 120', '#e8a090', 4) + Pa('M20 20 L48 20 L34 40Z', '#ffe9a0'),
+  ferocious: () => Pa('M40 100 Q60 40 100 30 Q140 40 160 100 Q130 86 100 90 Q70 86 40 100Z', '#7a4a1a') + Pa('M70 54 L62 30 L84 46Z M130 54 L138 30 L116 46Z', '#5a3210') + Ci(86, 62, 4, '#ffd24d') + Ci(114, 62, 4, '#ffd24d') + Pa('M88 78 L94 92 L100 78 L106 92 L112 78Z', '#f2ead0') + St('M30 30 Q100 0 170 30', '#ffe9a0', 4) + St('M20 60 L36 52 M180 60 L164 52', '#ffe9a0', 3),
+  petrifyRay: () => St('M20 100 L110 50', '#fff6b0', 7) + St('M20 100 L110 50', '#ffe14d', 3) + Ci(150, 56, 26, '#8a8a82') + Ci(150, 56, 20, '#a6a69c') + Pa('M138 42 L162 42 L158 70 L142 70Z', '#7a7a72') + St('M130 90 L170 30 M126 60 L176 70', '#5e5e58', 2) + Ci(24, 100, 8, '#fff2a0'),
+  elixir: () => Pa('M88 24 H112 V46 Q140 58 138 92 Q136 112 100 112 Q64 112 62 92 Q60 58 88 46Z', '#e9f6ff', 'opacity=".25"') + Pa('M70 78 Q100 66 130 78 Q132 104 100 108 Q68 104 70 78Z', '#7de0b0') + Pa('M92 14 H108 V26 H92Z', '#c9a24a') + Ci(92, 90, 3, '#fff') + Ci(110, 84, 2.5, '#fff') + Ci(104, 98, 2, '#fff') + St('M100 56 L100 40 M60 40 L66 48 M140 40 L134 48', '#fff6b0', 3),
   fightSpirit: () => Pa('M60 60 Q100 20 140 60 Q130 100 100 108 Q70 100 60 60Z', '#a52a2a') + Pa('M80 70 L88 90 L96 70Z M104 70 L112 90 L120 70Z', '#fff') + Ci(84, 56, 4, '#ffd24d') + Ci(116, 56, 4, '#ffd24d') + St('M40 40 Q60 30 70 50 M160 40 Q140 30 130 50', '#ff7a1a', 5),
 };
 const ART = {
@@ -353,7 +371,7 @@ const ART = {
   freezeWind: ['#5a9acf', '#122a44'], shiftForm: ['#5a3a9a', '#150c30'], teleport: ['#2a4a7a', '#0c1630'], reinforce: ['#8a7a4a', '#2a220e'], magicGuard: ['#3a5a9a', '#0e1a34'], chaosHand: ['#4a1a6a', '#120620'],
   aquaReturn: ['#2a6a9a', '#0a1e34'], goldenBody: ['#b08a2a', '#3a2808'], instinct: ['#8a5a2a', '#241406'], windSlash: ['#2a7a5a', '#0a2418'], swordFine: ['#6a7a8a', '#1a222a'], shieldFine: ['#5a6a7a', '#141c24'],
   stoneThrow: ['#7a7a6a', '#22221c'], staminaPotion: ['#3a7a4a', '#0e2414'], magicPotion: ['#3a4a9a', '#0e1234'], hyperPotion: ['#8a3a7a', '#260c20'], gobFlute: ['#5a7a3a', '#16200c'],
-  gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
+  petrifyRay: ['#8a8a6a', '#1c1c14'], elixir: ['#4aa07a', '#0c241c'], ferocious: ['#8a5a1a', '#241406'], gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
 };
 function artSVG(id) {
   const a = ART[id] || ['#334', '#112'];
@@ -392,14 +410,14 @@ const terr = u => terrOfRow(rowOf(u.owner, u.y));
 
 function mkUnit(owner, cid, x, y) {
   const c = CARDS[cid];
-  const u = { uid: UIDC++, owner, cid, x, y, lp: c.lp, sc: c.sc, spc: c.spc, acted: 0, placedAt: G.turn, weapon: null, armor: 0, gArmor: 0, tArmor: 0, attach: [], st: {}, lpPen: 0, scPen: 0, buffs: [], hidden: false, hiddenSince: 0, dpBonus: 0, uses: {}, dead: false };
+  const u = { uid: UIDC++, owner, cid, x, y, lp: c.lp, sc: c.sc, spc: c.spc, acted: 0, placedAt: G.turn, weapon: null, armor: 0, gArmor: 0, tArmor: 0, fArmor: 0, attach: [], st: {}, lpPen: 0, scPen: 0, buffs: [], hidden: false, hiddenSince: 0, dpBonus: 0, uses: {}, dead: false };
   G.units[u.uid] = u;
   return u;
 }
 function newGame(d0, d1) {
   UIDC = 1;
-  G = { turn: 0, active: 0, phase: 'start', over: null, units: {}, walls: {}, log: [], assault: null,
-    players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null })) };
+  G = { turn: 0, active: 0, phase: 'start', over: null, shop: [], shopUsed: [], units: {}, walls: {}, log: [], assault: null,
+    players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, coins: 0, freeBuy: 1, sellUsed: false, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null })) };
   for (const p of G.players) {
     const c = cellOfRow(p.i, 1, 3);
     p.avatar = mkUnit(p.i, 'avatar', c.x, c.y).uid;
@@ -421,7 +439,7 @@ function draw(p, n = 1) {
 
 /* ステータス */
 const isGobName = u => CARDS[u.cid].kind === 'char' && CARDS[u.cid].name.includes('ゴブリン');
-const baseLP = u => CARDS[u.cid].lp + (isGobName(u) && G.players[u.owner].parade ? 1500 : 0) - u.lpPen;
+const baseLP = u => CARDS[u.cid].lp + (isGobName(u) && G.players[u.owner].parade ? 1500 : 0) + (u.lpBonus || 0) - u.lpPen;
 const golemStep = u => (/^golem[123]$/.test(u.cid) ? +u.cid.slice(5) : 0);
 const baseSC = u => CARDS[u.cid].sc - u.scPen;
 const baseSpC = u => CARDS[u.cid].spc + (u.weapon && CARDS[u.weapon].wspc ? CARDS[u.weapon].wspc : 0);
@@ -429,7 +447,8 @@ function OP(u) { let v = CARDS[u.cid].op; if (u.weapon) v += CARDS[u.weapon].wop
 function DP(u) { let v = CARDS[u.cid].dp + u.dpBonus; if (u.weapon) v += CARDS[u.weapon].wdp || 0; for (const b of u.buffs) if (b.k === 'dp') v += b.amt; return v; }
 const aop = a => (a.cid === 'fightSpirit' ? 500 : 0);
 CARDS.fightSpirit.aop = 500;
-const armorTotal = u => u.armor + u.gArmor + u.tArmor;
+const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
+const fArmorCheck = u => { if (u.fArmor && terr(u) === 'enemy') { u.fArmor = 0; log(`${nm(u)}の「獰猛なる覇者の加護」の装甲がエネミーテリトリーで消えた`); } };
 const healPen = u => (u.st.burn ? 500 : 0) + (u.st.chill ? 500 : 0) + (u.st.frost ? 1000 : 0);
 function heal(u, n) { n = Math.max(0, n - healPen(u)); const b = baseLP(u); if (u.lp < b) u.lp = Math.min(b, u.lp + n); }
 function recomputePen(u) {
@@ -464,7 +483,7 @@ function killUnit(u) {
   if (u.dead) return;
   u.dead = true;
   const p = G.players[u.owner];
-  if (isAv(u)) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); }
+  if (isAv(u)) { if (!G.over) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
   else { p.grave.push(u.cid); log(`${nm(u)}が破壊された`); }
   if (u.weapon) p.grave.push(u.weapon);
   for (const a of u.attach) p.grave.push(a.cid);
@@ -472,9 +491,11 @@ function killUnit(u) {
 }
 function damage(u, n, opts) {
   if (u.dead || (u.hidden && !(opts && opts.hit)) || n <= 0) return;
+  fArmorCheck(u);
   if (armorTotal(u) > 0) {
     let a = Math.min(u.tArmor, n); u.tArmor -= a; n -= a;
     a = Math.min(u.gArmor, n); u.gArmor -= a; n -= a;
+    a = Math.min(u.fArmor || 0, n); u.fArmor -= a; n -= a;
     if (n > 0 && u.armor > 0) { a = Math.min(u.armor, n); u.armor -= a; n -= a; }
   }
   if (n <= 0) return;
@@ -484,7 +505,12 @@ function damage(u, n, opts) {
 }
 
 /* ===== 移動 ===== */
-const assaultOn = u => !!G.assault && G.assault.turn === G.turn && u.owner === G.assault.owner && !isAv(u) && CARDS[u.cid].race === G.assault.race;
+/* 突撃司令：ホームテリトリー／ボーダーゾーンにいるキャラクターだけが対象（一度対象になれば、移動でエネミーに入っても効果は続く） */
+const assaultOn = u => {
+  if (!G.assault || G.assault.turn !== G.turn || u.owner !== G.assault.owner || isAv(u) || CARDS[u.cid].race !== G.assault.race) return false;
+  if (terr(u) !== 'enemy') G.assault.hit[u.uid] = true;
+  return !!G.assault.hit[u.uid];
+};
 const hasShift = u => u.attach.some(a => a.cid === 'shiftForm' && G.players[u.owner].count >= a.since);
 const hasHunting = u => u.attach.some(a => a.cid === 'fightSpirit' && G.players[u.owner].count >= a.since);
 function canActNow(u) {
@@ -551,7 +577,7 @@ function huntTargets(u) {
     const backPure = d[0] === 0 && d[1] === -dy;
     if (backPure && !abU(u, 'backBattle')) continue;
     const x = u.x + d[0], y = u.y + d[1];
-    if (evalCell(u, x, y) === 'enemy') out.push({ x, y, cost });
+    if (evalCell(u, x, y) === 'enemy' && !isAv(at(x, y))) out.push({ x, y, cost });
   }
   return out;
 }
@@ -560,7 +586,7 @@ const mustMove = u => (u.owner === G.active && (assaultOn(u) || (abU(u, 'berserk
 async function slashTrigger(u) {
   const n = u.attach.filter(a => a.cid === 'windSlash').length;
   for (let k = 0; k < n; k++) {
-    if (u.dead) return;
+    if (u.dead || G.over) return;
     const tg = chars(1 - u.owner);
     if (!tg.length) return;
     const r = await UI.pickBoard({ prompt: `ウインドスラッシュ${n > 1 ? `（${k + 1}/${n}）` : ''}：1000ダメージを与える相手キャラを選択`, cells: tg.map(t => [t.x, t.y]), kind: 'target', cancellable: false });
@@ -601,6 +627,7 @@ async function doMove(u, mv) {
 }
 async function onEntered(u, from) {
   const p = G.players[u.owner];
+  fArmorCheck(u);
   if (instinctActive(p) && terr(u) === 'enemy' && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'enemy')) { u.lp += 1000; log(`本能解放：${nm(u)}のLP+1000`); }
   for (const c of U()) {
     if (c.owner !== u.owner && !c.hidden && abU(c, 'petrify') && !isAv(u) && c.x === u.x && c.y + fwd(c.owner) === u.y) addStatus(u, 'petrify');
@@ -628,6 +655,7 @@ async function huntLoop(u) {
   await onEntered(u, from);
 }
 function checkAuras() {
+  for (const u of U()) if (!u.dead) fArmorCheck(u);
   for (const d of U()) {
     if (d.dead || d.hidden || !abU(d, 'incinerate')) continue;
     const fx = d.x, fy = d.y + fwd(d.owner);
@@ -659,7 +687,7 @@ async function battle(att, def) {
   else if (forced === 'def') win = false;
   else if (AV >= DV) win = true;
   else { const dmg = Math.max(0, AV - DP(def)); log(`攻撃値${AV} < 防御値${DV}：${nm(def)}に${dmg}ダメージ`); damage(def, dmg); }
-  if (win) { log(`攻撃値${AV}（防御値${DV}）：攻撃側の勝利`); killUnit(def); }
+  if (win) { log(`攻撃値${AV}（防御値${DV}）：攻撃側の勝利`); killUnit(def); if (!isAv(def)) { const g = CARDS[def.cid].rank; G.players[att.owner].coins += g; log(`バトルに勝利：${G.players[att.owner].name}の貨幣ゲージ+${g}（${G.players[att.owner].coins}）`); } }
   UI.render();
   return win;
 }
@@ -761,7 +789,7 @@ async function summon(p, idx) {
   }
   const freed = new Set(sac.map(u => u.x + ',' + u.y));
   let rows = stealth ? [1, 2, 3] : [1];
-  if (c.name === 'オーガ' && sacSum >= 4500) rows = [1, 2];
+  if ((c.name === 'オーガ' || c.name === 'ヴァンパイア') && sacSum >= 4500) rows = [1, 2];
   const cells = [];
   for (const r of rows) for (let x = 0; x < 7; x++) {
     const cc = cellOfRow(p.i, r, x);
@@ -834,6 +862,7 @@ async function pickUnit(us, prompt) {
   const r = await UI.pickBoard({ prompt, cells: us.map(u => [u.x, u.y]), kind: 'target', cancellable: true });
   return r ? at(r[0][0], r[0][1]) : null;
 }
+const ferTargets = p => mine(p).filter(u => CARDS[u.cid].cat.includes('モンスター') && CARDS[u.cid].race === 'ワイルド' && terr(u) === 'home' && u.sc >= 1 && u.spc >= 1 && u.st.petrify == null);
 const canTechPay = u => u.acted === 0 && u.sc >= 1 && u.st.petrify == null && !u.hidden && !u.dead;
 async function equipWeapon(p, cid) {
   const cs = own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon && (cid !== 'wandFine' || CARDS[u.cid].spc >= 1));
@@ -1017,8 +1046,26 @@ const ACT = {
   assault: { can: p => (mine(p).some(u => canTechPay(u) && mine(p).filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length >= 3) ? null : '同じ種族が3体以上いて、SCを消費できるキャラクターが必要です'), async run(p) {
     const cs = mine(p).filter(u => canTechPay(u) && mine(p).filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length >= 3);
     const u = await payTech(p, cs, 'SCを1消費するキャラクターを選択（同じ種族が突撃します）'); if (!u) return false;
-    await UI.cutIn('assault'); G.assault = { owner: p.i, race: CARDS[u.cid].race, turn: G.turn };
+    await UI.cutIn('assault'); G.assault = { owner: p.i, race: CARDS[u.cid].race, turn: G.turn, hit: {} };
     log(`突撃司令：種族「${CARDS[u.cid].race}」は必ず2マス前進する`); return true; } },
+  petrifyRay: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), '石化光線の対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('petrifyRay');
+    if (!(await resist(t, 1, p))) { addStatus(t, 'petrify'); log(`石化光線：${nm(t)}が石化した`); }
+    return true; } },
+  elixir: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => {
+    for (let g = 0; g < 8 && statusList(t).length; g++) for (const k of statusList(t)) cure(t, k);
+    t.lp = Math.max(t.lp, baseLP(t)); log(`エリクサー：${nm(t)}の状態異常を全て治療し、LPを全回復`); }) },
+  shopTicket: { can: () => 'ショップで購入するときに自動で消費されます（使用はできません）', run: async () => false },
+  ferocious: {
+    can: p => (ferTargets(p).length ? null : '自分のホームテリトリーに、SCとSpCが1以上の種族ワイルドのモンスターが必要です'),
+    async run(p, cid) {
+      const ts = ferTargets(p);
+      const t = await pickUnit(ts, '獰猛なる覇者の加護：対象のモンスターを選択（SCとSpCを1ずつ消費）'); if (!t) return false;
+      await UI.cutIn('ferocious');
+      draw(p, 1);
+      t.sc -= 1; t.spc -= 1; t.fArmor += 1500; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
+      log(`獰猛なる覇者の加護：${nm(t)}に装甲1500・LP+500（SC-1・SpC-1）`); return true; } },
   fightSpirit: { can: p => (mine(p).some(u => CARDS[u.cid].race === 'ワイルド' && u.spc >= 1) ? (mine(p).some(canTechPay) ? null : 'SCを消費できるキャラクターがいません') : '現在のSpCが1以上の種族ワイルドが必要です'), async run(p) {
     const u = await payTech(p, mine(p).filter(canTechPay), '闘争心をつけるキャラクターを選択（SCを1消費）'); if (!u) return false;
     await UI.cutIn('fightSpirit'); u.attach.push({ cid: 'fightSpirit', since: p.count + 1 }); log(`${nm(u)}に闘争心`); return 'kept'; } },
@@ -1042,11 +1089,56 @@ async function playHand(idx) {
 }
 function afterAction() { checkAuras(); UI.render(); if (G.over) UI.gameOver(G.over); }
 
+/* ===== 貨幣ゲージ・アイテムショップ ===== */
+const sellOf = cid => (CARDS[cid].kind === 'item' && CARDS[cid].sell != null && !CARDS[cid].noSell ? CARDS[cid].sell : null);
+const canBuyRight = p => p.freeBuy > 0 || p.hand.includes('shopTicket');
+function refreshShop() {
+  const pool = r => Object.keys(CARDS).filter(id => CARDS[id].kind === 'item' && CARDS[id].sell > 0 && CARDS[id].rank === r);
+  const shop = [];
+  for (let k = 0; k < 3; k++) {
+    const r = rnd(100) < 5 ? 2 : 1;
+    let cand = pool(r).filter(id => !shop.some(s => s.cid === id));
+    if (!cand.length) cand = pool(3 - r).filter(id => !shop.some(s => s.cid === id));
+    if (!cand.length) break;
+    const cid = cand[rnd(cand.length)];
+    shop.push({ cid, price: CARDS[cid].sell * 2, sold: false });
+  }
+  G.shop = shop;
+  const keep = [];
+  for (const s of G.shopUsed || []) {
+    if (s.sold) continue;
+    s.age++;
+    if (s.age >= 2) { G.players[s.from].grave.push(s.cid); log(`アイテムショップ：売却品「${CARDS[s.cid].name}」が期限切れで墓地へ`); } else keep.push(s);
+  }
+  G.shopUsed = keep;
+  log(`アイテムショップ入れ替え：${shop.map(s => CARDS[s.cid].name + '(' + s.price + ')').join('、')}`);
+}
+const shopItems = () => [...G.shop, ...(G.shopUsed || [])];
+function sellCard(i) {
+  const p = cur(); if (G.phase !== 'main' || G.over) return;
+  const cid = p.hand[i]; if (!cid || sellOf(cid) == null) return;
+  if (p.sellUsed) { UI.toast('カードを売れるのは1ターンに1回までです'); return; }
+  p.sellUsed = true; p.hand.splice(i, 1); p.hand.push('shopTicket'); p.coins += sellOf(cid);
+  G.shopUsed.push({ cid, price: sellOf(cid) * 2, age: 0, from: p.i, used: true, sold: false });
+  log(`${p.name}：${CARDS[cid].name}を売って貨幣ゲージ+${sellOf(cid)}（${p.coins}）。ショップに買値${sellOf(cid) * 2}で並んだ。ショップチケットを1枚入手`); afterAction();
+}
+function buyShop(k) {
+  const p = cur(); if (G.phase !== 'main' || G.over) return;
+  const s = shopItems()[k]; if (!s || s.sold) { UI.toast('すでに売り切れです'); return; }
+  if (p.coins < s.price) { UI.toast(`貨幣ゲージが足りません（必要${s.price}／所持${p.coins}）`); return; }
+  if (!canBuyRight(p)) { UI.toast('購入権利がありません（無料の購入権は使用済み。ショップチケットが必要です）'); return; }
+  let how;
+  if (p.freeBuy > 0) { p.freeBuy--; how = '無料の購入権'; } else { p.hand.splice(p.hand.indexOf('shopTicket'), 1); p.grave.push('shopTicket'); how = 'ショップチケット'; }
+  p.coins -= s.price; s.sold = true; p.hand.push(s.cid);
+  log(`${p.name}：${CARDS[s.cid].name}を購入（貨幣ゲージ-${s.price}、残り${p.coins}／${how}を消費）`); afterAction();
+}
+
 /* ===== ターン進行 ===== */
 const instinctActive = p => !!p.instinct && (p.instinct.perm || p.count <= p.instinct.until);
 async function startTurn(i) {
   G.active = i; const p = G.players[i];
-  G.turn++; p.count++; p.r1Spells = 0; p.summons = 0; p.extra = 0; p.goblinSlots = 0; G.assault = null;
+  if (i === 0) refreshShop();
+  G.turn++; p.count++; p.r1Spells = 0; p.sellUsed = false; p.summons = 0; p.extra = 0; p.goblinSlots = 0; G.assault = null;
   for (const u of own(i)) u.acted = 0;
   G.phase = 'start'; UI.render();
   await UI.turnOverlay(p);
@@ -1080,6 +1172,7 @@ async function endTurn() {
     u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1)));
     u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + (home ? 1 : 0)));
   }
+  if (!(p.i === 0 && p.count === 1)) { p.coins++; log(`${p.name}：ターン終了で貨幣ゲージ+1（${p.coins}）`); }
   await startTurn(1 - p.i);
   return true;
 }
@@ -1124,6 +1217,7 @@ function cardHTML(cid, o = {}) {
   let stats = '';
   if (c.kind === 'char' || c.kind === 'avatar') stats = chipH('lp', 'LP', c.lp) + chipH('op', 'OP', c.op) + chipH('dp', 'DP', c.dp) + chipH('sc', 'SC', c.sc) + chipH('spc', 'SpC', c.spc);
   else if (c.cost) stats = chipH('cost', '消費', c.cost);
+  if (c.kind === 'item' && c.sell != null) stats += chipH('sell', '売値', c.sell);
   let text = '';
   if (c.cond) text += `<div class="c-cond"><b>発動条件</b> ${esc(c.cond)}</div>`;
   text += c.txt.map(t => `<p>${esc(t)}</p>`).join('');
@@ -1198,8 +1292,14 @@ const UI = {
   turnOverlay(p) { if (ONL) { UI.toast(`${p.name}のターン`); return Promise.resolve(); } return localAsk(`${p.name}のターン${p.count + 1}です。画面を${p.name}のプレイヤーに渡し、相手に手札が見えないようにしてください。`, [`${p.name}：ターン開始`]); },
   gameOver(w) {
     if (UI.overShown) return; UI.overShown = true;
-    const msg = ONL ? (w === ONL.me ? '🏆 あなたの勝利です！' : '💀 あなたの敗北です…') : `🏆 ${G.players[w].name}の勝利！`;
-    localAsk(msg, ['対戦準備へ戻る']).then(() => { UI.overShown = false; UI.busy = false; UI.pk = null; leaveOnline(); screen = 'prep'; G = null; show(); });
+    const wn = G.players[w].name, ln = G.players[1 - w].name;
+    const resign = G.log.slice(0, 6).some(l => l.includes('投了した'));
+    const you = ONL ? (w === ONL.me) : null;
+    const big = ONL ? (you ? '🏆 あなたの勝利！' : '💀 あなたの敗北…') : `🏆 ${wn}の勝利！`;
+    const el = document.createElement('div'); el.id = 'gameover'; el.className = 'gameover ' + (you === false ? 'lose' : 'win');
+    el.innerHTML = `<div class="gobox"><div class="gobig">${big}</div><div class="gosub">勝者：<b>${wn}</b>${ONL ? (you ? '（あなた）' : '（相手）') : ''}　／　敗者：${ln}</div><div class="gosub small">${resign ? `${ln}が投了しました` : `${ln}のアバターが倒されました`}</div><button class="btn main" id="goback">対戦準備へ戻る</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector('#goback').onclick = () => { el.remove(); UI.overShown = false; UI.busy = false; UI.pk = null; leaveOnline(); screen = 'prep'; G = null; show(); };
   },
   pickBoard(o) { const who = o.who == null ? G.active : o.who; return ONL ? onlineInput('pick', who, () => localPick(o)) : localPick(o); },
 };
@@ -1259,15 +1359,15 @@ function renderBattle() {
   let selp = '';
   if (UI.selHand != null && p.hand[UI.selHand] && !UI.pk) {
     const cid = p.hand[UI.selHand];
-    selp = `<div class="panel">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button><span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
+    selp = `<div class="panel">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${G.phase === 'main' && !UI.busy && mineTurn && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）${p.sellUsed ? '※今ターン売却済み' : ''}</button>` : ''}<span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
   } else if (UI.sel && G.units[UI.sel] && !UI.pk) { const su = G.units[UI.sel], sc = CARDS[su.cid]; selp = MOB() ? `<div class="panel strip"><b class="serif">${esc(sc.name.replace(/（.*）/, ''))}</b><span class="badge">${coord(su.x, su.y)}</span><span class="st-LP">LP${su.lp}</span><span class="st-OP">OP${OP(su)}</span><span class="st-DP">DP${DP(su)}</span><span class="st-SC">SC${su.sc}</span><span class="st-SpC">SpC${su.spc}</span>${statusList(su).map(k => STATUS_ICON[k]).join('')}${su.acted ? '<span class="note">行動済</span>' : ''}<button class="btn sm" data-act="udetail" data-uid="${su.uid}">詳細</button></div>` : `<div class="panel">${unitDetail(su)}</div>`; }
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : '【相手の番】') : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
   ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
   <button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div class="panel warn">⏳ ${esc(UI.wait)}</div>` : ''}
-  <div class="battle"><div><div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="spcount">スペル使用${o.spellsUsed}回</b>${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
+  <div class="battle"><div><div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>
-  <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="spcount">スペル使用${p.spellsUsed}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
-  <div>${pkp}${selp}<div class="panel desk-only"><b class="serif">ログ</b><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></div></div></div>
+  <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
+  <div>${pkp}${selp}${shopHTML(p, G.phase === 'main' && !UI.busy && mineTurn)}<div class="panel desk-only"><b class="serif">ログ</b><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></div></div></div>
   <h3 style="margin:10px 0 0">${p.name}の手札（${p.hand.length}）</h3><div class="hand">${hand}</div><details class="panel mob-only"><summary class="serif">ログ・山札 ${p.deck.length}枚・墓地 ${p.grave.length}枚・スペル使用 自${p.spellsUsed}／相${o.spellsUsed}</summary><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></details>`;
   paintTh();
 }
@@ -1289,11 +1389,18 @@ function showDetail(cid, uid) {
   el.innerHTML = `<div class="mbox"><div class="mrow">${cardHTML(cid, { cls: 'full lg' })}${extra}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
   el.style.display = 'flex';
 }
+function shopHTML(p, can) {
+  const items = shopItems();
+  if (!items.length) return '';
+  const row = (s, k) => `<div class="shoprow${s.sold ? ' sold' : ''}"><span class="n" data-card="${s.cid}">${esc(CARDS[s.cid].name)}<small>（R${CARDS[s.cid].rank}）</small></span><b>💰${s.price}</b><button class="btn sm" data-act="buy" data-k="${k}" ${!can || s.sold || p.coins < s.price || !canBuyRight(p) ? 'disabled' : ''}>${s.sold ? '売切' : '購入'}</button></div>`;
+  const n = G.shop.length;
+  return `<div class="panel shop"><b class="serif">🏪 アイテムショップ</b> <span class="note">所持💰${p.coins}</span><div class="note">購入権：${p.freeBuy > 0 ? '無料の購入権あり（1回）' : p.hand.includes('shopTicket') ? 'ショップチケット×' + p.hand.filter(c => c === 'shopTicket').length : '<span class="warn">なし（ショップチケットが必要）</span>'}</div>${G.shop.map((s, k) => row(s, k)).join('')}${G.shopUsed && G.shopUsed.length ? `<div class="note" style="margin-top:6px">売却品（売られたカード・買値。2往復で消えます）</div>${G.shopUsed.map((s, k) => row(s, n + k)).join('')}` : ''}<div class="note">ターンが1往復するたびに入れ替わります（共有・各1個）</div></div>`;
+}
 function showHandSheet(i) {
   const p = G.players[VW()], cid = p.hand[i]; if (!cid) return;
   const mineTurn = !ONL || G.active === ONL.me, can = G.phase === 'main' && !UI.busy && mineTurn;
   const el = $('#modal');
-  el.innerHTML = `<div class="mbox"><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="sheetPlay" data-i="${i}" ${can ? '' : 'disabled'}>使用 / 配置</button><button class="btn" data-act="closeModal">閉じる</button></div>${can ? '' : `<div class="note" style="text-align:center">${!mineTurn ? '相手のターンです' : 'メインステップのみ使用できます'}</div>`}</div>`;
+  el.innerHTML = `<div class="mbox"><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="sheetPlay" data-i="${i}" ${can ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sheetSell" data-i="${i}" ${can && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<button class="btn" data-act="closeModal">閉じる</button></div>${can ? '' : `<div class="note" style="text-align:center">${!mineTurn ? '相手のターンです' : 'メインステップのみ使用できます'}</div>`}</div>`;
   el.style.display = 'flex';
 }
 function showGrave(i) {
@@ -1355,6 +1462,9 @@ function onClick(e) {
     case 'cell': onCell(+el.dataset.x, +el.dataset.y); break;
     case 'hand': if (UI.pk || UI.busy || G.phase === 'start') break; if (MOB()) { showHandSheet(+el.dataset.i); break; } { const i = +el.dataset.i; if (UI.selHand === i && G.phase === 'main' && (!ONL || G.active === ONL.me)) doAct({ t: 'play', i }); else { UI.selHand = i; UI.sel = null; renderBattle(); } } break;
     case 'play': { const i = UI.selHand; if (i != null) doAct({ t: 'play', i }); } break;
+    case 'sell': { const i = UI.selHand; if (i != null) { UI.selHand = null; doAct({ t: 'sell', i }); } } break;
+    case 'sheetSell': $('#modal').style.display = 'none'; doAct({ t: 'sell', i: +el.dataset.i }); break;
+    case 'buy': doAct({ t: 'buy', k: +el.dataset.k }); break;
     case 'pkok': if (UI.pk && (!UI.pk.o.validate || UI.pk.o.validate(UI.pk.sel))) finishPick(UI.pk.sel); break;
     case 'pkcancel': finishPick(null); break;
     case 'toAction': UI.selHand = null; doAct({ t: 'toAction' }); break;
@@ -1384,6 +1494,8 @@ async function execEv(ev) {
   if (!G || G.over) return;
   switch (ev.t) {
     case 'play': await playHand(ev.i); break;
+    case 'sell': sellCard(ev.i); break;
+    case 'buy': buyShop(ev.k); break;
     case 'move': { const u = G.units[ev.uid]; const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
     case 'throw': { const u = G.units[ev.uid]; if (u) await monkeyThrow(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
