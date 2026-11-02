@@ -179,6 +179,15 @@ html{-webkit-text-size-adjust:100%}
 .coin{color:#e8c55a}
 .shop{margin-top:6px}.shoprow{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px}.shoprow .n{flex:1}.shoprow small{opacity:.7}.shoprow.sold{opacity:.45}
 .chip.sell{background:#4a3a14;color:#f1d98a}
+
+.cell{position:relative}.hbadge{position:absolute;right:2px;bottom:2px;font-size:10px;padding:0 4px;border-radius:8px;background:#2a3a5a;color:#cfe0ff;border:1px solid #6a8acf;pointer-events:none;z-index:3}.hbadge.foe{background:#4a2a2a;color:#ffd0d0;border-color:#cf6a6a}
+
+.kwp{margin:2px 0}.kw{font:inherit;font-size:11px;font-weight:700;color:var(--gold);background:#2a2518;border:1px solid var(--gold);border-radius:10px;padding:1px 8px;cursor:pointer}.kw:hover{background:#3a321f}
+#kwpop{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:#000a;padding:16px}
+.kwbox{max-width:420px;background:linear-gradient(#22262a,#14171a);border:2px solid var(--gold);border-radius:10px;padding:18px 20px;box-shadow:0 0 30px #000}
+.kwt{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;color:var(--gold);margin-bottom:8px}.kwd{font-size:14px;line-height:1.6;margin-bottom:10px}
+
+.sbadge{position:absolute;left:3px;top:1px;font-size:12px;color:#9fd0ff;text-shadow:0 0 4px #4a8acf;pointer-events:none;z-index:2}.sbadge.foe{color:#ffb0b0;text-shadow:0 0 4px #cf4a4a}
 </style></head>
 <body>
 <header><h1>⚔ 対戦ボードゲーム</h1><nav>
@@ -208,22 +217,25 @@ CH('elfMage', { name: 'エルフの魔法使い', cat: 'ヒューマノイド', 
 CH('redDragon', { name: 'レッドドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 3, lp: 6000, op: 0, dp: 0, sc: 4, spc: 3, ab: ['incinerate', 'flight', 'magicResist'], txt: ['焼却（永続）：正面にいる相手キャラクターを破壊し、正面の設置を破壊する。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
 CH('troll', { name: 'トロール', cat: 'モンスター', race: 'ジャイアント', rank: 2, lp: 5000, op: 0, dp: 0, sc: 1, spc: 0, ab: ['regen'], txt: ['再生：ダメージを受けた後、LPを500回復する（LPが元の値を超えることはない）。'] });
 CH('iceWitch', { name: '氷の魔女（アイスウィッチ）', cat: 'モンスター／ヒューマノイド', race: 'アイスウィッチ', rank: 3, lp: 4500, op: 0, dp: 1500, sc: 2, spc: 5, weapon: true, ab: ['witchEtb', 'witchChill', 'superResist'], txt: ['配置時：デッキからランク2のスペルをランダムに1枚手札に加える。ランク2のスペルがデッキになければ、代わりにランク1のスペルをランダムに2枚手札に加える。', '自分がランク2のスペルを使った時、またはランク1のスペルをそのターン中に偶数回目に使った時、その度に相手のキャラクターをランダムに1体「しもやけ」状態にする。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。', 'モンスターとヒューマノイドの両方の特性をもつ（武器を装備できる）。'] });
-CH('golem1', { name: 'ゴーレム（ステップ1）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, txt: ['配置時に「装甲」2000を得る。', 'ゴーレムは、魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない（残りのSpCは耐性専用）。', '「クリエイトゴーレム」で出る。場に自分のゴーレムがいるなら、新しく出す代わりにステップを1つ進められる。'] });
-CH('golem2', { name: 'ゴーレム（ステップ2）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 4000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['magicResist'], txt: ['ステップ1からLP+2000、SC+2、SpC+1。', '魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。'] });
-CH('golem3', { name: 'ゴーレム（ステップ3）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 6000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['superResist'], txt: ['ステップ2からLP+2000、SC+2、SpC+1。最終形態。', '魔法耐性・超魔法耐性で使う以外の目的では、SpCを1までしか使えない。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。'] });
+CH('golem1', { name: 'ゴーレム（ステップ1）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, txt: ['配置時に「装甲」2000を得る。', 'ゴーレムは、魔法耐性・超魔法耐性以外の目的でSpCを使えるのは、1ターンに合計1まで（SCでの肩代わりもできない）。SpC2以上のスペルなどは支払えない。残りのSpCは耐性専用。', '「クリエイトゴーレム」で出る。場に自分のゴーレムがいるなら、新しく出す代わりにステップを1つ進められる。'] });
+CH('golem2', { name: 'ゴーレム（ステップ2）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 4000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['magicResist'], txt: ['ステップ1からLP+2000、SC+2、SpC+1。', '魔法耐性・超魔法耐性以外の目的でSpCを使えるのは1ターンに合計1まで（SCでの肩代わりもできない）。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。'] });
+CH('golem3', { name: 'ゴーレム（ステップ3）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 6000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['superResist'], txt: ['ステップ2からLP+2000、SC+2、SpC+1。最終形態。', '魔法耐性・超魔法耐性以外の目的でSpCを使えるのは1ターンに合計1まで（SCでの肩代わりもできない）。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。'] });
+CH('rookieRanger', { name: '駆け出しレンジャー', cat: 'ヒューマノイド', race: 'ヒューム', lp: 2000, op: 0, dp: 500, sc: 2, spc: 0, weapon: true, archer: 4, ab: ['stealth', 'archer', 'scout'], txt: ['潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', '弓使い（サイコロ4以上）：メインステップ中にSCを1支払って発動。相手のキャラクター1体を対象にサイコロを振り、4以上ならLPを1000減少させる。1ターンに1度だけ。', '警戒：メインステップ中にSCを1支払って発動。相手のホームテリトリーにある非公開カードを1枚選び、非公開のまま、そのカードが何かを知る。', '武器を装備できる。'] });
+CH('vetRanger', { name: 'ベテランレンジャー', cat: 'ヒューマノイド', race: 'ヒューム', lp: 3000, op: 0, dp: 500, sc: 3, spc: 0, weapon: true, archer: 3, ab: ['stealth', 'archer', 'scout'], txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', '弓使い（サイコロ3以上）：メインステップ中にSCを1支払って発動。相手のキャラクター1体を対象にサイコロを振り、3以上ならLPを1000減少させる。1ターンに1度だけ。', '警戒：メインステップ中にSCを1支払って発動。相手のホームテリトリーにある非公開カードを1枚選び、非公開のまま、そのカードが何かを知る。', '武器を装備できる。'] });
 CH('moonDragon', { name: 'ムーンライトドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 2, lp: 5000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['moonCond', 'moonReset'], txt: ['配置条件：このゲーム中に自分がスペルを3回以上使用していないと盤に出せない。', '月光：このゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らして使える（盤面のこのカードを押すと使うか選べる）。互いに手札を山札に戻してシャッフルし、その後互いにカードを3枚引く。'] });
 CH('stormEagle', { name: '天空の覇者（ストームイーグル）', cat: 'モンスター', race: 'ワイルド', rank: 3, lp: 5000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['haste', 'twoActions', 'magicResist', 'flight'], txt: ['出たターンから移動できる。2回行動できる。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
 CH('blackWolf', { name: 'ブラックウルフ', cat: 'モンスター', race: 'ワイルド', lp: 2000, op: 1000, dp: 0, sc: 2, spc: 1, ab: ['haste'], txt: ['出たターンから移動できる。'] });
 CH('killerTiger', { name: 'キラータイガー', cat: 'モンスター', race: 'ワイルド', lp: 4000, op: 0, dp: 0, sc: 3, spc: 1, ab: ['tigerCond'], txt: ['配置条件：デッキに種族ワイルドのキャラクターが10体以上いないと配置できない。'] });
 CH('bloodSnake', { name: 'ブラッドスネーク', cat: 'モンスター', race: 'ワイルド', lp: 1500, op: 1500, dp: 0, sc: 2, spc: 0, ab: ['stealth', 'poisonTouch'], txt: ['潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', 'このカードとバトルした相手を「毒」状態にする。'] });
 CH('greatMonkey', { name: 'グレートモンキー', cat: 'モンスター', race: 'ワイルド', rank: 2, lp: 4500, op: 0, dp: 0, sc: 3, spc: 1, ab: ['throw'], txt: ['投擲：ゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らし、手札にアイテム「投石」を1枚出現させる。'] });
-CH('vampire', { name: 'ヴァンパイア', cat: 'モンスター', race: 'アンデット', rank: 3, lp: 5000, op: 0, dp: 0, sc: 3, spc: 3, weapon: true, ab: ['sacrifice', 'superRegen', 'magicResist', 'flight'], txt: ['生贄：LP合計1500以上になるよう自分のキャラクターを破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。生贄にしたキャラ1体につきDPを500増やす（LP3000以上のキャラなら1000）。', '超再生：ダメージを受けた後、LPを1500回復する（元の値を超えない）。', '魔法耐性／飛翔。武器を装備できる。'] });
+CH('vampire', { name: 'ヴァンパイア', cat: 'モンスター', race: 'アンデット', rank: 3, lp: 5000, op: 0, dp: 0, sc: 3, spc: 3, weapon: true, ab: ['sacrifice', 'superRegen', 'magicResist', 'flight'], txt: ['生贄：LP合計1500以上になるよう自分のキャラクターを破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。', 'ヴァンパイア固有の能力：生贄にしたキャラクター1体につき、DPを500増やす（LP3000以上のキャラクターなら1000）。この能力は「生贄」とは別の能力である。', '超再生：ダメージを受けた後、LPを1500回復する（元の値を超えない）。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。', '飛翔：設置の影響を受けない。', '武器を装備できる。'] });
 CH('cockatrice', { name: 'コカトリス', cat: 'モンスター', race: 'マジカルビースト', rank: 2, lp: 3500, op: 0, dp: 0, sc: 2, spc: 1, ab: ['backBattle', 'petrify', 'poisonTouch'], txt: ['後方にもバトルできる。', '目の前のマスに相手キャラクターが入った時、対象を次の相手のターン終了時まで「石化」状態にする。', 'バトルするキャラクターを「毒」状態にする。'] });
 
 /* スペル */
 const SP = (id, o) => D(id, Object.assign({ kind: 'spell' }, o));
 SP('createGolem', { name: 'クリエイトゴーレム', cost: 'SpC2', txt: ['「ゴーレム（ステップ1）」を自分にいちばん近い列のどこかに出す。', '場に自分のゴーレムがいるなら、新しく出す代わりに、場のゴーレムを1体選んでステップを1つ次に進めてもよい。ステップを進める場合は必要なSpCが増える（ステップ2へ：SpC3、ステップ3へ：SpC4）。', '使用後、墓地に置く代わりにデッキに戻して山札をシャッフルし、ランダムにカードを1枚引いてもよい。この効果はゲーム中に3回まで（同名カードの使用も合わせて数える）。'] });
 SP('petrifyRay', { name: '石化光線', cost: 'SpC1', attr: '光', txt: ['相手のキャラクターを1体選ぶ。対象を次のターンの間「石化」状態にする。'] });
+SP('magicSanctuary', { name: '魔法聖域（スペルサンクチュアリ）', cost: 'SpC1', txt: ['このカードは自分のホームテリトリーのどこかに設置することで発動する。', 'このカードと同じマスにLP4000以下の自分のキャラクターが置かれた時（このカードがあとから置かれた場合も含む）、そのキャラクターを非公開にしてもよい。そうしたら、そのキャラクターのSCとSpCのターン終了時の回復量が1増える。', '非公開にしたキャラクターは、メインステップ中にいつでも公開できる。（一度公開したキャラクターは、一度そのマスを離れ、もう一度このカードのあるマスに来ない限り、非公開にできない。また、非公開中に装備などによりLPが4000より多くなった時、同じマスに自分のキャラクターがいない限り、強制的に公開される。）'] });
 SP('signpost', { name: '道標（マジックサイン）', cost: 'SpC1', txt: ['カードを2枚引く。'] });
 SP('fireball', { name: '火球（ファイアボール）', cost: 'SpC1', attr: '火', txt: ['相手キャラ1体のLPを2000減らし、「やけど」状態にする。'] });
 SP('sandWall', { name: '砂壁（サンドウォール）', cost: 'SpC1', attr: '土', txt: ['設置。空きマス1つに置く。そのマスへ侵入・配置できない。使用ターンを除き自分のターンを数えて3ターン後の終了時に破壊。'] });
@@ -243,6 +255,7 @@ SP('windSlash', { name: 'ウインドスラッシュ', cost: 'SpC1', attr: '風'
 /* アイテム */
 const IT = (id, o) => D(id, Object.assign({ kind: 'item', cost: '' }, o));
 IT('swordFine', { name: '上等な剣', sell: 3, weapon: true, wop: 1000, wdp: 1000, txt: ['武器。装備者のOPとDPをそれぞれ1000増やす。'] });
+IT('bowFine', { name: '上等な弓', sell: 3, weapon: true, txt: ['武器。装備したキャラクターが「弓使い」をもっているなら、効果の使用に必要なサイコロの出目を2つ少なくする（4以上→2以上、など）。', '「弓使い」をもっていないなら、対象に「弓使い」（サイコロ6）を与える。対象の種族にエルフがあれば、代わりに「弓使い」（サイコロ4以上）を与える。'] });
 IT('wandFine', { name: '上等な魔杖', sell: 4, weapon: true, wspc: 1, txt: ['武器。装備者のSpCの基礎値を1上げる（現在のSpCも1増える）。', 'SpCの基礎値が1以上あるキャラクターにしか使えない。'] });
 IT('shieldFine', { name: '上等な盾', sell: 3, weapon: true, wdp: 500, txt: ['武器。装備者のDPを500上げ、装甲値1500を与える。', '装甲が0になっても、このカードは破壊されず装備したままになる（DP+500は残る）。', '装甲値：LPとは別の値。自分のターン中も相手のターン中も、あらゆるダメージを先に代わりに受ける（使い切りで、ターン終了時にも回復しない）。'] });
 IT('stoneThrow', { name: '投石', sell: 0, txt: ['対象のキャラクターのLPを1500減らす。'] });
@@ -257,7 +270,7 @@ IT('gobFlute', { name: 'ゴブリンの笛', sell: 0, txt: ['自分のデッキ�
 const TE = (id, o) => D(id, Object.assign({ kind: 'tech' }, o));
 TE('gobParade', { name: 'ゴブリンパレード', rank: 2, cost: 'SC1', cond: '盤面に種族ゴブリンのモンスターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['名前にゴブリンのつくモンスターは盤面にいる限り永続的にLPが1500上がる。今後出すカードにも適用される。'] });
 TE('assault', { name: '突撃司令', rank: 2, cost: 'SC1', cond: '同じ種族のキャラクターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['このターン、選んだキャラクターと同じ種族の、ホームテリトリーまたはボーダーゾーンにいるキャラクターだけが対象になり、1マスの代わりに2マス進み、前方向にしか動かせない。必ず移動しなければならない（出したターンでも）。移動時はSCが0でも移動できる。相手のアバターとはバトルできない。', 'このターン、効果を受けたキャラクターはこの移動以外の移動ができない（2回行動やハンティングも使えない）。'] });
-TE('ferocious', { name: '獰猛なる覇者の加護', cost: 'SC1／SpC1', cond: '自分のホームテリトリーに、種族ワイルドで現在のSCとSpCが1以上のキャラクターがいる。', txt: ['カードを1枚引く。その後、自分のホームテリトリーにいる種族ワイルドのモンスター1体を対象にし、対象に「装甲」1500を与え、LPを500上昇させる。この装甲は、そのキャラクターがエネミーテリトリーに入ると消える。', '対象となったキャラクターのSCとSpCをそれぞれ1ずつ消費する。'] });
+TE('ferocious', { name: '獰猛なる覇者の加護', cost: 'SC1／SpC1', cond: '自分のホームテリトリーに、種族ワイルドで現在のSCとSpCが1以上のキャラクターがいる。', txt: ['カードを1枚引く。その後、自分のホームテリトリーにいる種族ワイルドのモンスター1体を対象にし、対象のこのターンの行動回数を1つ増やし、LPを500上昇させる。ただし、対象の1ターンの行動回数は2回より大きくならない（行動回数が2回のキャラクターは2回のまま）。この効果は、対象がホームテリトリーから出ると消える。また、この効果によって増えた行動の移動では、アバターとバトルできない。', '対象となったキャラクターのSCとSpCをそれぞれ1ずつ消費する。'] });
 TE('fightSpirit', { name: '闘争心', cost: 'SC1', cond: '場に種族ワイルドのキャラクターがおり、そのモンスターの現在のSpCが1以上。対象にした自分のキャラクターのSCを1消費する。', txt: ['武器のように装備できる。OPを500増やす。つけた次のターンから「ハンティング」を得る。', 'ハンティング：移動した後、1マス以内の行動範囲に相手キャラがいれば、そこへ移動して攻撃してもよい（SCは支払う）。行動済みでも使える。'] });
 
 const KIND_LABEL = { char: 'キャラクター', avatar: 'アバター', spell: 'スペル', item: 'アイテム', tech: 'テクニック' };
@@ -285,7 +298,7 @@ function validateDeck(list) {
   if (r2 > 6) err.push(`ランク2が${r2}枚（合計6枚まで）`);
   if (r3 > 1) err.push(`ランク3が${r3}枚（合計1枚まで）`);
   const rookies = ids.filter(id => CARDS[id].name.startsWith('駆け出し') && CARDS[id].cat.includes('ヒューマノイド')).reduce((a, id) => a + list[id], 0);
-  for (const id of ['vetAdv', 'vetMage']) if (list[id] > 0 && rookies < 3) err.push(`「${CARDS[id].name}」はデッキに「駆け出し」ヒューマノイドが3枚以上必要（現在${rookies}枚）`);
+  for (const id of ['vetAdv', 'vetMage', 'vetRanger']) if (list[id] > 0 && rookies < 3) err.push(`「${CARDS[id].name}」はデッキに「駆け出し」ヒューマノイドが3枚以上必要（現在${rookies}枚）`);
   const gob = ids.filter(id => CARDS[id].race === 'ゴブリン').reduce((a, id) => a + list[id], 0);
   if (list.hobGob > 0 && gob < 9) warn.push(`ホブゴブリンは種族ゴブリンが9枚以上ないと場に出せません（現在${gob}枚）`);
   const wild = ids.filter(id => CARDS[id].race === 'ワイルド' && CARDS[id].kind === 'char').reduce((a, id) => a + list[id], 0);
@@ -311,6 +324,9 @@ const MOT = {
   normalGob: () => Pa('M80 120 L88 70 L112 70 L120 120Z', '#5a4a30') + gobHead(100, 52) + R(128, 60, 4, 50, '#6b4a2a'),
   hobGob: () => Pa('M70 120 L82 66 L118 66 L130 120Z', '#6a4a2a') + gobHead(100, 48, 1.3) + Pa('M126 40 L132 40 L134 100 L124 100Z', '#9aa3a8'),
   slime: () => Pa('M40 112 Q50 44 100 44 Q150 44 160 112Z', '#5fd1b3', 'opacity=".9"') + Ci(84, 78, 6, '#fff') + Ci(116, 78, 6, '#fff') + Ci(84, 79, 3, '#123') + Ci(116, 79, 3, '#123') + Pa('M60 60 Q70 52 84 54', 'none', 'stroke="#c9fff0" stroke-width="4"'),
+  rookieRanger: () => human('#3f6a3a', '#e3c39b', Pa('M86 44 Q100 24 114 44 L110 50 Q100 40 90 50Z', '#2a4a26')) + St('M136 30 Q158 70 136 112', '#8a5a2a', 4) + St('M136 30 L136 112', '#e8e0c0', 1.5) + St('M108 70 L150 70', '#c9b27a', 2) + Pa('M150 66 L158 70 L150 74Z', '#cfd6d9'),
+  vetRanger: () => human('#2f5a3a', '#e3c39b', Pa('M84 46 Q100 18 116 46 L110 52 Q100 38 90 52Z', '#1f3a22') + Pa('M88 40 Q100 30 112 40', '#1f3a22')) + St('M138 24 Q164 68 138 114', '#7a4a1e', 5) + St('M138 24 L138 114', '#e8e0c0', 1.5) + St('M104 68 L156 68', '#c9b27a', 2) + Pa('M156 64 L166 68 L156 72Z', '#cfd6d9') + Pa('M62 80 L76 84 L72 108 L62 102Z', '#5a4a2a'),
+  bowFine: () => St('M60 14 Q150 60 60 108', '#8a5a2a', 7) + St('M60 14 Q150 60 60 108', '#c89a52', 3) + St('M60 14 L60 108', '#efe8cc', 1.5) + St('M60 60 L150 60', '#c9b27a', 3) + Pa('M150 55 L166 60 L150 65Z', '#dfe5e8') + Pa('M62 55 L52 60 L62 65Z', '#b84a3a'),
   vetAdv: () => human('#40536b') + Pa('M86 40 Q100 22 114 40Z', '#8a9299') + swordG(132) + Pa('M62 66 L88 62 L88 104 Q74 110 64 96Z', '#7d8790'),
   vetMage: () => human('#2e5b8a', '#e3c39b', hat('#1f3d66')) + Pa('M88 52 Q100 78 112 52Z', '#ddd') + staffG(134, '#6fd2ff'),
   dwarf: () => Pa('M66 120 L76 74 L124 74 L134 120Z', '#7a5a3a') + Ci(100, 58, 14, '#e3b78f') + Pa('M84 60 Q100 100 116 60Z', '#b0592b') + Pa('M84 54 Q100 28 116 54Z', '#8a9299') + R(130, 50, 6, 50, '#6b4a2a') + Pa('M126 44 L146 44 L146 62 L126 62Z', '#9aa3a8'),
@@ -361,17 +377,18 @@ const MOT = {
   ferocious: () => Pa('M40 100 Q60 40 100 30 Q140 40 160 100 Q130 86 100 90 Q70 86 40 100Z', '#7a4a1a') + Pa('M70 54 L62 30 L84 46Z M130 54 L138 30 L116 46Z', '#5a3210') + Ci(86, 62, 4, '#ffd24d') + Ci(114, 62, 4, '#ffd24d') + Pa('M88 78 L94 92 L100 78 L106 92 L112 78Z', '#f2ead0') + St('M30 30 Q100 0 170 30', '#ffe9a0', 4) + St('M20 60 L36 52 M180 60 L164 52', '#ffe9a0', 3),
   petrifyRay: () => St('M20 100 L110 50', '#fff6b0', 7) + St('M20 100 L110 50', '#ffe14d', 3) + Ci(150, 56, 26, '#8a8a82') + Ci(150, 56, 20, '#a6a69c') + Pa('M138 42 L162 42 L158 70 L142 70Z', '#7a7a72') + St('M130 90 L170 30 M126 60 L176 70', '#5e5e58', 2) + Ci(24, 100, 8, '#fff2a0'),
   elixir: () => Pa('M88 24 H112 V46 Q140 58 138 92 Q136 112 100 112 Q64 112 62 92 Q60 58 88 46Z', '#e9f6ff', 'opacity=".25"') + Pa('M70 78 Q100 66 130 78 Q132 104 100 108 Q68 104 70 78Z', '#7de0b0') + Pa('M92 14 H108 V26 H92Z', '#c9a24a') + Ci(92, 90, 3, '#fff') + Ci(110, 84, 2.5, '#fff') + Ci(104, 98, 2, '#fff') + St('M100 56 L100 40 M60 40 L66 48 M140 40 L134 48', '#fff6b0', 3),
+  magicSanctuary: () => Ci(100, 70, 40, 'none', 'stroke="#bfe0ff" stroke-width="3" stroke-dasharray="6 5"') + Ci(100, 70, 26, '#6fa8e0', 'opacity=".25"') + Pa('M100 38 L106 62 L130 70 L106 78 L100 102 L94 78 L70 70 L94 62Z', '#e6f4ff') + R(40, 40, 8, 64, '#8a96a8') + R(152, 40, 8, 64, '#8a96a8') + Pa('M36 40 H52 L44 28Z M148 40 H164 L156 28Z', '#b8c4d4') + Ci(24, 22, 3, '#fff') + Ci(176, 24, 3, '#fff'),
   fightSpirit: () => Pa('M60 60 Q100 20 140 60 Q130 100 100 108 Q70 100 60 60Z', '#a52a2a') + Pa('M80 70 L88 90 L96 70Z M104 70 L112 90 L120 70Z', '#fff') + Ci(84, 56, 4, '#ffd24d') + Ci(116, 56, 4, '#ffd24d') + St('M40 40 Q60 30 70 50 M160 40 Q140 30 130 50', '#ff7a1a', 5),
 };
 const ART = {
   avatar: ['#2a2350', '#0e0c1e'], rookieAdv: ['#6a8a5a', '#2a3a28'], rookieMage: ['#4a4a8a', '#171533'], normalGob: ['#5a6a3a', '#1c2412'], hobGob: ['#6a5a3a', '#201a0e'], slime: ['#2f6a6a', '#0e2424'],
-  vetAdv: ['#7a7a8a', '#262633'], vetMage: ['#3a6a9a', '#10203a'], dwarf: ['#8a5a3a', '#2a1a10'], gobWiz: ['#4a4a6a', '#14142a'], ogre: ['#6a6a3a', '#1c1c0e'], redBoar: ['#8a4a3a', '#2a1410'],
+  rookieRanger: ['#4a7a4a', '#12241a'], vetRanger: ['#3a6a4a', '#0e2216'], bowFine: ['#8a6a3a', '#22180c'], vetAdv: ['#7a7a8a', '#262633'], vetMage: ['#3a6a9a', '#10203a'], dwarf: ['#8a5a3a', '#2a1a10'], gobWiz: ['#4a4a6a', '#14142a'], ogre: ['#6a6a3a', '#1c1c0e'], redBoar: ['#8a4a3a', '#2a1410'],
   elfMage: ['#3a7a5a', '#10281c'], redDragon: ['#8a2a1a', '#2a0a06'], iceWitch: ['#4a7ac0', '#0c1a38'], golem1: ['#7a6a4a', '#1c160c'], golem2: ['#5a7a9a', '#0c1822'], golem3: ['#b8963a', '#2a1c06'], createGolem: ['#6a5a3a', '#16100a'], moonDragon: ['#3a4a8a', '#0a0e2a'], blizzard: ['#6aa8d8', '#0e2438'], thunderStorm: ['#3a3f70', '#0c0e24'], stormEagle: ['#5a8acf', '#162a4a'], troll: ['#6a7a4a', '#1a2210'], wandFine: ['#4a3a8a', '#120c2a'], blackWolf: ['#4a4f5a', '#12151c'], killerTiger: ['#b0742a', '#2a1a08'], bloodSnake: ['#6a2a5a', '#1c0a18'],
   greatMonkey: ['#6a8a3a', '#18240c'], vampire: ['#4a2a3a', '#120a10'], cockatrice: ['#7a7a4a', '#1e1e10'], signpost: ['#6a8a9a', '#1a2a34'], fireball: ['#a03a1a', '#2a0c06'], sandWall: ['#c9a46a', '#4a3a1c'],
   freezeWind: ['#5a9acf', '#122a44'], shiftForm: ['#5a3a9a', '#150c30'], teleport: ['#2a4a7a', '#0c1630'], reinforce: ['#8a7a4a', '#2a220e'], magicGuard: ['#3a5a9a', '#0e1a34'], chaosHand: ['#4a1a6a', '#120620'],
   aquaReturn: ['#2a6a9a', '#0a1e34'], goldenBody: ['#b08a2a', '#3a2808'], instinct: ['#8a5a2a', '#241406'], windSlash: ['#2a7a5a', '#0a2418'], swordFine: ['#6a7a8a', '#1a222a'], shieldFine: ['#5a6a7a', '#141c24'],
   stoneThrow: ['#7a7a6a', '#22221c'], staminaPotion: ['#3a7a4a', '#0e2414'], magicPotion: ['#3a4a9a', '#0e1234'], hyperPotion: ['#8a3a7a', '#260c20'], gobFlute: ['#5a7a3a', '#16200c'],
-  petrifyRay: ['#8a8a6a', '#1c1c14'], elixir: ['#4aa07a', '#0c241c'], ferocious: ['#8a5a1a', '#241406'], gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
+  magicSanctuary: ['#4a6aa8', '#0e1830'], petrifyRay: ['#8a8a6a', '#1c1c14'], elixir: ['#4aa07a', '#0c241c'], ferocious: ['#8a5a1a', '#241406'], gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
 };
 function artSVG(id) {
   const a = ART[id] || ['#334', '#112'];
@@ -397,7 +414,8 @@ const isAv = u => u.cid === 'avatar';
 const own = i => U().filter(u => u.owner === i);
 const chars = i => U().filter(u => u.owner === i && !isAv(u) && !u.hidden);
 const allChars = () => U().filter(u => !isAv(u) && !u.hidden);
-const at = (x, y) => U().find(u => u.x === x && u.y === y);
+const at = (x, y) => U().find(u => u.x === x && u.y === y && !u.hidden) || U().find(u => u.x === x && u.y === y);
+const hiddenAt = (x, y) => U().filter(u => u.hidden && !u.dead && u.x === x && u.y === y);
 const enemyAt = (x, y, o) => { const t = at(x, y); return t && t.owner !== o && !t.hidden ? t : null; };
 const wallAt = (x, y) => G.walls[x + ',' + y];
 const cur = () => G.players[G.active];
@@ -416,7 +434,7 @@ function mkUnit(owner, cid, x, y) {
 }
 function newGame(d0, d1) {
   UIDC = 1;
-  G = { turn: 0, active: 0, phase: 'start', over: null, shop: [], shopUsed: [], units: {}, walls: {}, log: [], assault: null,
+  G = { turn: 0, active: 0, phase: 'start', over: null, shop: [], shopUsed: [], sanctuaries: {}, units: {}, walls: {}, log: [], assault: null,
     players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, coins: 0, freeBuy: 1, sellUsed: false, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null })) };
   for (const p of G.players) {
     const c = cellOfRow(p.i, 1, 3);
@@ -448,7 +466,10 @@ function DP(u) { let v = CARDS[u.cid].dp + u.dpBonus; if (u.weapon) v += CARDS[u
 const aop = a => (a.cid === 'fightSpirit' ? 500 : 0);
 CARDS.fightSpirit.aop = 500;
 const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
-const fArmorCheck = u => { if (u.fArmor && terr(u) === 'enemy') { u.fArmor = 0; log(`${nm(u)}の「獰猛なる覇者の加護」の装甲がエネミーテリトリーで消えた`); } };
+const fArmorCheck = u => { if (u.extra && terr(u) !== 'home') { u.extra = 0; log(`${nm(u)}の「獰猛なる覇者の加護」の効果がホームテリトリーを出たため消えた`); } };
+const baseActs = u => (abU(u, 'twoActions') && !assaultOn(u) ? 2 : 1);
+const actLimit = u => (u.extra === G.turn && !assaultOn(u) ? Math.min(2, baseActs(u) + 1) : baseActs(u));
+const extraOnly = u => u.extra === G.turn && u.acted >= baseActs(u);
 const healPen = u => (u.st.burn ? 500 : 0) + (u.st.chill ? 500 : 0) + (u.st.frost ? 1000 : 0);
 function heal(u, n) { n = Math.max(0, n - healPen(u)); const b = baseLP(u); if (u.lp < b) u.lp = Math.min(b, u.lp + n); }
 function recomputePen(u) {
@@ -508,6 +529,7 @@ function damage(u, n, opts) {
 /* 突撃司令：ホームテリトリー／ボーダーゾーンにいるキャラクターだけが対象（一度対象になれば、移動でエネミーに入っても効果は続く） */
 const assaultOn = u => {
   if (!G.assault || G.assault.turn !== G.turn || u.owner !== G.assault.owner || isAv(u) || CARDS[u.cid].race !== G.assault.race) return false;
+  if (!G.assault.hit) G.assault.hit = {};
   if (terr(u) !== 'enemy') G.assault.hit[u.uid] = true;
   return !!G.assault.hit[u.uid];
 };
@@ -517,7 +539,7 @@ function canActNow(u) {
   if (u.dead || u.hidden || G.over) return false;
   if (u.owner !== G.active) return false;
   if (u.st.petrify != null) return false;
-  if (u.acted >= (abU(u, 'twoActions') && !assaultOn(u) ? 2 : 1)) return false;
+  if (u.acted >= actLimit(u)) return false;
   if (u.placedAt === G.turn && !isAv(u) && !abU(u, 'haste') && !assaultOn(u)) return false;
   return true;
 }
@@ -531,9 +553,8 @@ function evalCell(u, x, y) {
   if (!inB(x, y)) return 'out';
   if (wallAt(x, y) && !abU(u, 'flight')) return 'block';
   const t = at(x, y);
-  if (!t) return 'empty';
+  if (!t || t.hidden) return 'empty'; // 非公開のキャラクターがいても、そのマスへは移動できる
   if (t.owner === u.owner) return 'ally';
-  if (t.hidden) return 'block';
   return 'enemy';
 }
 function movesFor(u) {
@@ -545,7 +566,7 @@ function movesFor(u) {
   for (const d of dirsFor(u, assault)) {
     const backPure = d[0] === 0 && d[1] === -dy;
     const noBattle = backPure && !abU(u, 'backBattle');
-    const canHit = t => !noBattle && !(assault && isAv(t));
+    const canHit = t => !noBattle && !(assault && isAv(t)) && !(extraOnly(u) && isAv(t));
     const cells = [];
     for (let k = 1; k <= len; k++) cells.push([u.x + d[0] * k, u.y + d[1] * k]);
     const cost = () => (assault ? 0 : 1 + (bers ? 1 : 0)); // SCは「1回の移動」につき消費（マス数ではない）
@@ -628,6 +649,7 @@ async function doMove(u, mv) {
 async function onEntered(u, from) {
   const p = G.players[u.owner];
   fArmorCheck(u);
+  await sanctuaryCheck(u);
   if (instinctActive(p) && terr(u) === 'enemy' && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'enemy')) { u.lp += 1000; log(`本能解放：${nm(u)}のLP+1000`); }
   for (const c of U()) {
     if (c.owner !== u.owner && !c.hidden && abU(c, 'petrify') && !isAv(u) && c.x === u.x && c.y + fwd(c.owner) === u.y) addStatus(u, 'petrify');
@@ -655,6 +677,7 @@ async function huntLoop(u) {
   await onEntered(u, from);
 }
 function checkAuras() {
+  for (const u of U()) if (u.noSanct && u.noSanct !== sKey(u.x, u.y)) delete u.noSanct;
   for (const u of U()) if (!u.dead) fArmorCheck(u);
   for (const d of U()) {
     if (d.dead || d.hidden || !abU(d, 'incinerate')) continue;
@@ -692,8 +715,10 @@ async function battle(att, def) {
   return win;
 }
 /* ゴーレム：魔法耐性・超魔法耐性以外でSpCとして使えるのは1まで */
-const spcUsable = u => (golemStep(u) ? Math.min(u.spc, 1) : u.spc);
-const canPayAmt = (u, n) => !u.hidden && CARDS[u.cid].spc > 0 && u.st.petrify == null && spcUsable(u) + Math.floor(u.sc / 2) >= n;
+/* ゴーレム：魔法耐性・超魔法耐性以外でSpCを使えるのは「1ターンに合計1」だけ。SCでの肩代わりもできない */
+const golemSpent = u => (u.uses.gspc === G.turn);
+const spcUsable = u => (golemStep(u) ? (golemSpent(u) ? 0 : Math.min(u.spc, 1)) : u.spc);
+const canPayAmt = (u, n) => !u.hidden && CARDS[u.cid].spc > 0 && u.st.petrify == null && (golemStep(u) ? n <= spcUsable(u) : spcUsable(u) + Math.floor(u.sc / 2) >= n);
 async function payCost(p, n) {
   const cands = own(p.i).filter(u => canPayAmt(u, n));
   if (!cands.length) { UI.toast(`SpC${n}を支払えるキャラクター／アバターがいません`); return null; }
@@ -703,6 +728,7 @@ async function payCost(p, n) {
   const use = Math.min(spcUsable(u), n), need = n - use, sc = need * 2;
   if (sc > 0) { if (!(await UI.confirm(`⚠ ${nm(u)}はSpCが${need}足りないため、SCを${sc}消費します。使用しますか？`, p.i))) return null; }
   u.spc -= use; u.sc -= sc;
+  if (golemStep(u) && use > 0) u.uses.gspc = G.turn;
   return u;
 }
 async function payTech(p, cands, prompt) {
@@ -809,6 +835,7 @@ async function summon(p, idx) {
   if (stealth) { u.hidden = true; u.hiddenSince = p.count; }
   log(`${p.name}：${c.name}を${coord(u.x, u.y)}に配置${stealth ? '（潜伏）' : ''}`);
   await etb(u, p, stealth);
+  await sanctuaryCheck(u);
   return true;
 }
 async function etb(u, p, stealth) {
@@ -844,6 +871,53 @@ async function moonReset(u) {
   for (const q of G.players) { q.deck.push(...q.hand); q.hand = []; q.deck = shuffle(q.deck); draw(q, 3); }
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
 }
+/* 非公開（潜伏）の公開：メインステップ中、必要なターンが経っていればいつでも */
+async function revealUnit(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || !u.hidden || u.dead) return;
+  const p = G.players[u.owner], rest = u.sanct ? 0 : u.hiddenSince + 3 - p.count;
+  if (rest > 0) { UI.toast(`潜伏は、あと自分のターン${rest}回後から公開できます`); return; }
+  if (U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y)) { UI.toast('自分のキャラクターと同じマスにいる間は公開できません'); return; }
+  u.hidden = false; u.marked = false; if (u.sanct) { u.sanct = false; u.noSanct = sKey(u.x, u.y); } log(`${nm(u)}が姿を現した（${coord(u.x, u.y)}）`);
+  const foe = U().find(v => !v.dead && !v.hidden && v.owner !== u.owner && v.x === u.x && v.y === u.y);
+  if (foe) { log(`同じマスに${nm(foe)}がいたため、即座にバトル`); await battle(u, foe); }
+}
+/* 弓使い（サイコロ）／警戒 */
+const archerNeed = u => {
+  const c = CARDS[u.cid]; let n = c.archer || null;
+  if (u.weapon === 'bowFine') n = n ? Math.max(1, n - 2) : (String(c.race).includes('エルフ') ? 4 : 6);
+  return n;
+};
+const hasArcher = u => !!archerNeed(u);
+async function archerShot(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.hidden || u.dead) return;
+  const need = archerNeed(u); if (!need) return;
+  if (u.uses.archer === G.turn) { UI.toast('弓使いは1ターンに1度だけです'); return; }
+  if (u.sc < 1 || u.st.petrify != null) { UI.toast('SCが1以上必要です'); return; }
+  const tg = foes(G.players[u.owner]); if (!tg.length) { UI.toast('対象にできる相手キャラクターがいません'); return; }
+  const a = await UI.ask(`弓使い：SCを1消費して、相手キャラ1体を狙いますか？（サイコロ${need}以上でLP-1000）`, ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  const t = await pickUnit(tg, '弓使い：狙う相手のキャラクターを選択'); if (!t) return;
+  u.sc -= 1; u.uses.archer = G.turn;
+  const d = 1 + rnd(6); UI.toast(`🎲 弓使いのサイコロ：${d}（${need}以上で命中）`);
+  if (d >= need) { log(`弓使い：${nm(u)}の矢が${nm(t)}に命中（サイコロ${d}）。LP-1000`); damage(t, 1000); } else log(`弓使い：${nm(u)}の矢は外れた（サイコロ${d}）`);
+  UI.render();
+}
+async function scoutWatch(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.hidden || u.dead) return;
+  if (u.uses.scout === G.turn) { UI.toast('警戒は1ターンに1度だけです'); return; }
+  if (u.sc < 1 || u.st.petrify != null) { UI.toast('SCが1以上必要です'); return; }
+  const hs = U().filter(v => v.hidden && !v.dead && v.owner !== u.owner && terr(v) === 'home');
+  if (!hs.length) { UI.toast('相手のホームテリトリーに非公開のカードがありません'); return; }
+  const a = await UI.ask('警戒：SCを1消費して、相手の非公開カードを1枚確認しますか？', ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  const r = await UI.pickBoard({ prompt: '警戒：確認する非公開カードを選択', cells: [...new Set(hs.map(v => v.x + ',' + v.y))].map(s => s.split(',').map(Number)), kind: 'target', cancellable: true });
+  if (!r) return;
+  const t = hs.find(v => v.x === r[0][0] && v.y === r[0][1]); if (!t) return;
+  u.sc -= 1; u.uses.scout = G.turn; t.marked = true;
+  log(`警戒：${coord(t.x, t.y)}の非公開カードを確認した`);
+  if (UI.peek) UI.peek(u.owner, t.cid, coord(t.x, t.y));
+  UI.render();
+}
 async function monkeyThrow(u) {
   if (G.phase !== 'main' || u.owner !== G.active) return;
   const used = u.uses.throw || 0;
@@ -857,7 +931,7 @@ async function monkeyThrow(u) {
 /* ===== カード効果 ===== */
 const mine = p => chars(p.i), foes = p => chars(1 - p.i);
 const blizzardTargets = p => foes(p).filter(u => rowOf(p.i, u.y) >= 4);
-const guardPayer = u => !u.hidden && u.spc >= 1 && u.st.petrify == null && CARDS[u.cid].spc > 0;
+const guardPayer = u => !u.hidden && u.spc >= 1 && u.st.petrify == null && CARDS[u.cid].spc > 0 && spcUsable(u) >= 1;
 async function pickUnit(us, prompt) {
   const r = await UI.pickBoard({ prompt, cells: us.map(u => [u.x, u.y]), kind: 'target', cancellable: true });
   return r ? at(r[0][0], r[0][1]) : null;
@@ -911,20 +985,22 @@ const ACT = {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('teleport');
     const a = at(r[0][0], r[0][1]), b = at(r[1][0], r[1][1]);
     log(`テレポート：${nm(a)}（${coord(a.x, a.y)}）と${nm(b)}（${coord(b.x, b.y)}）を入れ替えた`);
-    [a.x, b.x] = [b.x, a.x]; [a.y, b.y] = [b.y, a.y]; return true; } },
+    [a.x, b.x] = [b.x, a.x]; [a.y, b.y] = [b.y, a.y];
+    await sanctuaryCheck(a); await sanctuaryCheck(b); return true; } },
   reinforce: { async run(p) { if (!(await payCost(p, 2))) return false; await UI.cutIn('reinforce'); draw(p, 1); p.extra++; log('増援召喚：追加で1体召喚できる'); return true; } },
   magicGuard: { can: p => (!mine(p).length ? '対象にできる自分のキャラクターがいません' : own(p.i).some(guardPayer) ? null : 'SpC1以上のキャラクター／アバターが必要です'), async run(p) {
     const t = await pickUnit(mine(p), '魔法壁の対象（自分のキャラクター）を選択'); if (!t) return false;
     const cands = own(p.i).filter(guardPayer);
     const r = await UI.pickBoard({ who: p.i, prompt: '魔法壁：SpC／SCを消費するキャラクターを選択（SpC1以上）', cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true }); if (!r) return false;
     const u = at(r[0][0], r[0][1]);
-    const maxN = Math.min(8, spcUsable(u) + Math.floor(u.sc / 2));
+    const maxN = golemStep(u) ? spcUsable(u) : Math.min(8, spcUsable(u) + Math.floor(u.sc / 2));
     const labels = [];
     for (let n = 1; n <= maxN; n++) { const a = Math.min(spcUsable(u), n), c = (n - a) * 2; labels.push(`${n}回分（SpC${a}${c ? '＋SC' + c : ''}）→ 装甲${1000 * n}`); }
     const ans = await UI.ask(`魔法壁：どれだけ消費しますか？（SpCが尽きたら2SCごとに1回分）`, [...labels, 'キャンセル'], p.i);
     const n = labels.indexOf(ans) + 1; if (n < 1) return false;
     const a = Math.min(spcUsable(u), n), c = (n - a) * 2;
     u.spc -= a; u.sc -= c;
+    if (golemStep(u) && a > 0) u.uses.gspc = G.turn;
     await UI.cutIn('magicGuard');
     t.gArmor += 1000 * n; log(`魔法壁：${nm(t)}に装甲${1000 * n}（SpC${a}${c ? '・SC' + c : ''}消費）`); return true; } },
   chaosHand: { can: p => (foes(p).length && mine(p).length ? null : '自分と相手のキャラクターが1体ずつ必要です'), async run(p) {
@@ -1012,13 +1088,24 @@ const ACT = {
       }
       return true;
     } },
+  magicSanctuary: { async run(p) {
+    const cells = [];
+    for (let x = 0; x < 7; x++) for (let y = 0; y < 7; y++) if (rowOf(p.i, y) <= 3 && !G.sanctuaries[sKey(x, y)]) cells.push([x, y]);
+    if (!cells.length) { UI.toast('設置できるマスがありません'); return false; }
+    const r = await UI.pickBoard({ prompt: '魔法聖域を設置するマス（自分のホームテリトリー）を選択', cells, kind: 'place', cancellable: true }); if (!r) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('magicSanctuary');
+    const k = sKey(r[0][0], r[0][1]); G.sanctuaries[k] = { owner: p.i };
+    log(`魔法聖域：${coord(r[0][0], r[0][1])}に設置`);
+    for (const u of U().filter(u => u.owner === p.i && !u.dead && !u.hidden && !isAv(u) && u.x === r[0][0] && u.y === r[0][1])) await sanctuaryCheck(u);
+    return true; } },
   windSlash: { async run(p) {
-    const cs = own(p.i).filter(u => !u.hidden);
+    const cs = mine(p).filter(u => !isAv(u));
     const r = await UI.pickBoard({ prompt: 'ウインドスラッシュを装備する自分のユニットを選択', cells: cs.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false;
     const u = at(r[0][0], r[0][1]);
     if (!(await payCost(p, 1))) return false; await UI.cutIn('windSlash');
     u.attach.push({ cid: 'windSlash', since: p.count, until: p.count + 2 }); log(`${nm(u)}にウインドスラッシュ`); return 'kept'; } },
   swordFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
+  bowFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
   shieldFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
   wandFine: { can: EQUIP_WAND, run: (p, c) => equipWeapon(p, c) },
   stoneThrow: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => { log(`投石：${nm(t)}に1500ダメージ`); damage(t, 1500); }) },
@@ -1064,8 +1151,8 @@ const ACT = {
       const t = await pickUnit(ts, '獰猛なる覇者の加護：対象のモンスターを選択（SCとSpCを1ずつ消費）'); if (!t) return false;
       await UI.cutIn('ferocious');
       draw(p, 1);
-      t.sc -= 1; t.spc -= 1; t.fArmor += 1500; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
-      log(`獰猛なる覇者の加護：${nm(t)}に装甲1500・LP+500（SC-1・SpC-1）`); return true; } },
+      t.sc -= 1; t.spc -= 1; t.extra = G.turn; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
+      log(`獰猛なる覇者の加護：${nm(t)}の行動回数+1（このターン）・LP+500（SC-1・SpC-1）`); return true; } },
   fightSpirit: { can: p => (mine(p).some(u => CARDS[u.cid].race === 'ワイルド' && u.spc >= 1) ? (mine(p).some(canTechPay) ? null : 'SCを消費できるキャラクターがいません') : '現在のSpCが1以上の種族ワイルドが必要です'), async run(p) {
     const u = await payTech(p, mine(p).filter(canTechPay), '闘争心をつけるキャラクターを選択（SCを1消費）'); if (!u) return false;
     await UI.cutIn('fightSpirit'); u.attach.push({ cid: 'fightSpirit', since: p.count + 1 }); log(`${nm(u)}に闘争心`); return 'kept'; } },
@@ -1087,7 +1174,28 @@ async function playHand(idx) {
   }
   afterAction();
 }
-function afterAction() { checkAuras(); UI.render(); if (G.over) UI.gameOver(G.over); }
+function sanctForce() {
+  for (const u of U()) if (u.hidden && u.sanct && !u.dead && baseLP(u) > 4000 && !U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y)) {
+    u.hidden = false; u.marked = false; u.sanct = false; u.noSanct = sKey(u.x, u.y); log(`${nm(u)}のLPが4000を超えたため、強制的に公開された（${coord(u.x, u.y)}）`);
+    const foe = U().find(v => !v.dead && !v.hidden && v.owner !== u.owner && v.x === u.x && v.y === u.y);
+    if (foe) { log(`同じマスに${nm(foe)}がいたため、即座にバトル`); battle(u, foe); }
+  }
+}
+function afterAction() { sanctForce(); checkAuras(); UI.render(); if (G.over) UI.gameOver(G.over); }
+
+/* ===== マジックサンクチュアリ ===== */
+const sKey = (x, y) => x + ',' + y;
+async function sanctuaryCheck(u) {
+  if (!u || u.dead || isAv(u) || u.hidden) return;
+  const k = sKey(u.x, u.y);
+  if (u.noSanct && u.noSanct !== k) delete u.noSanct;
+  const s = G.sanctuaries[k];
+  if (!s || s.owner !== u.owner || u.noSanct === k || baseLP(u) > 4000) return;
+  const a = await UI.ask(`【${G.players[u.owner].name}に確認】魔法聖域：${nm(u)}を非公開にしますか？（SCとSpCのターン終了時の回復量+1）`, ['非公開にする', 'しない'], u.owner);
+  if (a !== '非公開にする') return;
+  u.hidden = true; u.sanct = true; u.hiddenSince = G.players[u.owner].count;
+  log(`魔法聖域：${nm(u)}が非公開になった（${coord(u.x, u.y)}）`);
+}
 
 /* ===== 貨幣ゲージ・アイテムショップ ===== */
 const sellOf = cid => (CARDS[cid].kind === 'item' && CARDS[cid].sell != null && !CARDS[cid].noSell ? CARDS[cid].sell : null);
@@ -1144,10 +1252,6 @@ async function startTurn(i) {
   await UI.turnOverlay(p);
   draw(p, 1); log(`--- ${p.name}のターン${p.count} ---`);
   G.phase = 'draw'; UI.render();
-  for (const u of own(i).filter(u => u.hidden && p.count >= u.hiddenSince + 3)) {
-    const a = await UI.ask(`${p.name}：潜伏中の${nm(u)}を公開しますか？`, ['公開する', 'まだ公開しない']);
-    if (a === '公開する') { u.hidden = false; log(`${nm(u)}が姿を現した`); }
-  }
   G.phase = 'main'; afterAction();
 }
 async function endTurn() {
@@ -1169,8 +1273,8 @@ async function endTurn() {
     u.tArmor = 0;
     const b = baseLP(u); if (u.lp < b) u.lp = b;
     const home = terr(u) !== 'enemy';
-    u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1)));
-    u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + (home ? 1 : 0)));
+    u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1) + (u.sanct ? 1 : 0)));
+    u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + (home ? 1 : 0) + (u.sanct ? 1 : 0)));
   }
   if (!(p.i === 0 && p.count === 1)) { p.coins++; log(`${p.name}：ターン終了で貨幣ゲージ+1（${p.coins}）`); }
   await startTurn(1 - p.i);
@@ -1210,6 +1314,19 @@ function filterIds(f, deck) {
     return true;
   }).sort(cardSort);
 }
+/* 「」つきの効果（キーワード能力）：カード面には名前だけを出し、タップで詳しい解説を見られる */
+const KEYWORDS = ['庇護', '生贄', '狂乱', '魔法耐性', '超魔法耐性', '焼却', '飛翔', '再生', '超再生', '潜伏', '弓使い', '警戒', '月光', '投擲', '超範囲', 'ハンティング', '装甲値'];
+function kwOf(t) {
+  const r = /^([^：（]{1,8})(（[^）]*）)?：/.exec(t);
+  return r && KEYWORDS.includes(r[1]) ? r[1] + (r[2] || '') : null;
+}
+function showKeyword(ref) {
+  const [cid, i] = ref.split('|'), t = CARDS[cid] && CARDS[cid].txt[+i]; if (!t) return;
+  const k = kwOf(t), body = t.slice(t.indexOf('：') + 1);
+  let el = document.getElementById('kwpop'); if (!el) { el = document.createElement('div'); el.id = 'kwpop'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="kwbox"><div class="kwt">「${esc(k)}」</div><div class="kwd">${esc(body)}</div><div class="note">${esc(CARDS[cid].name)}　（どこかをタップして閉じる）</div></div>`;
+  el.style.display = 'flex'; el.onclick = () => { el.style.display = 'none'; };
+}
 const chipH = (cls, label, v) => `<span class="chip ${cls}">${label} ${v}</span>`;
 function cardHTML(cid, o = {}) {
   const c = CARDS[cid];
@@ -1220,7 +1337,7 @@ function cardHTML(cid, o = {}) {
   if (c.kind === 'item' && c.sell != null) stats += chipH('sell', '売値', c.sell);
   let text = '';
   if (c.cond) text += `<div class="c-cond"><b>発動条件</b> ${esc(c.cond)}</div>`;
-  text += c.txt.map(t => `<p>${esc(t)}</p>`).join('');
+  text += c.txt.map((t, i) => { const k = kwOf(t); return k ? `<p class="kwp"><button type="button" class="kw" data-kw="${cid}|${i}">「${esc(k)}」</button></p>` : `<p>${esc(t)}</p>`; }).join('');
   const attrs = (o.uid ? ` data-uid="${o.uid}"` : '');
   return `<div class="card rank${c.rank} k-${c.kind} ${o.cls || ''}" data-card="${cid}"${attrs}><div class="c-head"><span class="c-name">${esc(c.name)}</span><span class="c-rank">R${c.rank}</span></div><div class="c-art">${artSVG(cid)}</div><div class="c-type">${esc(type)}</div><div class="c-text">${text}</div><div class="c-stats">${stats}</div></div>`;
 }
@@ -1231,7 +1348,7 @@ function filterBar(f, scope) {
 
 /* ---------- 画面1: カード一覧 ---------- */
 function renderCards() {
-  $('#app').innerHTML = `<h2>カード一覧</h2><p class="note">カードをクリックで詳細。長押し（右クリック）でも全体を表示できます。能力・ステータスは各カードに記載。</p>${filterBar(F, 'F')}<div class="grid" id="grid"></div>`;
+  $('#app').innerHTML = `<h2>カード一覧</h2><p class="note">カードをクリックで詳細。長押し（右クリック）でも全体を表示できます。能力・ステータスは各カードに記載。「」つきの効果はタップで詳しい解説が見られます。</p>${filterBar(F, 'F')}<div class="grid" id="grid"></div>`;
   fillGrid();
 }
 function fillGrid() {
@@ -1325,11 +1442,11 @@ function finishPick(r) { const pk = UI.pk; UI.pk = null; renderBattle(); pk.res(
 const chip = (k, v, b) => `<span class="st-${k} ${v > b ? 'up' : v < b ? 'down' : ''}">${k}${v}${v > b ? '▲' : v < b ? '▼' : ''}</span>`;
 function unitHTML(u) {
   const c = CARDS[u.cid], mineU = u.owner === VW();
-  if (u.hidden && !mineU) return `<div class="unit fh foe">?</div>`;
+  if (u.hidden && !mineU) return `<div class="unit fh foe ${u.marked ? 'mk' : ''}">${u.marked ? '👁' : '?'}</div>`;
   const st = statusList(u).map(k => STATUS_ICON[k]).join('');
   const aa = armorTotal(u) > 0 ? `<span class="armor">装甲${armorTotal(u)}</span>` : '';
   const eq = (u.weapon ? '⚔' : '') + u.attach.map(a => ({ shiftForm: '↗', windSlash: '🌀', fightSpirit: '🐾' }[a.cid])).join('');
-  return `<div class="unit ${mineU ? 'mine' : 'foe'} ${u.hidden ? 'hid' : ''}" data-card="${u.cid}" data-uid="${u.uid}"><div class="uart">${artSVG(u.cid)}</div><div class="un">${esc(c.name.replace(/（.*）/, ''))}${u.hidden ? '（潜伏）' : ''}</div><div class="stat">${st}${eq}</div><div class="us">${chip('LP', u.lp, baseLP(u))}${chip('OP', OP(u), c.op)}${chip('DP', DP(u), c.dp)}${chip('SC', u.sc, baseSC(u))}${chip('SpC', u.spc, baseSpC(u))}${aa}</div></div>`;
+  return `<div class="unit ${mineU ? 'mine' : 'foe'} ${u.hidden ? 'hid' : ''}" data-card="${u.cid}" data-uid="${u.uid}"><div class="uart">${artSVG(u.cid)}</div><div class="un">${esc(c.name.replace(/（.*）/, ''))}${u.hidden ? (u.sanct ? '（聖域）' : '（潜伏）') + (u.marked ? '👁' : '') : ''}</div><div class="stat">${st}${eq}</div><div class="us">${chip('LP', u.lp, baseLP(u))}${chip('OP', OP(u), c.op)}${chip('DP', DP(u), c.dp)}${chip('SC', u.sc, baseSC(u))}${chip('SpC', u.spc, baseSpC(u))}${aa}</div></div>`;
 }
 function hlMap() {
   const m = {};
@@ -1337,15 +1454,33 @@ function hlMap() {
   else if (UI.sel && G.units[UI.sel]) { const u = G.units[UI.sel]; m[u.x + ',' + u.y] = 'hl-sel'; if (G.phase === 'action' && (!ONL || G.active === ONL.me)) for (const mv of movesFor(u)) m[mv.x + ',' + mv.y] = mv.type === 'attack' ? 'hl-attack' : 'hl-move'; }
   return m;
 }
+function unitActions(u, can) {
+  const btn = [];
+  const dis = (cond) => (can && cond ? '' : 'disabled');
+  if (u.hidden) {
+    const rest = u.sanct ? 0 : u.hiddenSince + 3 - G.players[u.owner].count, share = U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y);
+    btn.push(`<button class="btn main" data-act="reveal" data-uid="${u.uid}" ${dis(rest <= 0 && !share)}>公開する</button><span class="note">${rest > 0 ? `あと${rest}ターン後から公開可` : share ? '自分のキャラと同じマスでは公開できません' : '相手と同じマスなら公開と同時にバトル'}</span>`);
+  } else {
+    if (hasArcher(u)) btn.push(`<button class="btn" data-act="archer" data-uid="${u.uid}" ${dis(u.sc >= 1 && u.uses.archer !== G.turn)}>弓使い（サイコロ${archerNeed(u)}以上）</button>`);
+    if (abU(u, 'scout')) btn.push(`<button class="btn" data-act="scout" data-uid="${u.uid}" ${dis(u.sc >= 1 && u.uses.scout !== G.turn)}>警戒</button>`);
+  }
+  return btn.length ? `<div class="panel"><div class="bar">${btn.join('')}</div></div>` : '';
+}
+UI.peek = function (who, cid, pos) {
+  if (ONL && ONL.me !== who) return;
+  const el = $('#modal');
+  el.innerHTML = `<div class="mbox"><h3>警戒：${esc(pos)}の非公開カード</h3><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="note" style="text-align:center">${ONL ? 'あなただけに表示しています' : '※相手に見えないように確認してください'}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+};
 function renderBattle() {
   if (!G) { $('#app').innerHTML = '<h2>対戦</h2><p class="note">「対戦準備」から対戦を開始してください。</p>'; return; }
   const ap = cur(), p = G.players[VW()], flip = VW() === 1, hl = hlMap(), mineTurn = !ONL || G.active === ONL.me;
   let cells = '';
   for (let ry = 0; ry < 7; ry++) for (let rx = 0; rx < 7; rx++) {
     const x = flip ? 6 - rx : rx, y = flip ? 6 - ry : ry;
-    const t = at(x, y), w = wallAt(x, y), row = rowOf(VW(), y);
+    const t = at(x, y), w = wallAt(x, y), row = rowOf(VW(), y), hb = t && !t.hidden ? hiddenAt(x, y) : [];
     const acted = t && t.owner === VW() && t.acted > 0 ? ' acted' : '';
-    cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${acted}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${t ? unitHTML(t) : ''}</div>`;
+    cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${acted}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
   }
   const phaseName = { start: '—', draw: 'ドロー', main: 'メインステップ', action: 'アクションステップ' }[G.phase];
   const showHand = ONL ? true : G.phase !== 'start';
@@ -1361,6 +1496,7 @@ function renderBattle() {
     const cid = p.hand[UI.selHand];
     selp = `<div class="panel">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${G.phase === 'main' && !UI.busy && mineTurn && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）${p.sellUsed ? '※今ターン売却済み' : ''}</button>` : ''}<span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
   } else if (UI.sel && G.units[UI.sel] && !UI.pk) { const su = G.units[UI.sel], sc = CARDS[su.cid]; selp = MOB() ? `<div class="panel strip"><b class="serif">${esc(sc.name.replace(/（.*）/, ''))}</b><span class="badge">${coord(su.x, su.y)}</span><span class="st-LP">LP${su.lp}</span><span class="st-OP">OP${OP(su)}</span><span class="st-DP">DP${DP(su)}</span><span class="st-SC">SC${su.sc}</span><span class="st-SpC">SpC${su.spc}</span>${statusList(su).map(k => STATUS_ICON[k]).join('')}${su.acted ? '<span class="note">行動済</span>' : ''}<button class="btn sm" data-act="udetail" data-uid="${su.uid}">詳細</button></div>` : `<div class="panel">${unitDetail(su)}</div>`; }
+  if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : '【相手の番】') : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
   ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
   <button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div class="panel warn">⏳ ${esc(UI.wait)}</div>` : ''}
@@ -1426,7 +1562,9 @@ function onCell(x, y) {
     return renderBattle();
   }
   if (UI.busy || G.phase === 'start') return;
-  const t = at(x, y);
+  let t = at(x, y);
+  const hMine = U().find(u => u.hidden && !u.dead && u.owner === VW() && u.x === x && u.y === y);
+  if (hMine && (!t || t.owner !== VW() || t.hidden || UI.sel === t.uid)) t = hMine;
   if (UI.sel && G.units[UI.sel] && G.phase === 'action') {
     const u = G.units[UI.sel], mv = movesFor(u).find(m => m.x === x && m.y === y);
     if (mv && (!ONL || G.active === ONL.me)) return doAct({ t: 'move', uid: u.uid, x, y });
@@ -1439,6 +1577,8 @@ function onCell(x, y) {
   else { UI.sel = null; renderBattle(); }
 }
 function onClick(e) {
+  const kwEl = e.target.closest('[data-kw]');
+  if (kwEl) { e.stopPropagation(); e.preventDefault(); lpFired = false; showKeyword(kwEl.dataset.kw); return; }
   if (lpFired) { lpFired = false; return; }
   const el = e.target.closest('[data-act]');
   if (!el) return;
@@ -1461,6 +1601,9 @@ function onClick(e) {
     case 'start': startBattle(); break;
     case 'cell': onCell(+el.dataset.x, +el.dataset.y); break;
     case 'hand': if (UI.pk || UI.busy || G.phase === 'start') break; if (MOB()) { showHandSheet(+el.dataset.i); break; } { const i = +el.dataset.i; if (UI.selHand === i && G.phase === 'main' && (!ONL || G.active === ONL.me)) doAct({ t: 'play', i }); else { UI.selHand = i; UI.sel = null; renderBattle(); } } break;
+    case 'reveal': doAct({ t: 'reveal', uid: +el.dataset.uid }); break;
+    case 'archer': doAct({ t: 'archer', uid: +el.dataset.uid }); break;
+    case 'scout': doAct({ t: 'scout', uid: +el.dataset.uid }); break;
     case 'play': { const i = UI.selHand; if (i != null) doAct({ t: 'play', i }); } break;
     case 'sell': { const i = UI.selHand; if (i != null) { UI.selHand = null; doAct({ t: 'sell', i }); } } break;
     case 'sheetSell': $('#modal').style.display = 'none'; doAct({ t: 'sell', i: +el.dataset.i }); break;
@@ -1499,9 +1642,12 @@ async function execEv(ev) {
     case 'move': { const u = G.units[ev.uid]; const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
     case 'throw': { const u = G.units[ev.uid]; if (u) await monkeyThrow(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
+    case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
+    case 'archer': { const u = G.units[ev.uid]; if (u) await archerShot(u); break; }
+    case 'scout': { const u = G.units[ev.uid]; if (u) await scoutWatch(u); break; }
     case 'toAction': if (G.phase === 'main') G.phase = 'action'; break;
     case 'end': await endTurn(); break;
-    case 'giveup': G.over = 1 - G.active; log(`${cur().name}が投了した`); break;
+    case 'giveup': if (!G.over) { G.over = 1 - G.active; log(`${cur().name}が投了した`); } if (UI.gameOver) UI.gameOver(G.over); break;
   }
 }
 async function doAct(ev) {
