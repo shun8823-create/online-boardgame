@@ -2182,7 +2182,7 @@ show();
       if (nameEl && artEl) {
         const cardName = nameEl.textContent.trim();
         if (imageMap[cardName]) {
-          artEl.style.backgroundImage = `url('ボードゲームの画像/${imageMap[cardName]}')`;
+         artEl.style.backgroundImage = "url('${imageMap[cardName]}')";
         }
       }
     });
@@ -2194,7 +2194,7 @@ show();
       if (nameEl && artEl) {
         const unitName = nameEl.textContent.trim();
         if (imageMap[unitName]) {
-          artEl.style.backgroundImage = `url('ボードゲームの画像/${imageMap[unitName]}')`;
+         artEl.style.backgroundImage = "url('${imageMap[unitName]}')";
         }
       }
     });
