@@ -1,0 +1,2067 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>対戦ボードゲーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600;700&family=Noto+Sans+JP:wght@400;500;700&family=Roboto:wght@500;700&display=swap" rel="stylesheet">
+<style>:root{--bg:#151719;--panel:#222629;--panel2:#2b3034;--gold:#C5A66A;--silver:#AEB7BC;--lp:#5fcf7a;--op:#e0564a;--dp:#5b94e6;--sc:#e3c24a;--spc:#a97ae6;--danger:#6e1f1f;--text:#e6e2d6}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-size:14px}
+h1,h2,h3,.serif{font-family:'Noto Serif JP',serif;color:var(--gold);letter-spacing:.04em}
+header{display:flex;align-items:center;gap:18px;padding:10px 18px;background:linear-gradient(#1c1f22,#151719);border-bottom:2px solid #3a3326;position:sticky;top:0;z-index:20}
+header h1{font-size:18px;margin:0;white-space:nowrap}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav button{background:var(--panel);color:var(--silver);border:1px solid #3a4046;padding:7px 14px;border-radius:4px;cursor:pointer;font-family:'Noto Serif JP',serif}
+nav button.on{background:linear-gradient(#d6b878,#a88b4a);color:#1a1408;border-color:var(--gold);font-weight:700}
+main{padding:16px 18px 40px;max-width:1400px;margin:0 auto}
+button{font-family:inherit}
+.btn{background:#3a4046;color:var(--text);border:1px solid #555d64;padding:7px 14px;border-radius:4px;cursor:pointer}
+.btn:hover{background:#464e55}
+.btn.main{background:linear-gradient(#d6b878,#a88b4a);color:#1a1408;border-color:var(--gold);font-weight:700}
+.btn.danger{background:var(--danger);border-color:#8a2f2f}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.sm{padding:2px 8px;font-size:12px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 14px}
+select,input[type=text],input[type=search]{background:#1a1d20;color:var(--text);border:1px solid #444c52;border-radius:4px;padding:6px 8px;font-family:inherit}
+.panel{background:var(--panel);border:1px solid #3a4046;border-radius:6px;padding:10px;margin-bottom:10px}
+.note{color:#9aa3a8;font-size:12px}
+.err{color:#ff8a7a}.warn{color:#e3c24a}.ok{color:#7fe09a}
+/* card */
+.card{width:190px;border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px;position:relative;font-size:11px;color:#eee;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.card .c-head{display:flex;justify-content:space-between;align-items:center;gap:4px;background:rgba(0,0,0,.45);padding:3px 6px;border-radius:4px}
+.card .c-name{font-family:'Noto Serif JP',serif;font-weight:700;font-size:12px}
+.card .c-rank{font-family:Roboto,sans-serif;font-size:10px;background:#000a;border-radius:8px;padding:1px 6px;color:var(--gold)}
+.card .c-art{height:92px;border-radius:4px;overflow:hidden;border:1px solid #000a}
+.card .c-art svg{width:100%;height:100%;display:block}
+.card .c-type{font-size:10px;color:#cfd6da;background:rgba(0,0,0,.35);padding:1px 6px;border-radius:3px}
+.card .c-text{font-size:10.5px;line-height:1.4;background:rgba(0,0,0,.28);padding:5px 6px;border-radius:4px;min-height:70px}
+.card .c-text p{margin:0 0 4px}
+.card .c-cond{border:1px solid var(--gold);border-radius:4px;padding:3px 5px;margin-bottom:4px;font-size:10px;background:#3a2f1a66}
+.card .c-cond b{color:var(--gold)}
+.card .c-stats{display:flex;gap:3px;flex-wrap:wrap}
+.card.sm{zoom:.72}.card.sm .c-text{display:none}
+.card.lg{zoom:1.75}
+.rank1{background:linear-gradient(160deg,#3b4044,#23272a);border:3px solid #727a80;box-shadow:0 2px 6px #000a}
+.rank2{background:linear-gradient(160deg,#4a5258,#2a3034);border:3px solid #cfd6da;box-shadow:0 0 0 1px #6c747a,0 0 10px #aeb7bc66}
+.rank3{background:linear-gradient(160deg,#4d4128,#241d0e);border:3px solid #e0c070;box-shadow:0 0 0 1px #8a6f2e,0 0 16px #d9b84a99}
+.k-tech .c-head{background:rgba(80,40,10,.6)}
+.chip{font-family:Roboto,sans-serif;font-weight:700;font-size:10.5px;padding:1px 5px;border-radius:3px;background:#000a;border:1px solid #0006}
+.chip.lp,.st-LP{color:var(--lp)}.chip.op,.st-OP{color:var(--op)}.chip.dp,.st-DP{color:var(--dp)}.chip.sc,.st-SC{color:var(--sc)}.chip.spc,.st-SpC{color:var(--spc)}.chip.cost{color:var(--spc)}
+.grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.gcard{cursor:pointer;position:relative}
+.gcard:hover{transform:translateY(-3px)}
+.cnt{position:absolute;top:-6px;right:-6px;background:var(--gold);color:#1a1408;font-weight:700;border-radius:12px;min-width:24px;text-align:center;padding:2px 6px;z-index:2;font-family:Roboto}
+/* builder */
+.builder{display:grid;grid-template-columns:1fr 360px;gap:16px}
+@media(max-width:900px){.builder{grid-template-columns:1fr}}
+.drow{display:flex;align-items:center;gap:6px;padding:4px 6px;border-bottom:1px solid #333a40;cursor:default}
+.drow .n{flex:1}.drow .r{font-size:10px;color:var(--gold)}
+.sticky{position:sticky;top:64px}
+/* board */
+.battle{display:grid;grid-template-columns:auto 220px;gap:12px;align-items:start}
+@media(max-width:1000px){.battle{grid-template-columns:1fr}}
+.boardwrap{display:grid;grid-template-columns:auto minmax(0,1fr);width:max-content;max-width:100%}
+.rowlabels,.collabels{display:grid;gap:2px;color:var(--gold);font-family:Roboto,sans-serif;font-weight:700;font-size:13px;text-align:center;align-items:center}
+.rowlabels{grid-template-rows:repeat(7,1fr);padding:9px 4px 9px 0}
+.collabels{grid-template-columns:repeat(7,1fr);padding:2px 9px 0}
+.board{display:grid;width:max-content;grid-template-columns:repeat(7,84px);grid-template-rows:repeat(7,84px);gap:2px;background:#0c0d0e;padding:6px;border:3px solid #4a4030;border-radius:6px;background-image:radial-gradient(#1d2022,#101112)}
+.cell{position:relative;background:linear-gradient(145deg,#4a4e52,#33373b);border:1px solid #1a1c1e;cursor:pointer;overflow:hidden;box-shadow:inset 0 0 8px #0008}
+.cell.t-home{filter:none}.cell.t-border{background:linear-gradient(145deg,#5a5142,#3d372c)}.cell.t-enemy{background:linear-gradient(145deg,#52423f,#38292a)}
+.cell.hl-move{outline:3px solid #4a90e8;outline-offset:-3px;box-shadow:inset 0 0 14px #4a90e8aa}
+.cell.hl-attack{outline:3px solid #e24a3a;outline-offset:-3px;box-shadow:inset 0 0 14px #e24a3aaa}
+.cell.hl-target{outline:3px solid #a97ae6;outline-offset:-3px;box-shadow:inset 0 0 14px #a97ae6aa}
+.cell.hl-place{outline:3px solid #4a90e8;outline-offset:-3px}
+.cell.hl-pay{outline:3px solid #e3c24a;outline-offset:-3px;box-shadow:inset 0 0 14px #e3c24aaa}
+.cell.picked{outline:4px solid #fff;outline-offset:-4px}
+.cell.hl-sel{outline:3px solid var(--gold);outline-offset:-3px}
+.wall{position:absolute;inset:0;background:repeating-linear-gradient(0deg,#b89a62 0 14px,#8a6f3e 14px 16px);opacity:.85;display:flex;align-items:flex-end;justify-content:center;font-size:10px;color:#2a1c08}
+.unit{position:absolute;inset:1px;border:2px solid #888;border-radius:4px;overflow:hidden;background:#111}
+.unit.mine{border-color:#d9b84a}.unit.foe{border-color:#c0463a}
+.unit .uart{position:absolute;inset:0}.unit .uart svg{width:100%;height:100%;display:block}
+.unit .un{position:absolute;top:0;left:0;right:0;background:#000b;font-size:9px;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unit .us{position:absolute;bottom:0;left:0;right:0;background:#000c;display:flex;flex-wrap:wrap;gap:0 3px;padding:0 2px;font-family:Roboto;font-size:9px;font-weight:700;line-height:1.2}
+.unit .stat{position:absolute;top:12px;right:1px;font-size:11px;text-shadow:0 0 3px #000}
+.unit.hid{opacity:.7}.unit.fh{background:#2a2438;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--gold)}
+.up{color:#ffb347!important;text-shadow:0 0 5px #ff9a2e}
+.down{color:#ff7a7a!important}
+.armor{color:#7fe3ff;text-shadow:0 0 5px #3ab}
+.cell.acted .unit{filter:saturate(.5) brightness(.85)}
+.hand{display:flex;gap:6px;overflow-x:auto;padding:8px 4px;margin-top:10px;background:#1a1d20;border:1px solid #333a40;border-radius:6px;min-height:150px}
+.hcard{cursor:pointer;flex:none;border-radius:10px;transition:transform .1s}
+.hcard.sel{transform:translateY(-10px);box-shadow:0 0 0 3px var(--gold)}
+.back{width:100px;height:140px;border-radius:8px;border:3px solid #6d7378;background:repeating-linear-gradient(45deg,#2a2438 0 8px,#1e1a2c 8px 16px);flex:none}
+.log{max-height:170px;overflow:auto;font-size:10.5px;line-height:1.35}
+.spcount{color:var(--gold)}
+.log div{border-bottom:1px solid #30363b;padding:1px 0}
+.pinfo{display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap}
+.turnbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.badge{background:var(--panel2);padding:3px 10px;border-radius:12px;border:1px solid #444c52}
+/* overlays */
+#dlg,#modal,#cutin{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:#000a}
+#cutin{z-index:200;background:#000c;pointer-events:auto}
+.dbox{background:var(--panel);border:2px solid var(--gold);border-radius:8px;padding:18px 22px;max-width:560px;box-shadow:0 8px 30px #000}
+.dbox p{margin:0 0 14px;line-height:1.6}
+.dbtn{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none}
+#toast div{background:#000d;border:1px solid var(--gold);color:var(--text);padding:8px 16px;border-radius:6px;animation:fade 3s forwards}
+@keyframes fade{0%{opacity:0;transform:translateY(8px)}10%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}
+.cutcard{animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.mbox{max-height:92vh;overflow:auto;padding:14px;background:var(--panel);border:2px solid var(--gold);border-radius:8px;max-width:96vw}
+.mrow{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.kv{font-size:12px;line-height:1.7}
+.kv b{color:var(--gold)}
+.tag{display:inline-block;background:#3a2a4a;border:1px solid #6a4a8a;border-radius:10px;padding:0 8px;margin:1px;font-size:11px}
+.tag.bad{background:#4a2a2a;border-color:#8a4a4a}
+
+/* ===== スマホ対応：横スワイプを使わない ===== */
+html{-webkit-text-size-adjust:100%}
+.btn,.gcard,.hcard,.cell,nav button{touch-action:manipulation}
+[data-card]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.mob-only{display:none}
+@media(max-width:700px){
+  .mob-only{display:block}.desk-only{display:none!important}
+  header{position:static;padding:6px 8px;gap:6px}
+  header h1{display:none}
+  nav{width:100%;gap:4px;flex-wrap:nowrap}
+  nav button{flex:1;padding:9px 2px;font-size:12px;min-height:40px;white-space:nowrap}
+  main{padding:8px 8px 28px}
+  h2{font-size:17px;margin:6px 0}
+  .btn{min-height:40px;padding:8px 12px}.btn.sm{min-height:34px;min-width:36px}
+  select,input[type=text],input[type=search]{min-height:40px;font-size:16px}
+  .bar{margin:6px 0 8px}
+  .grid{gap:8px;justify-content:flex-start}
+  #grid .card.full{zoom:.86}
+  .card.sm{zoom:.62}
+  .hand .card.sm{zoom:.46}
+  .card.lg{zoom:1.45}
+  .builder{grid-template-columns:1fr}
+  .sticky{position:static}
+  .minibar{position:sticky;top:0;z-index:15;display:flex;gap:8px;align-items:center;justify-content:space-between;background:#101214ee;border:1px solid #3a4046;border-radius:6px;padding:6px 8px;margin:6px 0}
+  .battle{grid-template-columns:1fr;gap:6px}
+  .board{width:100%!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;grid-template-rows:none!important;padding:3px;gap:1px}
+  .cell{aspect-ratio:1/1}
+  .unit{inset:0;border-width:1.5px}
+  .unit .un{font-size:7px;padding:0 1px}
+  .unit .us{font-size:7px;line-height:1.1;gap:0 2px}
+  .unit .stat{font-size:9px;top:9px}
+  .wall{font-size:8px}
+  .turnbar{gap:5px;margin-bottom:6px}
+  .badge{padding:2px 8px;font-size:12px}
+  .turnbar .btn{padding:6px 8px;font-size:12px;min-height:38px}
+  .hand{flex-wrap:wrap;overflow:visible;min-height:0;gap:5px;padding:6px 3px;margin-top:6px}
+  .hcard{margin:0}
+  .back{width:44px;height:62px}
+  .dbox{max-width:94vw;padding:14px}
+  .dbtn .btn{flex:1 1 100%}
+  .mbox{max-width:98vw;padding:10px}
+  .pkpanel{position:sticky;top:0;z-index:15}
+  .log{max-height:none}
+  .strip{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px}
+}
+
+@media(max-width:700px){
+  .boardwrap{width:100%}
+  .rowlabels{gap:1px;padding:6px 3px 6px 0;font-size:11px}
+  .collabels{gap:1px;padding:1px 6px 0;font-size:11px}
+}
+
+/* サンダーストーム演出 */
+.cell.th-roll{outline:3px solid #ffe14d;outline-offset:-3px;box-shadow:inset 0 0 16px #ffe14daa;filter:brightness(1.4)}
+.cell.th-hit{background:linear-gradient(145deg,#fff6b0,#e8b820)!important;box-shadow:inset 0 0 22px #fffbe0;animation:thflash .3s ease-in-out 3}
+@keyframes thflash{50%{filter:brightness(1.7)}}
+
+.gameover{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:#000c}
+.gobox{text-align:center;padding:28px 34px;border:2px solid var(--gold);background:linear-gradient(#22262a,#14171a);border-radius:10px;box-shadow:0 0 40px #000;max-width:92vw}
+.gobig{font-family:'Noto Serif JP',serif;font-size:34px;font-weight:700;color:var(--gold);margin-bottom:10px}
+.gameover.lose .gobig{color:#c46a6a}
+.gosub{font-size:16px;margin:6px 0}.gosub.small{font-size:13px;opacity:.8;margin-bottom:16px}
+@media(max-width:700px){.gobig{font-size:26px}}
+
+.coin{color:#e8c55a}
+.shop{margin-top:6px}.shoprow{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px}.shoprow .n{flex:1}.shoprow small{opacity:.7}.shoprow.sold{opacity:.45}
+.chip.sell{background:#4a3a14;color:#f1d98a}
+
+.cell{position:relative}.hbadge{position:absolute;right:2px;bottom:2px;font-size:10px;padding:0 4px;border-radius:8px;background:#2a3a5a;color:#cfe0ff;border:1px solid #6a8acf;pointer-events:none;z-index:3}.hbadge.foe{background:#4a2a2a;color:#ffd0d0;border-color:#cf6a6a}
+
+.kwp{margin:2px 0}.kw{font:inherit;font-size:11px;font-weight:700;color:var(--gold);background:#2a2518;border:1px solid var(--gold);border-radius:10px;padding:1px 8px;cursor:pointer}.kw:hover{background:#3a321f}
+#kwpop{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:#000a;padding:16px}
+.kwbox{max-width:420px;background:linear-gradient(#22262a,#14171a);border:2px solid var(--gold);border-radius:10px;padding:18px 20px;box-shadow:0 0 30px #000}
+.kwt{font-family:'Noto Serif JP',serif;font-size:20px;font-weight:700;color:var(--gold);margin-bottom:8px}.kwd{font-size:14px;line-height:1.6;margin-bottom:10px}
+
+.sbadge{position:absolute;left:3px;top:1px;font-size:12px;color:#9fd0ff;text-shadow:0 0 4px #4a8acf;pointer-events:none;z-index:2}.sbadge.foe{color:#ffb0b0;text-shadow:0 0 4px #cf4a4a}
+
+.sbadge.trap{left:auto;right:3px;top:1px;color:#f0c060;text-shadow:0 0 4px #a06a10}.sbadge.trap.foe{color:#ff8a6a}
+
+.sfxbtn{background:var(--panel);color:var(--silver);border:1px solid #3a4046;border-radius:4px;padding:6px 10px;cursor:pointer;font-size:16px;margin-left:auto}
+</style></head>
+<body>
+<header><h1>⚔ 対戦ボードゲーム</h1><nav>
+<button data-s="cards">① カード一覧</button><button data-s="builder">② デッキ構築</button><button data-s="prep">③ 対戦準備</button><button data-s="battle">④ 対戦</button></nav><button type="button" id="sfxbtn" class="sfxbtn" title="効果音のオン／オフ" aria-label="効果音のオン／オフ">🔊</button></header>
+<main id="app"></main>
+<div id="dlg"></div><div id="modal"></div><div id="cutin"></div><div id="toast"></div>
+<script>'use strict';
+/* ===== カードデータ ===== */
+const CARDS = {};
+const D = (id, o) => { CARDS[id] = Object.assign({ id, rank: 1, txt: [], ab: [] }, o); };
+/* 属性：キャラクターが所持する属性（同じ属性のスペルは、必要SpCが2以上なら1少なくなる） */
+const charAttrs = cid => {
+  const c = CARDS[cid], r = String(c.race || ''), a = [];
+  if (r.includes('エルフ')) a.push('水', '風');
+  if (r.includes('ドワーフ')) a.push('火', '土');
+  if (cid === 'iceWitch') a.push('雪');
+  if (cid === 'redDragon') a.push('火');
+  if (cid === 'stormEagle') a.push('風', '雷');
+  return [...new Set(a)];
+};
+const CH = (id, o) => D(id, Object.assign({ kind: 'char' }, o));
+
+CH('avatar', { name: 'アバター', kind: 'avatar', cat: 'アバター', race: '', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, txt: ['敗北条件に直結する盤上ユニット。バトルに負けたプレイヤーは敗北する。', 'どんなカードもアバターを対象にできない。'] });
+
+CH('rookieAdv', { name: '駆け出し冒険者', cat: 'ヒューマノイド', race: 'ヒューム', lp: 3000, op: 0, dp: 0, sc: 1, spc: 0, weapon: true, txt: ['能力なし。武器を装備できる。'] });
+CH('rookieMage', { name: '駆け出し魔法使い', cat: 'ヒューマノイド', race: 'ヒューム', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, weapon: true, ab: ['wizDice'], txt: ['配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '武器を装備できる。'] });
+CH('normalGob', { name: 'ノーマルゴブリン', cat: 'モンスター', race: 'ゴブリン', lp: 1500, op: 0, dp: 0, sc: 2, spc: 0, weapon: true, ab: ['goblinSummon'], txt: ['手札に同ランクで種族ゴブリンのカードがあれば、追加で1体配置できる（追加配置の枠は消費しない。連鎖可）。', '武器を装備できる。'] });
+CH('hobGob', { name: 'ホブゴブリン', cat: 'モンスター', race: 'ゴブリン', lp: 3000, op: 500, dp: 0, sc: 2, spc: 0, weapon: true, ab: ['hobCond'], txt: ['配置条件：デッキに種族ゴブリンのカードが9枚以上ないと場に出せない。', '武器を装備できる。'] });
+CH('slime', { name: 'スライム', cat: 'モンスター', race: 'ウーズ', lp: 1000, op: 0, dp: 2000, sc: 1, spc: 1, ab: ['slime'], txt: ['バトル時（攻撃でも被攻撃でも）サイコロを振り、4以上なら相手の「武器」（上等な剣・上等な盾など）を戦闘前に破壊する。'] });
+CH('vetAdv', { name: 'ベテラン冒険者', cat: 'ヒューマノイド', race: 'ヒューム', lp: 4000, op: 500, dp: 500, sc: 2, spc: 0, weapon: true, txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '武器を装備できる。'] });
+CH('vetMage', { name: 'ベテラン魔法使い', cat: 'ヒューマノイド', race: 'ヒューム', lp: 2500, op: 0, dp: 1000, sc: 2, spc: 2, weapon: true, ab: ['wizDice'], txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '武器を装備できる。'] });
+CH('dwarf', { name: 'ドワーフの戦士', cat: 'ヒューマノイド', race: 'ドワーフ', rank: 2, lp: 4000, op: 0, dp: 1000, sc: 1, spc: 0, weapon: true, ab: ['dwarf'], txt: ['庇護：相手が自分のキャラクターを対象にアイテムを使用する際、ゲーム中に1度だけ、その対象をこのキャラクターに強制変更する。相手が相手自身のキャラクターを対象にする場合は発動しない。', '武器を装備できる。'] });
+CH('gobWiz', { name: 'ゴブリンウィザード', cat: 'モンスター', race: 'ゴブリン', lp: 1500, op: 0, dp: 0, sc: 2, spc: 1, weapon: true, ab: ['wizDice'], txt: ['武器装備：このキャラクターは武器を装備できる。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。'] });
+CH('ogre', { name: 'オーガ', cat: 'モンスター', race: 'ジャイアント', rank: 2, lp: 5000, op: 0, dp: 0, sc: 2, spc: 2, weapon: true, ab: ['sacrifice'], txt: ['生贄：自分のキャラクターをLP合計1500以上になるよう破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。', '武器を装備できる。'] });
+CH('redBoar', { name: 'レッドボア', cat: 'モンスター', race: 'ワイルド', rank: 2, lp: 4500, op: 500, dp: 0, sc: 4, spc: 1, ab: ['berserk'], txt: ['狂乱：1マスの代わりに必ず2マス動かなければならない。1ターンに一度、必ず移動しなければならない（SCが足りなければ不要）。移動に使うSCは通常より1つ増える。', '味方は通過できるが同じマスには停止できない。敵は飛び越せない。盤面端が移動先なら1マスで停止できる。'] });
+CH('elfMage', { name: 'エルフの魔法使い', cat: 'ヒューマノイド', race: 'エルフ', rank: 2, lp: 2500, op: 0, dp: 2500, sc: 3, spc: 3, weapon: true, ab: ['magicResist', 'wizDice'], txt: ['魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。', '配置時：サイコロを振り4以上でデッキからランダムにランク1のスペルを手札に加える。', '武器を装備できる。'] });
+CH('redDragon', { name: 'レッドドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 3, lp: 6000, op: 0, dp: 0, sc: 4, spc: 3, ab: ['incinerate', 'flight', 'magicResist'], txt: ['焼却（永続）：正面のマスにいる相手キャラクターのLPを、焼却を使用するこのキャラクターのLPの数だけ減らし、正面のマスにある設置カードを破壊する。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
+CH('troll', { name: 'トロール', cat: 'モンスター', race: 'ジャイアント', rank: 2, lp: 5000, op: 0, dp: 0, sc: 1, spc: 0, ab: ['regen'], txt: ['再生：ダメージを受けた後、LPを500回復する（LPが元の値を超えることはない）。'] });
+CH('iceWitch', { name: '氷の魔女（アイスウィッチ）', cat: 'モンスター／ヒューマノイド', race: 'アイスウィッチ', rank: 3, lp: 4500, op: 0, dp: 1500, sc: 2, spc: 5, weapon: true, ab: ['witchEtb', 'witchChill', 'superResist'], txt: ['配置時：デッキからランク2のスペルをランダムに1枚手札に加える。ランク2のスペルがデッキになければ、代わりにランク1のスペルをランダムに2枚手札に加える。', '自分がランク2のスペルを使った時、またはランク1のスペルをそのターン中に偶数回目に使った時、その度に相手のキャラクターをランダムに1体「しもやけ」状態にする。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。', 'モンスターとヒューマノイドの両方の特性をもつ（武器を装備できる）。'] });
+CH('golem1', { name: 'ゴーレム（ステップ1）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 2000, op: 0, dp: 0, sc: 1, spc: 1, txt: ['配置時に「装甲」2000を得る。', 'ゴーレムは、魔法耐性・超魔法耐性以外の目的でSpCを使えるのは、1ターンに合計1まで（SCでの肩代わりもできない）。SpC2以上のスペルなどは支払えない。残りのSpCは耐性専用。', '「クリエイトゴーレム」で出る。場に自分のゴーレムがいるなら、新しく出す代わりにステップを1つ進められる。'] });
+CH('golem2', { name: 'ゴーレム（ステップ2）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 4000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['magicResist'], txt: ['ステップ1からLP+2000、SC+2、SpC+1。', '魔法耐性・超魔法耐性以外の目的でSpCを使えるのは1ターンに合計1まで（SCでの肩代わりもできない）。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。'] });
+CH('golem3', { name: 'ゴーレム（ステップ3）', token: true, cat: 'モンスター', race: 'オートマトン', lp: 6000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['superResist'], txt: ['ステップ2からLP+2000、SC+2、SpC+1。最終形態。', '魔法耐性・超魔法耐性以外の目的でSpCを使えるのは1ターンに合計1まで（SCでの肩代わりもできない）。', '超魔法耐性：魔法耐性と同じだが、相手と同じSpC（+1しない）で打ち消せ、1ターンに2度まで使える。「魔法耐性」としても扱われる。'] });
+CH('rookieRanger', { name: '駆け出しレンジャー', cat: 'ヒューマノイド', race: 'ヒューム', lp: 2000, op: 0, dp: 500, sc: 2, spc: 0, weapon: true, archer: 4, ab: ['stealth', 'archer', 'scout'], txt: ['潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', '弓使い（サイコロ4以上）：メインステップ中にSCを1支払って発動。相手のキャラクター1体を対象にサイコロを振り、4以上ならLPを1000減少させる。1ターンに1度だけ。', '警戒：メインステップ中にSCを1支払って発動。相手のホームテリトリーにある非公開カードを1枚選び、非公開のまま、そのカードが何かを知る。', '武器を装備できる。'] });
+CH('darkAssassin', { name: '闇夜の暗殺者', cat: 'ヒューマノイド', race: 'ヒューム', rank: 1, lp: 2500, op: 500, dp: 0, sc: 1, spc: 0, ab: ['darkCond', 'assassin', 'ambush', 'assassinate'], txt: ['このキャラクターはホームテリトリーに非公開カードが2枚以上ないと盤に出せない。', 'アサシン：この効果をもつキャラクターがホームテリトリーで非公開カードと同じマスにあるなら、そのキャラクターが移動する際、自分の別の非公開カードのある場所まで移動できる。「警戒」を使用された非公開カードには、この効果は適用できない。', 'ふいうち：この能力の所持者は後方にもバトルできる。また、後方へバトルする際、そのバトル中に限り、OPを1000上昇する。', 'このキャラクターが相手のキャラクターとバトルする際、それがLP4000以下のヒュームならバトルする前に対象を破壊する。'] });
+CH('vetRanger', { name: 'ベテランレンジャー', cat: 'ヒューマノイド', race: 'ヒューム', lp: 3000, op: 0, dp: 500, sc: 3, spc: 0, weapon: true, archer: 3, ab: ['stealth', 'archer', 'scout'], txt: ['デッキに「駆け出し」と名のつくヒューマノイドが3枚以上ないと、デッキに入れられない。', '潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', '弓使い（サイコロ3以上）：メインステップ中にSCを1支払って発動。相手のキャラクター1体を対象にサイコロを振り、3以上ならLPを1000減少させる。1ターンに1度だけ。', '警戒：メインステップ中にSCを1支払って発動。相手のホームテリトリーにある非公開カードを1枚選び、非公開のまま、そのカードが何かを知る。', '武器を装備できる。'] });
+CH('moonDragon', { name: 'ムーンライトドラゴン', cat: 'モンスター', race: 'ドラゴン', rank: 2, lp: 5000, op: 0, dp: 0, sc: 3, spc: 2, ab: ['moonCond', 'moonReset', 'flight'], txt: ['配置条件：このゲーム中に自分がスペルを3回以上使用していないと盤に出せない。', '月光：このゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らして使える（盤面のこのカードを押すと使うか選べる）。互いに手札を山札に戻してシャッフルし、その後互いにカードを3枚引く。', '飛翔：設置の影響を受けない。'] });
+CH('stormEagle', { name: '天空の覇者（ストームイーグル）', cat: 'モンスター', race: 'ワイルド', rank: 3, lp: 5000, op: 0, dp: 0, sc: 5, spc: 3, ab: ['haste', 'twoActions', 'magicResist', 'flight'], txt: ['出たターンから移動できる。2回行動できる。', '飛翔：設置の影響を受けない。', '魔法耐性：相手のスペルの効果をSpC（消費+1）で打ち消せる。'] });
+CH('blackWolf', { name: 'ブラックウルフ', cat: 'モンスター', race: 'ワイルド', lp: 2000, op: 1000, dp: 0, sc: 2, spc: 1, ab: ['haste'], txt: ['出たターンから移動できる。'] });
+CH('killerTiger', { name: 'キラータイガー', cat: 'モンスター', race: 'ワイルド', lp: 4000, op: 0, dp: 0, sc: 3, spc: 1, ab: ['tigerCond'], txt: ['配置条件：デッキに種族ワイルドのキャラクターが10体以上いないと配置できない。'] });
+CH('bloodSnake', { name: 'ブラッドスネーク', cat: 'モンスター', race: 'ワイルド', lp: 1500, op: 1500, dp: 0, sc: 2, spc: 0, ab: ['stealth', 'poisonTouch'], txt: ['潜伏：場に出す時、ホームテリトリーの好きな場所に非公開で置ける（場所は相手に伝わる）。その間は居ないものとして扱う。配置から3ターン後の自分のターン開始時以降、好きなタイミングで公開できる。1ターン1体の配置制限の対象外。', 'このカードとバトルした相手を「毒」状態にする。'] });
+CH('greatMonkey', { name: 'グレートモンキー', cat: 'モンスター', race: 'ワイルド', rank: 2, lp: 4500, op: 0, dp: 0, sc: 3, spc: 1, ab: ['throw'], txt: ['投擲：ゲーム中2回まで、メインステップ中にこのキャラクターのSCを2減らし、手札にアイテム「投石」を1枚出現させる。'] });
+CH('vampire', { name: 'ヴァンパイア', cat: 'モンスター', race: 'アンデット', rank: 3, lp: 5000, op: 0, dp: 0, sc: 3, spc: 3, weapon: true, ab: ['sacrifice', 'superRegen', 'magicResist', 'flight'], txt: ['生贄：LP合計1500以上になるよう自分のキャラクターを破壊して配置。生贄のLP合計が4500以上なら2列目に配置してもよい。', 'ヴァンパイア固有の能力：生贄にしたキャラクター1体につき、DPを500増やす（LP3000以上のキャラクターなら1000）。この能力は「生贄」とは別の能力である。', '超再生：ダメージを受けた後、LPを1500回復する（元の値を超えない）。', '魔法耐性：相手のスペルが自分に効果を及ぼす時、そのスペルの消費SpCより1多いSpCを支払って効果を打ち消せる（SC代用不可）。', '飛翔：設置の影響を受けない。', '武器を装備できる。'] });
+CH('cockatrice', { name: 'コカトリス', cat: 'モンスター', race: 'マジカルビースト', rank: 2, lp: 3500, op: 0, dp: 0, sc: 2, spc: 1, ab: ['backBattle', 'petrify', 'poisonTouch'], txt: ['後方にもバトルできる。', '目の前のマスに相手キャラクターが入った時、対象を次の相手のターン終了時まで「石化」状態にする。', 'バトルするキャラクターを「毒」状態にする。'] });
+
+/* スペル */
+const SP = (id, o) => D(id, Object.assign({ kind: 'spell' }, o));
+SP('createGolem', { name: 'クリエイトゴーレム', cost: 'SpC2', attr: '土', txt: ['「ゴーレム（ステップ1）」を自分にいちばん近い列のどこかに出す。', '場に自分のゴーレムがいるなら、新しく出す代わりに、場のゴーレムを1体選んでステップを1つ次に進めてもよい。ステップを進める場合は必要なSpCが増える（ステップ2へ：SpC3、ステップ3へ：SpC4）。', '使用後、墓地に置く代わりにデッキに戻して山札をシャッフルし、ランダムにカードを1枚引いてもよい。この効果はゲーム中に3回まで（同名カードの使用も合わせて数える）。'] });
+SP('petrifyRay', { name: '石化光線', cost: 'SpC1', txt: ['相手のキャラクターを1体選ぶ。対象を次のターンの間「石化」状態にする。'] });
+SP('spark', { name: 'スパーク', cost: 'SpC2', attr: '雷', txt: ['盤上の相手のキャラクター1体を対象にする。対象にLP2500分のダメージを与え、「まひ」状態にする。'] });
+SP('magicSanctuary', { name: '魔法聖域（スペルサンクチュアリ）', cost: 'SpC1', txt: ['このカードは自分のホームテリトリーのどこかに設置することで発動する。', 'このカードと同じマスにLP4000以下の自分のキャラクターが置かれた時（このカードがあとから置かれた場合も含む）、そのキャラクターを非公開にしてもよい。そうしたら、そのキャラクターのSCとSpCのターン終了時の回復量が1増える。', '非公開にしたキャラクターは、メインステップ中にいつでも公開できる。（一度公開したキャラクターは、一度そのマスを離れ、もう一度このカードのあるマスに来ない限り、非公開にできない。また、非公開中に装備などによりLPが4000より多くなった時、同じマスに自分のキャラクターがいない限り、強制的に公開される。）'] });
+SP('signpost', { name: '道標（マジックサイン）', cost: 'SpC1', txt: ['カードを2枚引く。'] });
+SP('fireball', { name: '火球（ファイアボール）', cost: 'SpC1', attr: '火', txt: ['相手キャラ1体のLPを2000減らし、「やけど」状態にする。'] });
+SP('sandWall', { name: '砂壁（サンドウォール）', cost: 'SpC1', attr: '土', txt: ['設置。空きマス1つに置く。そのマスへ侵入・配置できない。使用ターンを除き自分のターンを数えて3ターン後の終了時に破壊。'] });
+SP('freezeWind', { name: 'フリーズウインド', cost: 'SpC1', attr: '風・雪', txt: ['相手キャラ1体のSCを4減らし、「しもやけ」状態にする（すでにしもやけなら「凍傷」状態）。'] });
+SP('shiftForm', { name: '形質変化', cost: 'SpC1', equip: true, txt: ['自分のキャラクターまたはアバターにつけて発動する。つけた次のターンから、所持者は斜め前と斜め後ろにだけ動けるようになる（前後にも左右にも動けない）。'] });
+SP('teleport', { name: 'テレポート', cost: 'SpC2', txt: ['自分のキャラクターを2体選び、それらの位置を入れ替える。'] });
+SP('reinforce', { name: '増援召喚', cost: 'SpC2', txt: ['カードを1枚引く。このターン、キャラクターをもう1体追加で召喚できる。'] });
+SP('magicGuard', { name: '魔法壁（マジックガード）', cost: 'SpC1以上', txt: ['自分のキャラクター1体を対象にする。SpC1つにつき（SpCが尽きたら2SCごとに）1回分として、消費する回数を自由に選べる。1回分につき対象に装甲値1000を与える。', '装甲値：LPとは別の値。自分のターン中も相手のターン中も、あらゆるダメージを先に代わりに受ける（使い切りで、ターン終了時にも回復しない）。'] });
+SP('chaosHand', { name: '混沌の手（ドレインハンド）', cost: 'SpC1', txt: ['自分と相手のキャラクター1体ずつを対象にする。相手のLPを1000減らし、自分のLPを2ターン後のターン終了時まで1000増やす。'] });
+SP('aquaReturn', { name: 'アクアリターン', cost: 'SpC1', attr: '水', txt: ['LP3000以下のキャラクター1体を対象にする。対象を手札に戻す。'] });
+SP('goldenBody', { name: '黄金の体', rank: 2, cost: 'SpC3', txt: ['自分のキャラクターがバトルする際、相手のターンでも使用できる。対象のキャラクターはバトルに必ず勝利する。', 'バトル前に手札にあれば必ず使用の可否を聞かれる。'] });
+SP('instinct', { name: '本能解放', rank: 2, cost: 'SpC2', txt: ['使用してから3回目の自分のターン終了時まで、自分のキャラクターがエネミーテリトリーに入った時、そのキャラクターのLPを1000増やす（重複しない）。', '自分の盤面に種族ワイルドが3体以上いるなら、時間制限なしの永続効果になる。'] });
+SP('blizzard', { name: '終焉のブリザード', rank: 2, cost: 'SpC4', attr: '風・雪', txt: ['自分から見てボーダーゾーンまたはエネミーテリトリー内にいる相手のキャラクターを全て「しもやけ」状態にし、SCを3減らす。'] });
+SP('thunderStorm', { name: 'サンダーストーム', rank: 2, cost: 'SpC4', attr: '雷', wide: true, txt: ['ホームテリトリーにいる自分のキャラクターに、このターン中だけ使える装甲値を4000与える（ターン終了と共に0になる）。', '超範囲：1〜7の列、A〜Gの列、もう一度1〜7の列から順にランダムで1列ずつ計3列を選び、選ばれた列にいるキャラクター（自分のも含む）のLPを4000減らす。「飛翔」を持つキャラクターのいる列は選ばれる確率が2倍になる。', 'このダメージへの魔法耐性は、SpC2のスペルとして計算する。', '超範囲のカードには「庇護」「魔法耐性」が例外的に発動でき、使うかどうかの確認が入る。'] });
+SP('windSlash', { name: 'ウインドスラッシュ', cost: 'SpC1', attr: '風', equip: true, txt: ['武器のように装備できる。所持者が1マス進むたび、相手キャラを1体選んで1000ダメージを与える。', '装備は自分の2ターン後のターン終了時まで続き、効果が切れると墓地に送られる。', '同じキャラクターに重複して装備できる（それぞれ別に発動する）。'] });
+SP('redDragonBreath', { name: 'レッドドラゴンブレス', cost: 'SpC3', attr: '火', equip: true, txt: ['装備魔法。このスペルを使用する際にSpCを消費したキャラクターを対象とする。', '自分の2ターン後のターン終了時まで、対象に「焼却」を与える。効果が切れると墓地に送られる。', '焼却：正面のマスにいる相手キャラクターのLPを、焼却を使用するキャラクターのLPの数だけ減らし、正面のマスにある設置カードを破壊する。'] });
+
+/* アイテム */
+const IT = (id, o) => D(id, Object.assign({ kind: 'item', cost: '' }, o));
+IT('swordFine', { name: '上等な剣', sell: 3, weapon: true, wop: 1000, wdp: 1000, txt: ['武器。装備者のOPとDPをそれぞれ1000増やす。'] });
+IT('bowFine', { name: '上等な弓', sell: 3, weapon: true, txt: ['武器。装備したキャラクターが「弓使い」をもっているなら、効果の使用に必要なサイコロの出目を2つ少なくする（4以上→2以上、など）。', '「弓使い」をもっていないなら、対象に「弓使い」（サイコロ6）を与える。対象の種族にエルフがあれば、代わりに「弓使い」（サイコロ4以上）を与える。'] });
+IT('thornTrap', { name: '棘付きトラップ', sell: 5, rank: 1, txt: ['このカードは盤に設置することで使用できる。このカードを非公開で置いてもよい。効果を使用する際は、このカードは公開される。', 'このカードと同じマスに来た相手のキャラクターのLPを5000下げる。この効果によって与えたダメージは、2000までしか回復しない。'] });
+IT('wandFine', { name: '上等な魔杖', sell: 4, weapon: true, wspc: 1, txt: ['武器。装備者のSpCの基礎値を1上げる（現在のSpCも1増える）。', 'SpCの基礎値が1以上あるキャラクターにしか使えない。'] });
+IT('shieldFine', { name: '上等な盾', sell: 3, weapon: true, wdp: 500, txt: ['武器。装備者のDPを500上げ、装甲値1500を与える。', '装甲が0になっても、このカードは破壊されず装備したままになる（DP+500は残る）。', '装甲値：LPとは別の値。自分のターン中も相手のターン中も、あらゆるダメージを先に代わりに受ける（使い切りで、ターン終了時にも回復しない）。'] });
+IT('stoneThrow', { name: '投石', sell: 0, txt: ['対象のキャラクターのLPを1500減らす。'] });
+IT('staminaPotion', { name: 'スタミナポーション', sell: 2, txt: ['対象のSCを2増やし、LPを1000回復する（元のLPを超えない）。'] });
+IT('magicPotion', { name: 'マジックポーション', sell: 2, txt: ['対象のSpCを1増やし、LPを1000回復する（元のLPを超えない）。'] });
+IT('shopTicket', { name: 'ショップチケット', sell: 0, noSell: true, txt: ['購入権利を1つ獲得できる。このカードを使用してカードを購入した際、このカードは消費される。', 'このカードは売ることができない。', '（カードを売るたびに1枚手に入る。ゲーム中1回だけの無料の購入権を使い切ったあとは、購入にこのカードが必要）'] });
+IT('elixir', { name: 'エリクサー', sell: 5, rank: 2, txt: ['対象の「状態異常」を全て「治療」し、LPを全て回復する。さらに、対象のSCを2、SpCを1増加させる。'] });
+IT('hyperPotion', { name: 'ハイパーポーション', sell: 2, txt: ['対象の「状態異常」をランダムに1つ治療したのち、LPを2000回復する（元のLPを超えない）。'] });
+IT('gobFlute', { name: 'ゴブリンの笛', sell: 0, txt: ['自分のデッキまたは墓地からランダムに種族ゴブリンのカードを2枚手札に加える。'] });
+
+/* テクニック */
+const TE = (id, o) => D(id, Object.assign({ kind: 'tech' }, o));
+TE('gobParade', { name: 'ゴブリンパレード', rank: 2, cost: 'SC1', cond: '盤面に種族ゴブリンのモンスターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['名前にゴブリンのつくモンスターは盤面にいる限り永続的にLPが1500上がる。今後出すカードにも適用される。'] });
+TE('assault', { name: '突撃司令', rank: 2, cost: 'SC1', cond: '同じ種族のキャラクターが3体以上いる。その中から1体を選びSCを1減らす。', txt: ['このターン、選んだキャラクターと同じ種族の、ホームテリトリーまたはボーダーゾーンにいるキャラクターだけが対象になり、1マスの代わりに2マス進み、前方向にしか動かせない。必ず移動しなければならない（出したターンでも）。移動時はSCが0でも移動できる。相手のアバターとはバトルできない。', 'このターン、効果を受けたキャラクターはこの移動以外の移動ができない（2回行動やハンティングも使えない）。'] });
+TE('ferocious', { name: '獰猛なる覇者の加護', cost: 'SC1／SpC1', cond: '自分のホームテリトリーに、種族ワイルドで現在のSCとSpCが1以上のキャラクターがいる。', txt: ['カードを1枚引く。その後、自分のホームテリトリーにいる種族ワイルドのモンスター1体を対象にし、対象の次の自分のターンの行動回数を1つ増やし、LPを500上昇させる。ただし、合計の行動回数は最高2回までで、それ以上は増えない（もともと2回行動できるキャラクターは2回のまま）。この効果は、対象がホームテリトリーから出ると消える。また、この効果によって増えた行動の移動では、アバターとバトルできない。', '対象となったキャラクターのSCとSpCをそれぞれ1ずつ消費する。'] });
+TE('fightSpirit', { name: '闘争心', cost: 'SC1', cond: '場に種族ワイルドのキャラクターがおり、そのモンスターの現在のSpCが1以上。対象にした自分のキャラクターのSCを1消費する。', txt: ['武器のように装備できる。OPを500増やす。つけた次のターンから「ハンティング」を得る。', 'ハンティング：移動した後、1マス以内の行動範囲に相手キャラがいれば、そこへ移動して攻撃してもよい（SCは支払う）。行動済みでも使える。1ターンに1度しか使えない。'] });
+
+const KIND_LABEL = { char: 'キャラクター', avatar: 'アバター', spell: 'スペル', item: 'アイテム', tech: 'テクニック' };
+
+/* ===== デッキ ===== */
+const mk = o => Object.entries(o).flatMap(([k, n]) => Array(n).fill(k));
+const PRESETS = [
+  { id: 'p_oudo', name: '王道デッキ', preset: true, list: { rookieAdv: 1, rookieMage: 2, vetAdv: 3, vetMage: 2, elfMage: 1, dwarf: 2, redDragon: 1, signpost: 3, fireball: 3, sandWall: 2, freezeWind: 2, shiftForm: 1, teleport: 1, goldenBody: 1, swordFine: 2, stoneThrow: 3 } },
+  { id: 'p_gob', name: 'ゴブリンデッキ', preset: true, list: { normalGob: 3, hobGob: 3, gobWiz: 3, ogre: 2, vampire: 1, signpost: 3, fireball: 1, freezeWind: 1, chaosHand: 2, shiftForm: 1, reinforce: 2, gobFlute: 3, gobParade: 1, assault: 1, stoneThrow: 3 } },
+  { id: 'p_wild', name: 'ワイルドデッキ', preset: true, list: { stormEagle: 1, blackWolf: 3, killerTiger: 3, bloodSnake: 2, greatMonkey: 1, redBoar: 1, signpost: 3, windSlash: 2, sandWall: 1, freezeWind: 1, shiftForm: 1, teleport: 1, assault: 1, fightSpirit: 2, instinct: 1, ferocious: 3, stoneThrow: 3 } },
+];
+const deckSize = l => Object.values(l).reduce((a, b) => a + b, 0);
+function validateDeck(list) {
+  const err = [], warn = [];
+  const ids = Object.keys(list).filter(k => list[k] > 0);
+  const n = deckSize(list);
+  if (n !== 30) err.push(`デッキ枚数が${n}枚です（30枚必要）`);
+  let r2 = 0, r3 = 0;
+  for (const id of ids) {
+    const c = CARDS[id], k = list[id];
+    if (k > 3) err.push(`「${c.name}」が${k}枚（同名は最大3枚）`);
+    if (c.rank === 2) { r2 += k; if (c.kind !== 'char' && k > 1) err.push(`ランク2の${KIND_LABEL[c.kind]}「${c.name}」は同名1枚まで`); }
+    if (c.rank === 3) r3 += k;
+  }
+  if (r2 > 6) err.push(`ランク2が${r2}枚（合計6枚まで）`);
+  if (r3 > 1) err.push(`ランク3が${r3}枚（合計1枚まで）`);
+  const rookies = ids.filter(id => CARDS[id].name.startsWith('駆け出し') && CARDS[id].cat.includes('ヒューマノイド')).reduce((a, id) => a + list[id], 0);
+  for (const id of ['vetAdv', 'vetMage', 'vetRanger']) if (list[id] > 0 && rookies < 3) err.push(`「${CARDS[id].name}」はデッキに「駆け出し」ヒューマノイドが3枚以上必要（現在${rookies}枚）`);
+  const gob = ids.filter(id => CARDS[id].race === 'ゴブリン').reduce((a, id) => a + list[id], 0);
+  if (list.hobGob > 0 && gob < 9) warn.push(`ホブゴブリンは種族ゴブリンが9枚以上ないと場に出せません（現在${gob}枚）`);
+  const wild = ids.filter(id => CARDS[id].race === 'ワイルド' && CARDS[id].kind === 'char').reduce((a, id) => a + list[id], 0);
+  if (list.killerTiger > 0 && wild < 10) warn.push(`キラータイガーは種族ワイルドのキャラが10体以上ないと配置できません（現在${wild}体）`);
+  return { err, warn, r: [n - r2 - r3, r2, r3] };
+}
+
+/* ===== イラスト（SVG） ===== */
+const R = (x, y, w, h, f, e = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" ${e}/>`;
+const Ci = (x, y, r, f, e = '') => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}" ${e}/>`;
+const E = (x, y, rx, ry, f, e = '') => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" ${e}/>`;
+const Pa = (d, f, e = '') => `<path d="${d}" fill="${f}" ${e}/>`;
+const St = (d, s, w, e = '') => `<path d="${d}" fill="none" stroke="${s}" stroke-width="${w}" stroke-linecap="round" ${e}/>`;
+const human = (cl, skin = '#e3c39b', top = '') => Pa('M76 120 L86 64 Q100 56 114 64 L124 120Z', cl) + Ci(100, 48, 12, skin) + top;
+const hat = c => Pa('M86 42 L102 8 L114 42Z', c) + E(100, 42, 21, 5, c);
+const swordG = (x = 132) => Pa(`M${x - 2} 26 L${x + 2} 26 L${x + 4} 92 L${x - 4} 92Z`, '#dfe5e8') + R(x - 10, 92, 20, 4, '#b8963e') + R(x - 3, 96, 6, 14, '#6b4a2a');
+const staffG = (x = 132, c = '#9b7bff') => R(x - 2, 30, 4, 84, '#6b4a2a') + Ci(x, 26, 8, c, 'opacity=".9"');
+const gobHead = (x, y, s = 1) => Ci(x, y, 14 * s, '#6e9b3b') + Pa(`M${x - 12 * s} ${y - 4 * s} L${x - 34 * s} ${y - 12 * s} L${x - 12 * s} ${y + 6 * s}Z`, '#6e9b3b') + Pa(`M${x + 12 * s} ${y - 4 * s} L${x + 34 * s} ${y - 12 * s} L${x + 12 * s} ${y + 6 * s}Z`, '#6e9b3b') + Ci(x - 5 * s, y - 2 * s, 2.5 * s, '#ffe14d') + Ci(x + 5 * s, y - 2 * s, 2.5 * s, '#ffe14d');
+const MOT = {
+  avatar: () => human('#3b2f6b', '#e3c39b', Pa('M88 38 L92 26 L98 34 L100 24 L102 34 L108 26 L112 38Z', '#d9b84a')) + swordG(130),
+  rookieAdv: () => human('#7a5a3a') + swordG(130) + Pa('M66 70 L88 66 L88 100 L70 96Z', '#8a9299'),
+  rookieMage: () => human('#5a46a8', '#e3c39b', hat('#3c2f80')) + staffG(132),
+  normalGob: () => Pa('M80 120 L88 70 L112 70 L120 120Z', '#5a4a30') + gobHead(100, 52) + R(128, 60, 4, 50, '#6b4a2a'),
+  hobGob: () => Pa('M70 120 L82 66 L118 66 L130 120Z', '#6a4a2a') + gobHead(100, 48, 1.3) + Pa('M126 40 L132 40 L134 100 L124 100Z', '#9aa3a8'),
+  slime: () => Pa('M40 112 Q50 44 100 44 Q150 44 160 112Z', '#5fd1b3', 'opacity=".9"') + Ci(84, 78, 6, '#fff') + Ci(116, 78, 6, '#fff') + Ci(84, 79, 3, '#123') + Ci(116, 79, 3, '#123') + Pa('M60 60 Q70 52 84 54', 'none', 'stroke="#c9fff0" stroke-width="4"'),
+  darkAssassin: () => human('#1c1c2a', '#d8b894', Pa('M84 50 Q100 24 116 50 L110 56 Q100 44 90 56Z', '#101018')) + St('M132 40 L150 104', '#cfd6d9', 3) + St('M128 100 L138 96', '#6a4a2a', 3) + Ci(94, 48, 2, '#c43030') + Ci(106, 48, 2, '#c43030'),
+  rookieRanger: () => human('#3f6a3a', '#e3c39b', Pa('M86 44 Q100 24 114 44 L110 50 Q100 40 90 50Z', '#2a4a26')) + St('M136 30 Q158 70 136 112', '#8a5a2a', 4) + St('M136 30 L136 112', '#e8e0c0', 1.5) + St('M108 70 L150 70', '#c9b27a', 2) + Pa('M150 66 L158 70 L150 74Z', '#cfd6d9'),
+  vetRanger: () => human('#2f5a3a', '#e3c39b', Pa('M84 46 Q100 18 116 46 L110 52 Q100 38 90 52Z', '#1f3a22') + Pa('M88 40 Q100 30 112 40', '#1f3a22')) + St('M138 24 Q164 68 138 114', '#7a4a1e', 5) + St('M138 24 L138 114', '#e8e0c0', 1.5) + St('M104 68 L156 68', '#c9b27a', 2) + Pa('M156 64 L166 68 L156 72Z', '#cfd6d9') + Pa('M62 80 L76 84 L72 108 L62 102Z', '#5a4a2a'),
+  bowFine: () => St('M60 14 Q150 60 60 108', '#8a5a2a', 7) + St('M60 14 Q150 60 60 108', '#c89a52', 3) + St('M60 14 L60 108', '#efe8cc', 1.5) + St('M60 60 L150 60', '#c9b27a', 3) + Pa('M150 55 L166 60 L150 65Z', '#dfe5e8') + Pa('M62 55 L52 60 L62 65Z', '#b84a3a'),
+  vetAdv: () => human('#40536b') + Pa('M86 40 Q100 22 114 40Z', '#8a9299') + swordG(132) + Pa('M62 66 L88 62 L88 104 Q74 110 64 96Z', '#7d8790'),
+  vetMage: () => human('#2e5b8a', '#e3c39b', hat('#1f3d66')) + Pa('M88 52 Q100 78 112 52Z', '#ddd') + staffG(134, '#6fd2ff'),
+  dwarf: () => Pa('M66 120 L76 74 L124 74 L134 120Z', '#7a5a3a') + Ci(100, 58, 14, '#e3b78f') + Pa('M84 60 Q100 100 116 60Z', '#b0592b') + Pa('M84 54 Q100 28 116 54Z', '#8a9299') + R(130, 50, 6, 50, '#6b4a2a') + Pa('M126 44 L146 44 L146 62 L126 62Z', '#9aa3a8'),
+  gobWiz: () => Pa('M80 120 L88 70 L112 70 L120 120Z', '#3b3a6a') + gobHead(100, 54) + hat('#4a3a8a') + staffG(132, '#ffb84d'),
+  ogre: () => Pa('M50 120 L62 58 L138 58 L150 120Z', '#7a7a4a') + Ci(100, 44, 22, '#8a9a58') + Pa('M86 54 L90 66 L94 54Z M106 54 L110 66 L114 54Z', '#fff') + Ci(92, 40, 3, '#ffe14d') + Ci(108, 40, 3, '#ffe14d') + R(150, 30, 8, 80, '#5b3f22') + E(154, 30, 16, 12, '#6b4a2a'),
+  redBoar: () => E(100, 82, 52, 30, '#9a3b2a') + Ci(60, 76, 22, '#8a3224') + Pa('M52 84 L36 96 L58 92Z', '#f2ead0') + Pa('M66 84 L56 100 L74 90Z', '#f2ead0') + Ci(58, 70, 3, '#ffe14d') + Pa('M70 56 L84 66 L74 70Z', '#6b2218') + Pa('M110 52 L116 66 L124 54 L130 66 L138 52', 'none', 'stroke="#d8c08a" stroke-width="3"'),
+  elfMage: () => human('#2f7a4f', '#f0d6b3', Pa('M86 46 L70 40 L88 54Z M114 46 L130 40 L112 54Z', '#f0d6b3') + Pa('M88 44 Q100 30 112 44 L112 38 Q100 24 88 38Z', '#e8d56a')) + staffG(134, '#8dffb0'),
+  redDragon: () => Pa('M20 40 Q60 10 96 60 L96 80 Q60 50 30 66Z', '#8a1f1a') + Pa('M180 40 Q140 10 104 60 L104 80 Q140 50 170 66Z', '#8a1f1a') + E(100, 84, 26, 30, '#b8302a') + Pa('M84 66 Q100 20 116 66Z', '#c43a2e') + Pa('M92 44 L86 28 L98 40Z M108 44 L114 28 L102 40Z', '#f2ead0') + Ci(93, 52, 2.5, '#ffe14d') + Ci(107, 52, 2.5, '#ffe14d') + Pa('M90 74 Q100 96 110 74Z', '#ff9a2e'),
+  troll: () => Pa('M44 120 L58 62 L142 62 L156 120Z', '#5e6b4a') + Ci(100, 44, 24, '#7d8a64') + Pa('M80 36 L74 22 L88 32Z M120 36 L126 22 L112 32Z', '#4a5238') + Ci(91, 42, 3.5, '#ffd24d') + Ci(109, 42, 3.5, '#ffd24d') + Pa('M88 56 Q100 66 112 56 L110 62 Q100 70 90 62Z', '#2a2a1a') + Pa('M92 56 L95 63 L98 56Z M102 56 L105 63 L108 56Z', '#f2ead0') + E(60, 92, 14, 18, '#6c7858') + E(140, 92, 14, 18, '#6c7858') + R(150, 40, 8, 74, '#5b3f22') + E(154, 38, 14, 12, '#6b4a2a') + St('M72 80 Q80 90 74 100 M128 80 Q120 90 126 100', '#a9d08a', 3),
+  iceWitch: () => Pa('M60 120 L76 66 L124 66 L140 120Z', '#3a5a9a') + Pa('M84 70 Q100 100 116 70Z', '#cfe8ff', 'opacity=".5"') + Ci(100, 50, 13, '#e8f1ff') + Pa('M84 48 Q100 12 116 48 L112 40 Q100 22 88 40Z', '#dff3ff') + Pa('M80 46 Q100 8 120 46 L112 44 Q100 20 88 44Z', '#6f9fe0') + Ci(95, 50, 2, '#4fd0ff') + Ci(105, 50, 2, '#4fd0ff') + R(138, 30, 4, 86, '#9fc4e8') + Pa('M140 12 L150 28 L140 40 L130 28Z', '#bff0ff') + St('M30 30 L40 40 M40 30 L30 40 M160 80 L170 90 M170 80 L160 90', '#e8f6ff', 3) + Ci(40, 80, 3, '#fff') + Ci(168, 50, 3, '#fff'),
+  golem1: () => R(70, 50, 60, 56, '#8a7a62') + R(60, 60, 14, 38, '#7a6a52') + R(126, 60, 14, 38, '#7a6a52') + R(82, 24, 36, 28, '#9a8a70') + Ci(92, 38, 3.5, '#ffb84d') + Ci(108, 38, 3.5, '#ffb84d') + St('M78 70 L122 70 M78 84 L122 84', '#5a4a38', 3),
+  golem2: () => R(62, 46, 76, 62, '#8aa0b0') + R(48, 56, 18, 44, '#7a90a0') + R(134, 56, 18, 44, '#7a90a0') + R(80, 18, 40, 32, '#a8bccb') + Ci(91, 34, 4, '#6fd8ff') + Ci(109, 34, 4, '#6fd8ff') + St('M70 64 L130 64 M70 80 L130 80 M100 50 L100 108', '#4a6070', 3) + Pa('M100 72 L108 82 L100 92 L92 82Z', '#6fd8ff'),
+  golem3: () => R(54, 40, 92, 70, '#c8a84a') + R(36, 52, 22, 52, '#b89838') + R(142, 52, 22, 52, '#b89838') + R(76, 10, 48, 34, '#e0c060') + Pa('M76 12 L86 0 L94 12 M106 12 L114 0 L124 12', '#f5e08a') + Ci(89, 28, 4.5, '#ff6a4d') + Ci(111, 28, 4.5, '#ff6a4d') + St('M62 60 L138 60 M62 78 L138 78 M62 96 L138 96', '#7a6020', 3) + Pa('M100 62 L112 76 L100 90 L88 76Z', '#fff2a0') + St('M20 30 L30 40 M170 30 L180 40', '#fff2a0', 3),
+  createGolem: () => R(70, 60, 60, 44, '#8a7a62') + R(82, 30, 36, 28, '#9a8a70') + Ci(92, 44, 3, '#ffb84d') + Ci(108, 44, 3, '#ffb84d') + St('M30 30 L50 50 M170 30 L150 50 M100 8 L100 26', '#ffe9a0', 3) + Ci(30, 30, 4, '#ffe9a0') + Ci(170, 30, 4, '#ffe9a0'),
+  moonDragon: () => Ci(144, 36, 22, '#f4ecc4') + Ci(152, 32, 19, '#1d2850') + Pa('M16 80 Q56 30 96 66 L96 84 Q56 60 26 90Z', '#3a4a9a') + Pa('M184 80 Q144 40 104 66 L104 84 Q144 62 174 90Z', '#3a4a9a') + E(100, 86, 24, 28, '#5a6ac0') + Pa('M84 70 Q100 24 116 70Z', '#6a7ad0') + Pa('M90 48 L84 30 L96 42Z M110 48 L116 30 L104 42Z', '#e8ecff') + Ci(93, 54, 2.5, '#ffe9a0') + Ci(107, 54, 2.5, '#ffe9a0') + St('M10 20 L16 26 M30 14 L34 20', '#e8ecff', 2),
+  blizzard: () => St('M10 40 Q60 10 110 44 T190 30', '#e8f6ff', 6) + St('M6 70 Q60 44 110 74 T194 60', '#9fd0ff', 6) + St('M10 100 Q60 80 100 102 T190 94', '#cfeaff', 5) + Pa('M60 30 L64 42 L76 42 L66 50 L70 62 L60 54 L50 62 L54 50 L44 42 L56 42Z', '#fff') + Pa('M140 56 L143 64 L152 64 L145 70 L148 78 L140 73 L132 78 L135 70 L128 64 L137 64Z', '#fff') + Ci(110, 90, 3, '#fff') + Ci(30, 92, 3, '#fff') + Ci(170, 100, 3, '#fff'),
+  thunderStorm: () => Pa('M0 0 H200 V50 Q150 60 100 40 Q50 60 0 46Z', '#2a2f4a') + Pa('M96 20 L72 66 L96 66 L80 118 L130 56 L106 56 L124 20Z', '#ffe14d') + Pa('M96 20 L72 66 L96 66 L80 118 L130 56 L106 56 L124 20Z', 'none', 'stroke="#fff6b0" stroke-width="2"') + St('M30 58 L24 80 L34 80 L28 100 M170 60 L176 82 L166 82 L172 100', '#fff2a0', 3),
+  stormEagle: () => Pa('M10 60 Q50 20 98 62 L98 74 Q60 56 20 78Z', '#3d6fb0') + Pa('M190 60 Q150 20 102 62 L102 74 Q140 56 180 78Z', '#3d6fb0') + E(100, 66, 12, 26, '#e8eef2') + Ci(100, 42, 11, '#f4f7f9') + Pa('M96 44 L104 44 L100 56Z', '#e0a23a') + Ci(96, 40, 2, '#123') + Ci(104, 40, 2, '#123') + Pa('M88 90 L112 90 L100 116Z', '#cdd8e0') + St('M30 28 L60 48 M170 28 L140 48', '#bfe4ff', 3),
+  blackWolf: () => E(104, 86, 42, 22, '#2b2f36') + Ci(60, 66, 20, '#343942') + Pa('M46 52 L50 34 L60 50Z M66 50 L74 34 L76 54Z', '#2b2f36') + Pa('M42 68 L24 76 L44 78Z', '#343942') + Ci(54, 62, 3, '#ffd24d') + Pa('M140 80 Q170 60 176 40', 'none', 'stroke="#2b2f36" stroke-width="9" stroke-linecap="round"') + R(76, 98, 6, 18, '#2b2f36') + R(120, 98, 6, 18, '#2b2f36'),
+  killerTiger: () => E(104, 82, 46, 26, '#d98a2b') + Ci(58, 66, 22, '#e29a3a') + Pa('M44 52 L48 36 L60 50Z M70 50 L76 36 L78 54Z', '#d98a2b') + Ci(52, 62, 3, '#fff0a0') + Ci(66, 62, 3, '#fff0a0') + Pa('M52 76 L58 90 L64 76Z', '#fff') + St('M90 62 L96 80 M106 60 L112 82 M122 62 L126 82 M138 66 L140 84', '#2a1a10', 5),
+  bloodSnake: () => St('M30 100 Q70 40 100 80 T170 50', '#7a2a6a', 16) + St('M30 100 Q70 40 100 80 T170 50', '#b04a96', 6) + Ci(172, 48, 11, '#8a2f78') + Ci(176, 44, 2.5, '#ffe14d') + St('M180 52 L192 56 M192 56 L198 52 M192 56 L198 60', '#d33', 2),
+  greatMonkey: () => E(100, 92, 30, 24, '#7a4f2a') + Ci(100, 52, 20, '#8a5a30') + E(100, 58, 13, 11, '#e2b88f') + Ci(93, 50, 3, '#123') + Ci(107, 50, 3, '#123') + Ci(78, 50, 8, '#8a5a30') + Ci(122, 50, 8, '#8a5a30') + St('M130 96 Q166 90 164 60', '#7a4f2a', 8),
+  vampire: () => Pa('M30 120 L76 60 L100 70 L124 60 L170 120Z', '#1c1624') + Pa('M80 120 L88 66 L112 66 L120 120Z', '#3a1430') + Ci(100, 48, 12, '#e9e2e6') + Pa('M90 42 Q100 28 110 42 L110 36 Q100 24 90 36Z', '#15101a') + Ci(95, 48, 2, '#e22') + Ci(105, 48, 2, '#e22') + Pa('M97 56 L99 62 L101 56Z', '#fff'),
+  cockatrice: () => E(96, 82, 34, 26, '#8a7a3a') + Ci(66, 52, 16, '#a08a44') + Pa('M58 40 L62 26 L70 38 L76 28 L78 42Z', '#c9302a') + Pa('M50 54 L36 58 L50 62Z', '#e0a23a') + Ci(62, 50, 3, '#ffe14d') + St('M128 86 Q166 96 150 60 Q144 48 160 40', '#5c8a3a', 8) + Pa('M70 110 L74 120 M96 110 L100 120', 'none', 'stroke="#c9a23a" stroke-width="3"'),
+  signpost: () => R(96, 30, 8, 90, '#6b4a2a') + Pa('M58 36 L112 36 L124 46 L112 56 L58 56Z', '#b88a4a') + Pa('M142 62 L92 62 L80 72 L92 82 L142 82Z', '#a67a3c') + Ci(160, 22, 6, '#ffe9a0', 'opacity=".8"') + Ci(40, 30, 4, '#ffe9a0', 'opacity=".7"'),
+  fireball: () => Ci(100, 66, 34, '#ff7a1a') + Ci(100, 66, 22, '#ffc23a') + Ci(100, 66, 10, '#fff4c2') + Pa('M70 50 Q60 20 90 30 Q80 40 90 50Z M120 44 Q140 16 150 34 Q136 40 132 54Z', '#ff5a1a') + St('M30 100 Q60 90 70 80', '#ff9a2e', 5),
+  sandWall: () => R(50, 40, 100, 70, '#b89a62') + St('M50 62 H150 M50 84 H150 M80 40 V62 M120 62 V84 M80 84 V110', '#8a6f3e', 3) + Pa('M30 110 Q70 90 100 104 T170 108 L170 120 L30 120Z', '#d8bd84', 'opacity=".8"'),
+  freezeWind: () => St('M20 50 Q70 30 110 54 T180 40', '#cfeaff', 5) + St('M30 76 Q80 56 120 80 T186 66', '#9fd0ff', 5) + St('M20 100 Q70 84 100 100 T170 94', '#e8f6ff', 4) + Pa('M150 24 L154 34 L164 34 L156 40 L160 50 L150 44 L140 50 L144 40 L136 34 L146 34Z', '#fff'),
+  shiftForm: () => St('M50 100 L100 50 L150 100', '#c9a6ff', 7) + Pa('M100 36 L116 54 L84 54Z', '#c9a6ff') + St('M40 40 L70 70 M160 40 L130 70', '#7a5acf', 4) + Ci(100, 86, 12, '#6a3fbf', 'opacity=".7"'),
+  teleport: () => Ci(60, 70, 26, 'none', 'stroke="#7fd0ff" stroke-width="5"') + Ci(140, 70, 26, 'none', 'stroke="#ffb26a" stroke-width="5"') + St('M86 56 Q100 40 114 56 M114 84 Q100 100 86 84', '#fff', 4) + Pa('M114 56 L106 48 L108 60Z M86 84 L94 92 L92 80Z', '#fff'),
+  reinforce: () => human('#7a5a3a') + Pa('M30 120 L40 80 L60 80 L70 120Z', '#5a46a8') + Pa('M130 120 L140 80 L160 80 L170 120Z', '#2f7a4f') + Ci(50, 68, 8, '#e3c39b') + Ci(150, 68, 8, '#e3c39b') + Pa('M100 6 L108 20 L92 20Z', '#ffe9a0'),
+  magicGuard: () => Pa('M40 110 Q40 30 100 20 Q160 30 160 110Z', '#6fa8ff', 'opacity=".45"') + Pa('M60 110 Q60 44 100 36 Q140 44 140 110Z', '#9cc4ff', 'opacity=".5"') + Pa('M100 50 L120 60 L116 90 L100 100 L84 90 L80 60Z', '#d6e6ff') + St('M100 56 V94', '#4f7acf', 3),
+  chaosHand: () => Pa('M70 120 L76 70 L70 44 L80 40 L86 64 L88 30 L98 30 L98 62 L106 28 L116 30 L112 64 L124 40 L132 46 L120 76 L126 120Z', '#7a3fbf') + Ci(100, 60, 30, '#c9a6ff', 'opacity=".25"') + St('M40 40 Q60 20 80 30 M160 36 Q140 18 124 28', '#e0c8ff', 3),
+  aquaReturn: () => St('M60 96 Q60 40 100 40 Q140 40 140 80', '#6fd0ff', 8) + Pa('M140 80 L128 72 L150 68Z', '#6fd0ff') + Pa('M90 110 Q100 84 110 110Z', '#9fe0ff') + St('M40 110 Q70 98 100 110 T160 110', '#bfeaff', 4),
+  goldenBody: () => human('#e0b84a', '#f4dc8a') + Pa('M76 120 L86 64 Q100 56 114 64 L124 120Z', '#ffe27a', 'opacity=".5"') + Ci(100, 70, 46, 'none', 'stroke="#ffe27a" stroke-width="3" opacity=".7"') + St('M100 6 V22 M40 30 L52 40 M160 30 L148 40', '#ffe27a', 4),
+  instinct: () => Pa('M100 36 Q120 40 126 60 Q130 84 100 96 Q70 84 74 60 Q80 40 100 36Z', '#d98a2b') + Pa('M80 52 L72 34 L88 46Z M120 52 L128 34 L112 46Z', '#d98a2b') + Ci(90, 64, 3, '#fff') + Ci(110, 64, 3, '#fff') + Pa('M92 78 L100 84 L108 78', 'none', 'stroke="#2a1a10" stroke-width="3"') + St('M30 96 Q60 70 74 50 M170 96 Q140 70 126 50', '#ffd24d', 4),
+  spark: () => Pa('M110 14 L70 80 L98 80 L84 128 L134 58 L104 58 L124 14Z', '#ffe04a') + St('M110 14 L70 80 L98 80 L84 128 L134 58 L104 58 L124 14Z', '#fff7c0', 2),
+  redDragonBreath: () => Pa('M100 20 Q150 50 140 100 Q130 130 100 128 Q70 130 60 100 Q50 50 100 20Z', '#e0481a') + Pa('M100 46 Q128 66 122 100 Q116 118 100 116 Q84 118 78 100 Q72 66 100 46Z', '#ffa02a') + Pa('M100 74 Q112 88 108 104 Q100 112 92 104 Q88 88 100 74Z', '#ffe27a'),
+  windSlash: () => St('M30 100 Q90 70 170 24', '#bff0d0', 8) + St('M30 110 Q96 84 176 44', '#6fd6a0', 5) + St('M50 84 Q100 60 160 20', '#fff', 3),
+  swordFine: () => Pa('M96 10 L104 10 L108 82 L92 82Z', '#e6ecef') + R(72, 82, 56, 7, '#b8963e') + R(95, 89, 10, 22, '#6b4a2a') + Ci(100, 114, 5, '#b8963e') + St('M100 14 V80', '#9aa3a8', 2),
+  wandFine: () => R(97, 34, 6, 84, '#6b4a2a') + Ci(100, 28, 15, '#7f5cff', 'opacity=".95"') + Ci(100, 28, 8, '#d6c9ff') + Pa('M82 40 Q100 52 118 40 L112 46 Q100 56 88 46Z', '#b8963e') + St('M60 18 L68 26 M140 18 L132 26 M52 44 L64 44 M148 44 L136 44', '#c9a6ff', 3) + Ci(60, 80, 3, '#d6c9ff') + Ci(142, 90, 4, '#d6c9ff'),
+  shieldFine: () => Pa('M50 24 L150 24 L146 78 Q100 116 54 78Z', '#8a9299') + Pa('M60 32 L140 32 L137 74 Q100 104 63 74Z', '#aeb7bc') + St('M100 32 V100 M60 56 H140', '#6c747a', 4) + Ci(100, 56, 8, '#c5a66a'),
+  stoneThrow: () => Pa('M60 84 Q56 50 90 44 Q124 40 134 70 Q140 98 100 104 Q68 108 60 84Z', '#8a8f94') + Pa('M76 62 Q90 54 104 58', 'none', 'stroke="#b5babe" stroke-width="4"') + St('M140 70 L184 50 M140 84 L186 80', '#d6d9dc', 3),
+  staminaPotion: () => Pa('M88 30 H112 V50 Q132 62 130 90 Q128 112 100 112 Q72 112 70 90 Q68 62 88 50Z', '#4fcf6a', 'opacity=".9"') + R(86, 20, 28, 12, '#8a6a3a') + Ci(90, 86, 6, '#c9ffd6', 'opacity=".7"'),
+  magicPotion: () => Pa('M88 30 H112 V50 Q132 62 130 90 Q128 112 100 112 Q72 112 70 90 Q68 62 88 50Z', '#6a7aff', 'opacity=".9"') + R(86, 20, 28, 12, '#8a6a3a') + Ci(90, 86, 6, '#d6dcff', 'opacity=".7"') + Pa('M150 30 L154 40 L164 40 L156 46 L160 56 L150 50 L140 56 L144 46 L136 40 L146 40Z', '#ffe9a0'),
+  hyperPotion: () => Pa('M88 30 H112 V50 Q132 62 130 90 Q128 112 100 112 Q72 112 70 90 Q68 62 88 50Z', '#ff6ad0', 'opacity=".9"') + R(86, 20, 28, 12, '#c5a66a') + R(96, 72, 8, 24, '#fff') + R(88, 80, 24, 8, '#fff'),
+  gobFlute: () => R(40, 62, 120, 12, '#c9a46a') + Ci(60, 68, 3, '#3a2a14') + Ci(80, 68, 3, '#3a2a14') + Ci(100, 68, 3, '#3a2a14') + St('M168 56 Q182 44 176 30 M174 70 Q192 66 190 48', '#9fd05a', 3) + gobHead(40, 36, .6),
+  gobParade: () => R(60, 20, 4, 96, '#6b4a2a') + Pa('M64 24 L150 34 L64 56Z', '#5a8a2a') + gobHead(40, 100, .7) + gobHead(80, 106, .7) + gobHead(124, 102, .7) + Ci(104, 36, 6, '#ffe14d'),
+  assault: () => St('M30 90 L170 90', '#c43a2e', 6) + Pa('M170 70 L196 90 L170 110Z', '#c43a2e') + St('M30 60 L150 60 M30 120 L150 120', '#e8a090', 4) + Pa('M20 20 L48 20 L34 40Z', '#ffe9a0'),
+  ferocious: () => Pa('M40 100 Q60 40 100 30 Q140 40 160 100 Q130 86 100 90 Q70 86 40 100Z', '#7a4a1a') + Pa('M70 54 L62 30 L84 46Z M130 54 L138 30 L116 46Z', '#5a3210') + Ci(86, 62, 4, '#ffd24d') + Ci(114, 62, 4, '#ffd24d') + Pa('M88 78 L94 92 L100 78 L106 92 L112 78Z', '#f2ead0') + St('M30 30 Q100 0 170 30', '#ffe9a0', 4) + St('M20 60 L36 52 M180 60 L164 52', '#ffe9a0', 3),
+  petrifyRay: () => St('M20 100 L110 50', '#fff6b0', 7) + St('M20 100 L110 50', '#ffe14d', 3) + Ci(150, 56, 26, '#8a8a82') + Ci(150, 56, 20, '#a6a69c') + Pa('M138 42 L162 42 L158 70 L142 70Z', '#7a7a72') + St('M130 90 L170 30 M126 60 L176 70', '#5e5e58', 2) + Ci(24, 100, 8, '#fff2a0'),
+  elixir: () => Pa('M88 24 H112 V46 Q140 58 138 92 Q136 112 100 112 Q64 112 62 92 Q60 58 88 46Z', '#e9f6ff', 'opacity=".25"') + Pa('M70 78 Q100 66 130 78 Q132 104 100 108 Q68 104 70 78Z', '#7de0b0') + Pa('M92 14 H108 V26 H92Z', '#c9a24a') + Ci(92, 90, 3, '#fff') + Ci(110, 84, 2.5, '#fff') + Ci(104, 98, 2, '#fff') + St('M100 56 L100 40 M60 40 L66 48 M140 40 L134 48', '#fff6b0', 3),
+  thornTrap: () => Pa('M30 120 L100 120 L100 100Z', '#8a8a92') + Pa('M60 120 L84 52 L108 120Z', '#b8bcc4') + Pa('M96 120 L120 64 L144 120Z', '#8a8e98') + Pa('M126 120 L146 76 L166 120Z', '#b8bcc4') + St('M20 122 L180 122', '#5a4a32', 6) + Ci(84, 52, 3, '#c43030'),
+  magicSanctuary: () => Ci(100, 70, 40, 'none', 'stroke="#bfe0ff" stroke-width="3" stroke-dasharray="6 5"') + Ci(100, 70, 26, '#6fa8e0', 'opacity=".25"') + Pa('M100 38 L106 62 L130 70 L106 78 L100 102 L94 78 L70 70 L94 62Z', '#e6f4ff') + R(40, 40, 8, 64, '#8a96a8') + R(152, 40, 8, 64, '#8a96a8') + Pa('M36 40 H52 L44 28Z M148 40 H164 L156 28Z', '#b8c4d4') + Ci(24, 22, 3, '#fff') + Ci(176, 24, 3, '#fff'),
+  fightSpirit: () => Pa('M60 60 Q100 20 140 60 Q130 100 100 108 Q70 100 60 60Z', '#a52a2a') + Pa('M80 70 L88 90 L96 70Z M104 70 L112 90 L120 70Z', '#fff') + Ci(84, 56, 4, '#ffd24d') + Ci(116, 56, 4, '#ffd24d') + St('M40 40 Q60 30 70 50 M160 40 Q140 30 130 50', '#ff7a1a', 5),
+};
+const ART = {
+  avatar: ['#2a2350', '#0e0c1e'], rookieAdv: ['#6a8a5a', '#2a3a28'], rookieMage: ['#4a4a8a', '#171533'], normalGob: ['#5a6a3a', '#1c2412'], hobGob: ['#6a5a3a', '#201a0e'], slime: ['#2f6a6a', '#0e2424'],
+  darkAssassin: ['#4a3a6a', '#0c0a18'], rookieRanger: ['#4a7a4a', '#12241a'], vetRanger: ['#3a6a4a', '#0e2216'], bowFine: ['#8a6a3a', '#22180c'], vetAdv: ['#7a7a8a', '#262633'], vetMage: ['#3a6a9a', '#10203a'], dwarf: ['#8a5a3a', '#2a1a10'], gobWiz: ['#4a4a6a', '#14142a'], ogre: ['#6a6a3a', '#1c1c0e'], redBoar: ['#8a4a3a', '#2a1410'],
+  elfMage: ['#3a7a5a', '#10281c'], redDragon: ['#8a2a1a', '#2a0a06'], iceWitch: ['#4a7ac0', '#0c1a38'], golem1: ['#7a6a4a', '#1c160c'], golem2: ['#5a7a9a', '#0c1822'], golem3: ['#b8963a', '#2a1c06'], createGolem: ['#6a5a3a', '#16100a'], moonDragon: ['#3a4a8a', '#0a0e2a'], blizzard: ['#6aa8d8', '#0e2438'], thunderStorm: ['#3a3f70', '#0c0e24'], stormEagle: ['#5a8acf', '#162a4a'], troll: ['#6a7a4a', '#1a2210'], wandFine: ['#4a3a8a', '#120c2a'], blackWolf: ['#4a4f5a', '#12151c'], killerTiger: ['#b0742a', '#2a1a08'], bloodSnake: ['#6a2a5a', '#1c0a18'],
+  greatMonkey: ['#6a8a3a', '#18240c'], vampire: ['#4a2a3a', '#120a10'], cockatrice: ['#7a7a4a', '#1e1e10'], signpost: ['#6a8a9a', '#1a2a34'], fireball: ['#a03a1a', '#2a0c06'], sandWall: ['#c9a46a', '#4a3a1c'],
+  freezeWind: ['#5a9acf', '#122a44'], shiftForm: ['#5a3a9a', '#150c30'], teleport: ['#2a4a7a', '#0c1630'], reinforce: ['#8a7a4a', '#2a220e'], magicGuard: ['#3a5a9a', '#0e1a34'], chaosHand: ['#4a1a6a', '#120620'],
+  aquaReturn: ['#2a6a9a', '#0a1e34'], goldenBody: ['#b08a2a', '#3a2808'], instinct: ['#8a5a2a', '#241406'], windSlash: ['#2a7a5a', '#0a2418'], redDragonBreath: ['#b02a0a', '#2a0804'], spark: ['#7a6a1a', '#1c1804'], swordFine: ['#6a7a8a', '#1a222a'], shieldFine: ['#5a6a7a', '#141c24'],
+  stoneThrow: ['#7a7a6a', '#22221c'], staminaPotion: ['#3a7a4a', '#0e2414'], magicPotion: ['#3a4a9a', '#0e1234'], hyperPotion: ['#8a3a7a', '#260c20'], gobFlute: ['#5a7a3a', '#16200c'],
+  thornTrap: ['#7a6a5a', '#1c1610'], magicSanctuary: ['#4a6aa8', '#0e1830'], petrifyRay: ['#8a8a6a', '#1c1c14'], elixir: ['#4aa07a', '#0c241c'], ferocious: ['#8a5a1a', '#241406'], gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
+};
+function artSVG(id) {
+  const a = ART[id] || ['#334', '#112'];
+  const m = MOT[id] ? MOT[id]() : '';
+  return `<svg viewBox="0 0 200 120" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g_${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a[0]}"/><stop offset="1" stop-color="${a[1]}"/></linearGradient></defs><rect width="200" height="120" fill="url(#g_${id})"/><path d="M0 92 L36 62 L66 82 L108 52 L150 80 L200 58 L200 120 L0 120Z" fill="rgba(0,0,0,.22)"/><rect y="104" width="200" height="16" fill="rgba(0,0,0,.35)"/>${m}</svg>`;
+}
+
+'use strict';
+/* ===== 対戦エンジン ===== */
+let G = null, UIDC = 1;
+let RNG = Math.random;
+function seedRng(seed) { let a = seed >>> 0; RNG = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+/* 座標：側面の列＝A〜G（先行側がG、後攻側がA）、底面の列＝1〜7。例：A1（先行から見て左上） */
+const coord = (x, y) => String.fromCharCode(65 + y) + (x + 1);
+const rnd = n => Math.floor(RNG() * n);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1);[a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fwd = o => (o === 0 ? -1 : 1);
+const rowOf = (o, y) => (o === 0 ? 7 - y : y + 1);
+const cellOfRow = (o, r, x) => ({ x, y: o === 0 ? 7 - r : r - 1 });
+const inB = (x, y) => x >= 0 && x < 7 && y >= 0 && y < 7;
+const U = () => Object.values(G.units);
+const isAv = u => u.cid === 'avatar';
+const own = i => U().filter(u => u.owner === i);
+const chars = i => U().filter(u => u.owner === i && !isAv(u) && !u.hidden);
+const allChars = () => U().filter(u => !isAv(u) && !u.hidden);
+const at = (x, y) => U().find(u => u.x === x && u.y === y && !u.hidden) || U().find(u => u.x === x && u.y === y);
+const hiddenTrap = (x, y) => { const t = G.traps && G.traps[x + ',' + y]; return t && t.hidden ? t : null; };
+const hiddenCards = (owner) => [...U().filter(v => v.hidden && !v.dead && v.owner === owner).map(v => ({ x: v.x, y: v.y, ref: v, cid: v.cid, unit: true })), ...Object.keys(G.traps || {}).filter(k => G.traps[k].hidden && G.traps[k].owner === owner).map(k => { const [x, y] = k.split(',').map(Number); return { x, y, ref: G.traps[k], cid: 'thornTrap', unit: false }; })];
+const hiddenAt = (x, y) => U().filter(u => u.hidden && !u.dead && u.x === x && u.y === y);
+const enemyAt = (x, y, o) => { const t = at(x, y); return t && t.owner !== o && !t.hidden ? t : null; };
+const wallAt = (x, y) => G.walls[x + ',' + y];
+const cur = () => G.players[G.active];
+const abC = (cid, k) => CARDS[cid].ab.includes(k);
+const sfx = n => { try { if (typeof UI !== 'undefined' && UI.sfx) UI.sfx(n); } catch (e) { } };
+const scAvail = u => (u.st && u.st.paralyze ? (u.scT === G.turn ? 0 : Math.min(u.sc, 1)) : u.sc); // まひ：1ターンにSCを1つしか使えない
+const spendSC = (u, n) => { if (n <= 0) return; u.sc -= n; if (u.st && u.st.paralyze) u.scT = G.turn; };
+const holdsAttr = (u, scid) => { const a = scid && CARDS[scid].attr; return !!a && charAttrs(u.cid).some(x => a.split('・').includes(x)); };
+const abU = (u, k) => abC(u.cid, k) || (k === 'incinerate' && !!u.attach && u.attach.some(a => a.cid === 'redDragonBreath'));
+const nm = u => CARDS[u.cid].name;
+const log = s => { G.log.unshift(s); if (G.log.length > 120) G.log.pop(); };
+const terrOfRow = r => (r <= 3 ? 'home' : r === 4 ? 'border' : 'enemy');
+const terr = u => terrOfRow(rowOf(u.owner, u.y));
+
+function mkUnit(owner, cid, x, y) {
+  const c = CARDS[cid];
+  const u = { uid: UIDC++, owner, cid, x, y, lp: c.lp, sc: c.sc, spc: c.spc, acted: 0, placedAt: G.turn, weapon: null, armor: 0, gArmor: 0, tArmor: 0, fArmor: 0, attach: [], st: {}, lpPen: 0, scPen: 0, buffs: [], hidden: false, hiddenSince: 0, dpBonus: 0, uses: {}, dead: false };
+  G.units[u.uid] = u;
+  return u;
+}
+function newGame(d0, d1) {
+  UIDC = 1;
+  G = { turn: 0, active: 0, phase: 'start', over: null, shop: [], shopUsed: [], sanctuaries: {}, traps: {}, units: {}, walls: {}, log: [], assault: null,
+    players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, coins: 0, freeBuy: 1, sellUsed: false, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null })) };
+  for (const p of G.players) {
+    const c = cellOfRow(p.i, 1, 3);
+    p.avatar = mkUnit(p.i, 'avatar', c.x, c.y).uid;
+    draw(p, 4);
+  }
+  return G;
+}
+function draw(p, n = 1) {
+  let k = 0;
+  for (let i = 0; i < n; i++) {
+    if (!p.deck.length) {
+      if (!p.reshuffled && p.grave.length) { p.deck = shuffle(p.grave); p.grave = []; p.reshuffled = true; log(`${p.name}：墓地をシャッフルして山札にした`); }
+      else break;
+    }
+    p.hand.push(p.deck.shift()); k++;
+  }
+  return k;
+}
+
+/* ステータス */
+const isGobName = u => CARDS[u.cid].kind === 'char' && CARDS[u.cid].name.includes('ゴブリン');
+const baseLP = u => CARDS[u.cid].lp + (isGobName(u) && G.players[u.owner].parade ? 1500 : 0) + (u.lpBonus || 0) - u.lpPen - (u.trapLoss || 0);
+const golemStep = u => (/^golem[123]$/.test(u.cid) ? +u.cid.slice(5) : 0);
+const baseSC = u => CARDS[u.cid].sc - u.scPen;
+const baseSpC = u => CARDS[u.cid].spc + (u.weapon && CARDS[u.weapon].wspc ? CARDS[u.weapon].wspc : 0);
+function OP(u) { let v = CARDS[u.cid].op + (u.ambushNow ? 1000 : 0); if (u.weapon) v += CARDS[u.weapon].wop || 0; for (const a of u.attach) v += CARDS[a.cid].aop || 0; for (const b of u.buffs) if (b.k === 'op') v += b.amt; return v; }
+function DP(u) { let v = CARDS[u.cid].dp + u.dpBonus; if (u.weapon) v += CARDS[u.weapon].wdp || 0; for (const b of u.buffs) if (b.k === 'dp') v += b.amt; return v; }
+const aop = a => (a.cid === 'fightSpirit' ? 500 : 0);
+CARDS.fightSpirit.aop = 500;
+const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
+const fArmorCheck = u => { if (u.extra && terr(u) !== 'home') { u.extra = 0; log(`${nm(u)}の「獰猛なる覇者の加護」の効果がホームテリトリーを出たため消えた`); } };
+const baseActs = u => (abU(u, 'twoActions') && !assaultOn(u) ? 2 : 1);
+const actLimit = u => (u.extra === G.players[u.owner].count && !assaultOn(u) ? Math.min(2, baseActs(u) + 1) : baseActs(u));
+const extraOnly = u => u.extra === G.players[u.owner].count && u.acted >= baseActs(u);
+const healPen = u => (u.st.burn ? 500 : 0) + (u.st.chill ? 500 : 0) + (u.st.frost ? 1000 : 0);
+const healCap = u => baseLP(u); // 回復の上限＝加算後のステータス値（獰猛なる覇者の加護などの直接上昇は含み、混沌の手・本能解放などの一時的な増加は含まない）
+function heal(u, n) { n = Math.max(0, n - healPen(u)); const b = healCap(u); if (u.lp < b) u.lp = Math.min(b, u.lp + n); }
+function recomputePen(u) {
+  const lp = (u.st.poison ? 500 : 0) + (u.st.venom ? 1500 : 0) + (u.st.frost ? 2000 : 0);
+  const sc = (u.st.poison ? 1 : 0) + (u.st.venom ? 2 : 0);
+  const dl = lp - u.lpPen, ds = sc - u.scPen;
+  u.lpPen = lp; u.scPen = sc;
+  if (ds > 0) u.sc = Math.max(0, u.sc - ds);
+  if (dl > 0) { u.lp -= dl; if (u.lp <= 0) killUnit(u); }
+}
+function addStatus(u, k) {
+  if (u.dead) return;
+  const s = u.st;
+  if (k === 'burn') s.burn = true;
+  else if (k === 'chill') { if (s.frost) { /* 変化なし */ } else if (s.chill) { delete s.chill; s.frost = true; } else s.chill = true; }
+  else if (k === 'poison') { if (s.venom) { /* 変化なし */ } else if (s.poison) { delete s.poison; s.venom = true; } else s.poison = true; }
+  else if (k === 'paralyze') s.paralyze = true;
+  else if (k === 'petrify') s.petrify = G.players[u.owner].count + 1;
+  sfx('status'); log(`${nm(u)}が状態異常「${STATUS_NAME[statusKey(u, k)]}」になった`);
+  recomputePen(u);
+}
+const STATUS_NAME = { burn: 'やけど', chill: 'しもやけ', frost: '凍傷', poison: '毒', venom: '猛毒', petrify: '石化', paralyze: 'まひ' };
+const statusKey = (u, k) => (k === 'chill' && u.st.frost ? 'frost' : k === 'poison' && u.st.venom ? 'venom' : k);
+function statusList(u) { return Object.keys(u.st).filter(k => u.st[k] != null && u.st[k] !== false); }
+function cure(u, k) {
+  if (k === 'frost') { delete u.st.frost; u.st.chill = true; }
+  else if (k === 'venom') { delete u.st.venom; u.st.poison = true; }
+  else delete u.st[k];
+  recomputePen(u);
+  u.sc = Math.min(u.sc, baseSC(u));
+}
+function killUnit(u) {
+  if (u.dead) return;
+  u.dead = true; sfx('kill');
+  const p = G.players[u.owner];
+  if (isAv(u)) { if (!G.over) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
+  else { p.grave.push(u.cid); log(`${nm(u)}が破壊された`); }
+  if (u.weapon) p.grave.push(u.weapon);
+  for (const a of u.attach) p.grave.push(a.cid);
+  delete G.units[u.uid];
+}
+function damage(u, n, opts) {
+  if (u.dead || (u.hidden && !(opts && opts.hit)) || n <= 0) return;
+  fArmorCheck(u);
+  if (armorTotal(u) > 0) {
+    let a = Math.min(u.tArmor, n); u.tArmor -= a; n -= a;
+    a = Math.min(u.gArmor, n); u.gArmor -= a; n -= a;
+    a = Math.min(u.fArmor || 0, n); u.fArmor -= a; n -= a;
+    if (n > 0 && u.armor > 0) { a = Math.min(u.armor, n); u.armor -= a; n -= a; }
+  }
+  if (n <= 0) return;
+  u.lp -= n; sfx('hit');
+  if (u.lp <= 0) { killUnit(u); return; }
+  if (abU(u, 'superRegen')) heal(u, 1500); else if (abU(u, 'regen')) heal(u, 500);
+}
+
+/* ===== 移動 ===== */
+/* 突撃司令：ホームテリトリー／ボーダーゾーンにいるキャラクターだけが対象（一度対象になれば、移動でエネミーに入っても効果は続く） */
+const assaultOn = u => {
+  if (!G.assault || G.assault.turn !== G.turn || u.owner !== G.assault.owner || isAv(u) || CARDS[u.cid].race !== G.assault.race) return false;
+  if (!G.assault.hit) G.assault.hit = {};
+  if (terr(u) !== 'enemy') G.assault.hit[u.uid] = true;
+  return !!G.assault.hit[u.uid];
+};
+const hasShift = u => u.attach.some(a => a.cid === 'shiftForm' && G.players[u.owner].count >= a.since);
+const hasHunting = u => u.attach.some(a => a.cid === 'fightSpirit' && G.players[u.owner].count >= a.since);
+function canActNow(u) {
+  if (u.dead || u.hidden || G.over) return false;
+  if (u.owner !== G.active) return false;
+  if (u.st.petrify != null) return false;
+  if (u.acted >= actLimit(u)) return false;
+  if (u.placedAt === G.turn && !isAv(u) && !abU(u, 'haste') && !assaultOn(u)) return false;
+  return true;
+}
+function dirsFor(u, assault) {
+  const dy = fwd(u.owner);
+  let dirs = hasShift(u) ? [[-1, dy], [1, dy], [-1, -dy], [1, -dy]] : [[0, dy], [-1, 0], [1, 0], [0, -dy]];
+  if (assault) dirs = dirs.filter(d => d[1] === dy);
+  return dirs;
+}
+function evalCell(u, x, y) {
+  if (!inB(x, y)) return 'out';
+  if (wallAt(x, y) && !abU(u, 'flight')) return 'block';
+  const t = at(x, y);
+  if (!t || t.hidden) return 'empty'; // 非公開のキャラクターがいても、そのマスへは移動できる
+  if (t.owner === u.owner) return 'ally';
+  return 'enemy';
+}
+function movesFor(u) {
+  if (!canActNow(u)) return [];
+  const o = u.owner, dy = fwd(o);
+  const assault = assaultOn(u), bers = abU(u, 'berserk');
+  const len = assault || bers ? 2 : 1;
+  const out = [];
+  for (const d of dirsFor(u, assault)) {
+    const backPure = d[0] === 0 && d[1] === -dy;
+    const noBattle = backPure && !abU(u, 'backBattle') && !abU(u, 'ambush');
+    const canHit = t => !noBattle && !(assault && isAv(t)) && !(extraOnly(u) && isAv(t));
+    const cells = [];
+    for (let k = 1; k <= len; k++) cells.push([u.x + d[0] * k, u.y + d[1] * k]);
+    const cost = () => (assault ? 0 : 1 + (bers ? 1 : 0)); // SCは「1回の移動」につき消費（マス数ではない）
+    const push = (type, c, steps, path) => { const cs = cost(); if (assault || scAvail(u) >= cs) out.push({ x: c[0], y: c[1], type, steps, cost: cs, path, back: backPure && type === 'attack' }); };
+    if (len === 1) {
+      const c = cells[0], r = evalCell(u, c[0], c[1]);
+      if (r === 'empty') push('move', c, 1, [c]);
+      else if (r === 'enemy' && canHit(at(c[0], c[1]))) push('attack', c, 1, [c]);
+    } else {
+      const a = cells[0], b = cells[1], ra = evalCell(u, a[0], a[1]);
+      if (ra === 'enemy') { if (canHit(at(a[0], a[1]))) push('attack', a, 1, [a]); continue; }
+      if (ra === 'empty' || ra === 'ally') {
+        const rb = evalCell(u, b[0], b[1]);
+        if (rb === 'empty') push('move', b, 2, [a, b]);
+        else if (rb === 'enemy' && canHit(at(b[0], b[1]))) push('attack', b, 2, [a, b]);
+        else if (rb === 'out' && ra === 'empty') push('move', a, 1, [a]);
+      }
+    }
+  }
+  if (abU(u, 'assassin') && terr(u) === 'home' && !assault && scAvail(u) >= 1 && hiddenCards(o).some(h => h.x === u.x && h.y === u.y && h.ref !== u && !h.ref.marked)) {
+    const seen = new Set(out.map(m => m.x + ',' + m.y));
+    for (const h of hiddenCards(o).filter(v => v.ref !== u && !v.ref.marked && !(v.x === u.x && v.y === u.y))) {
+      const k = h.x + ',' + h.y; if (seen.has(k)) continue; seen.add(k);
+      const r = evalCell(u, h.x, h.y);
+      if (r === 'empty') out.push({ x: h.x, y: h.y, type: 'move', steps: 1, cost: 1, path: [[h.x, h.y]] });
+      else if (r === 'enemy' && !isAv(at(h.x, h.y)) && !extraOnly(u)) out.push({ x: h.x, y: h.y, type: 'attack', steps: 1, cost: 1, path: [[h.x, h.y]] });
+    }
+  }
+  return out;
+}
+function huntTargets(u) {
+  if (u.dead || u.st.petrify != null) return [];
+  const dy = fwd(u.owner), bers = abU(u, 'berserk');
+  const cost = 1 + (bers ? 1 : 0);
+  if (scAvail(u) < cost) return [];
+  const out = [];
+  for (const d of dirsFor(u, false)) {
+    const backPure = d[0] === 0 && d[1] === -dy;
+    if (backPure && !abU(u, 'backBattle') && !abU(u, 'ambush')) continue;
+    const x = u.x + d[0], y = u.y + d[1];
+    if (evalCell(u, x, y) === 'enemy' && !isAv(at(x, y))) out.push({ x, y, cost, back: backPure });
+  }
+  return out;
+}
+const mustMove = u => (u.owner === G.active && (assaultOn(u) || (abU(u, 'berserk') && u.acted === 0)) && movesFor(u).length > 0);
+
+async function slashTrigger(u) {
+  const n = u.attach.filter(a => a.cid === 'windSlash').length;
+  for (let k = 0; k < n; k++) {
+    if (u.dead || G.over) return;
+    const tg = chars(1 - u.owner);
+    if (!tg.length) return;
+    const r = await UI.pickBoard({ prompt: `ウインドスラッシュ${n > 1 ? `（${k + 1}/${n}）` : ''}：1000ダメージを与える相手キャラを選択`, cells: tg.map(t => [t.x, t.y]), kind: 'target', cancellable: false });
+    const t = at(r[0][0], r[0][1]);
+    if (!t) continue;
+    if (await resist(t, 1, G.players[u.owner])) continue;
+    log(`ウインドスラッシュ：${nm(t)}に1000ダメージ`);
+    damage(t, 1000);
+    UI.render();
+  }
+}
+async function doMove(u, mv) {
+  sfx('move');
+  const from = { x: u.x, y: u.y };
+  if (!assaultOn(u)) spendSC(u, mv.cost);
+  u.acted++;
+  const o = u.owner;
+  for (let i = 0; i < mv.path.length; i++) {
+    const [x, y] = mv.path[i];
+    const last = i === mv.path.length - 1;
+    if (mv.type === 'attack' && last) {
+      await slashTrigger(u);
+      if (u.dead || G.over) return;
+      const d = enemyAt(x, y, o);
+      if (!d) { u.x = x; u.y = y; }
+      else {
+        if (mv.back && abU(u, 'ambush')) u.ambushNow = true;
+        let won; try { won = await battle(u, d); } finally { u.ambushNow = false; }
+        if (G.over || u.dead) return;
+        if (won) { u.x = x; u.y = y; } else { u.x = from.x; u.y = from.y; return; }
+      }
+    } else {
+      u.x = x; u.y = y;
+      await slashTrigger(u);
+      if (u.dead || G.over) return;
+    }
+  }
+  log(`${nm(u)}が${coord(from.x, from.y)}から${coord(u.x, u.y)}へ移動`);
+  await onEntered(u, from);
+}
+async function onEntered(u, from) {
+  const p = G.players[u.owner];
+  fArmorCheck(u);
+  await trapCheck(u);
+  if (u.dead || G.over) return;
+  await sanctuaryCheck(u);
+  if (instinctActive(p) && terr(u) === 'enemy' && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'enemy')) { u.lp += 1000; log(`本能解放：${nm(u)}のLP+1000`); }
+  for (const c of U()) {
+    if (c.owner !== u.owner && !c.hidden && abU(c, 'petrify') && !isAv(u) && c.x === u.x && c.y + fwd(c.owner) === u.y) addStatus(u, 'petrify');
+  }
+  checkAuras();
+  if (u.dead || G.over) return;
+  UI.render();
+  if (hasHunting(u) && !assaultOn(u) && u.uses.hunt !== G.turn) await huntLoop(u);
+}
+async function huntLoop(u) {
+  const mv = huntTargets(u);
+  if (!mv.length) return;
+  const r = await UI.pickBoard({ prompt: 'ハンティング：攻撃するマスを選択（SC' + mv[0].cost + '消費）', cells: mv.map(m => [m.x, m.y]), kind: 'attack', cancellable: true, cancelLabel: 'ハンティングしない' });
+  if (!r) return;
+  const m = mv.find(m => m.x === r[0][0] && m.y === r[0][1]);
+  spendSC(u, m.cost); u.uses.hunt = G.turn;
+  const from = { x: u.x, y: u.y };
+  await slashTrigger(u);
+  if (u.dead || G.over) return;
+  const d = enemyAt(m.x, m.y, u.owner);
+  if (!d) return;
+  if (m.back && abU(u, 'ambush')) u.ambushNow = true;
+  let won; try { won = await battle(u, d); } finally { u.ambushNow = false; }
+  if (u.dead || G.over || !won) return;
+  u.x = m.x; u.y = m.y;
+  await onEntered(u, from);
+}
+function checkAuras() {
+  for (const u of U()) if (u.noSanct && u.noSanct !== sKey(u.x, u.y)) delete u.noSanct;
+  for (const u of U()) if (!u.dead) fArmorCheck(u);
+  for (const d of U()) {
+    if (d.dead || d.hidden || !abU(d, 'incinerate')) continue;
+    const fx = d.x, fy = d.y + fwd(d.owner);
+    const t = enemyAt(fx, fy, d.owner);
+    if (t && !isAv(t)) {
+      t.burnT = t.burnT || {};
+      if (t.burnT[d.uid] !== G.turn) { t.burnT[d.uid] = G.turn; log(`焼却：${nm(t)}のLPを${d.lp}減らす`); damage(t, d.lp); }
+    }
+    const fk = sKey(fx, fy);
+    if (wallAt(fx, fy) && wallAt(fx, fy).owner !== d.owner) { delete G.walls[fx + ',' + fy]; log('焼却：砂壁が破壊された'); }
+    if (G.traps[fk] && G.traps[fk].owner !== d.owner) { delete G.traps[fk]; log('焼却：棘付きトラップが破壊された'); }
+    if (G.sanctuaries[fk] && G.sanctuaries[fk].owner !== d.owner) { delete G.sanctuaries[fk]; log('焼却：魔法聖域が破壊された'); }
+  }
+}
+
+/* ===== バトル ===== */
+async function battle(att, def) {
+  sfx('clash');
+  log(`バトル：${nm(att)}（${coord(att.x, att.y)}）→ ${nm(def)}（${coord(def.x, def.y)}）`);
+  UI.render();
+  for (const [a, b] of [[att, def], [def, att]]) if (abU(a, 'poisonTouch') && !b.dead) addStatus(b, 'poison');
+  for (const [a, b] of [[att, def], [def, att]]) {
+    if (abU(a, 'assassinate') && !a.dead && !b.dead && !isAv(b) && String(CARDS[b.cid].race).includes('ヒューム') && b.lp <= 4000) {
+      log(`${nm(a)}：バトル前に${nm(b)}（LP${b.lp}のヒューム）を破壊した`); killUnit(b);
+      if (a === att) { const g = CARDS[b.cid].rank || 0; G.players[a.owner].coins += g; }
+    }
+  }
+  if (att.dead) return false;
+  if (def.dead) return true;
+  if (G.over) return false;
+  for (const [a, b] of [[att, def], [def, att]]) {
+    if (abU(a, 'slime') && b.weapon) {
+      const d = 1 + rnd(6); UI.toast(`🎲 スライムのサイコロ：${d}`);
+      if (d >= 4) { G.players[b.owner].grave.push(b.weapon); b.weapon = null; b.armor = 0; b.spc = Math.min(b.spc, baseSpC(b)); log(`${nm(b)}の武器が破壊された`); }
+    }
+  }
+  let forced = null;
+  for (const side of [att, def]) { if (await goldenPrompt(side)) { forced = side === att ? 'att' : 'def'; break; } }
+  const AV = att.lp + OP(att), DV = def.lp + DP(def);
+  let win = false;
+  if (forced === 'att') win = true;
+  else if (forced === 'def') win = false;
+  else if (AV >= DV) win = true;
+  else { const dmg = Math.max(0, AV - DP(def)); log(`攻撃値${AV} < 防御値${DV}：${nm(def)}に${dmg}ダメージ`); damage(def, dmg); }
+  if (win) { log(`攻撃値${AV}（防御値${DV}）：攻撃側の勝利`); killUnit(def); if (!isAv(def)) { const g = CARDS[def.cid].rank; G.players[att.owner].coins += g; log(`バトルに勝利：${G.players[att.owner].name}の貨幣ゲージ+${g}（${G.players[att.owner].coins}）`); } }
+  UI.render();
+  return win;
+}
+/* ゴーレム：魔法耐性・超魔法耐性以外でSpCとして使えるのは1まで */
+/* ゴーレム：魔法耐性・超魔法耐性以外でSpCを使えるのは「1ターンに合計1」だけ。SCでの肩代わりもできない */
+const golemSpent = u => (u.uses.gspc === G.turn);
+const spcUsable = u => (golemStep(u) ? (golemSpent(u) ? 0 : Math.min(u.spc, 1)) : u.spc);
+const canPayAmt = (u, n) => !u.hidden && CARDS[u.cid].spc > 0 && u.st.petrify == null && (golemStep(u) ? n <= spcUsable(u) : spcUsable(u) + Math.floor(scAvail(u) / 2) >= n);
+const spReduce = (u, n) => (G.curSpell && n >= 2 && holdsAttr(u, G.curSpell) ? n - 1 : n); // 属性一致：SpC2以上のスペルは必要SpC-1
+async function payCost(p, n, flt) {
+  const n0 = n;
+  const cands = own(p.i).filter(u => canPayAmt(u, spReduce(u, n0)) && (!flt || flt(u)));
+  if (!cands.length) { UI.toast(`SpC${n}を支払えるキャラクター／アバターがいません`); return null; }
+  const r = await UI.pickBoard({ who: p.i, prompt: `SpC${n}を消費するキャラクターを選択`, cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true });
+  if (!r) return null;
+  const u = at(r[0][0], r[0][1]);
+  n = spReduce(u, n0); if (n < n0) log(`${nm(u)}は属性が一致するため、必要SpCが${n0}から${n}になった`);
+  const use = Math.min(spcUsable(u), n), need = n - use, sc = need * 2;
+  if (sc > 0) { if (!(await UI.confirm(`⚠ ${nm(u)}はSpCが${need}足りないため、SCを${sc}消費します。使用しますか？`, p.i))) return null; }
+  u.spc -= use; spendSC(u, sc);
+  if (golemStep(u) && use > 0) u.uses.gspc = G.turn;
+  return u;
+}
+async function payTech(p, cands, prompt) {
+  const r = await UI.pickBoard({ prompt, cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true });
+  if (!r) return null;
+  const u = at(r[0][0], r[0][1]);
+  spendSC(u, 1);
+  return u;
+}
+async function goldenPrompt(side) {
+  if (isAv(side) || side.dead) return false;
+  const p = G.players[side.owner];
+  if (!p.hand.includes('goldenBody')) return false;
+  if (!own(p.i).some(u => canPayAmt(u, 3))) return false;
+  const a = await UI.ask(`【${p.name}に確認】${nm(side)}がバトルします。手札の「黄金の体」（SpC3）を使用しますか？`, ['使用する', '使用しない'], side.owner);
+  if (a !== '使用する') return false;
+  const py = await payCost(p, 3);
+  if (!py) return false;
+  p.hand.splice(p.hand.indexOf('goldenBody'), 1); p.grave.push('goldenBody');
+  await UI.cutIn('goldenBody');
+  log(`黄金の体：${nm(side)}は必ず勝利する`);
+  await onSpellUsed(p, 'goldenBody');
+  return true;
+}
+const hasResist = u => abU(u, 'magicResist') || abU(u, 'superResist');
+async function resist(t, cost, caster, opts = {}) {
+  if (!hasResist(t) || t.hidden || t.dead) return false;
+  if (!opts.wide && t.owner === caster.i) return false;
+  const sup = abU(t, 'superResist');
+  const need = sup ? cost : cost + 1;
+  const rs = t.uses.sr && t.uses.sr.turn === G.turn ? t.uses.sr.n : 0;
+  if (sup && rs >= 2) return false;
+  if (t.spc < need || t.st.petrify != null) return false;
+  const a = await UI.ask(`【${G.players[t.owner].name}に確認】${nm(t)}の${sup ? '超魔法耐性' : '魔法耐性'}：SpC${need}を支払い、スペルの効果を打ち消しますか？${sup ? `（このターンあと${2 - rs}回）` : ''}`, ['打ち消す', '受ける'], t.owner);
+  if (a === '打ち消す') { t.spc -= need; if (sup) t.uses.sr = { turn: G.turn, n: rs + 1 }; log(`${nm(t)}は${sup ? '超魔法耐性' : '魔法耐性'}でスペルを打ち消した`); return true; }
+  return false;
+}
+/* スペル使用の記録と、氷の魔女の誘発 */
+async function onSpellUsed(p, cid) {
+  p.spellsUsed++;
+  const c = CARDS[cid]; let fire = false;
+  if (c.rank >= 2) fire = true; else { p.r1Spells++; if (p.r1Spells % 2 === 0) fire = true; }
+  if (!fire) return;
+  for (const w of chars(p.i).filter(u => abU(u, 'witchChill'))) {
+    const es = foes(p).filter(u => !u.dead);
+    if (!es.length) break;
+    const t = es[rnd(es.length)];
+    log(`${nm(w)}：${nm(t)}が「しもやけ」状態になった`);
+    addStatus(t, 'chill');
+  }
+}
+function dwarfRedirect(t, user) {
+  if (t.owner === user.i) return t;
+  const d = own(t.owner).find(u => abU(u, 'dwarf') && !u.hidden && u !== t && !u.uses.dwarf);
+  if (!d) return t;
+  d.uses.dwarf = true; log(`庇護：対象が${nm(d)}に変更された`); UI.toast('庇護：対象がドワーフの戦士に変更された');
+  return d;
+}
+
+/* ===== 配置 ===== */
+const goblinCount = p => p.deckList.filter(c => CARDS[c].race === 'ゴブリン').length;
+const wildCount = p => p.deckList.filter(c => CARDS[c].race === 'ワイルド' && CARDS[c].kind === 'char').length;
+function slotKind(p, c) {
+  if (p.goblinSlots > 0 && c.race === 'ゴブリン' && c.rank === 1) return 'goblin';
+  if (p.summons < 1) return 'normal';
+  if (p.extra > 0) return 'extra';
+  return null;
+}
+async function summon(p, idx) {
+  const cid = p.hand[idx], c = CARDS[cid];
+  if (abC(cid, 'moonCond') && p.spellsUsed < 3) { UI.toast(`このゲーム中にスペルを3回以上使用していないと盤に出せません（現在${p.spellsUsed}回）`); return false; }
+  if (abC(cid, 'hobCond') && goblinCount(p) < 9) { UI.toast('デッキに種族ゴブリンが9枚以上ないと場に出せません'); return false; }
+  if (abC(cid, 'tigerCond') && wildCount(p) < 10) { UI.toast('デッキに種族ワイルドのキャラが10体以上ないと配置できません'); return false; }
+  if (abC(cid, 'darkCond') && hiddenCards(p.i).filter(v => rowOf(p.i, v.y) <= 3).length < 2) { UI.toast('ホームテリトリーに非公開カードが2枚以上ないと盤に出せません'); return false; }
+  let stealth = false;
+  if (abC(cid, 'stealth')) stealth = (await UI.ask('潜伏を使用しますか？（非公開でホームテリトリーに置く）', ['使用する', '使用しない'])) === '使用する';
+  if (!stealth && !slotKind(p, c)) { UI.toast('このターンはこれ以上キャラクターを配置できません'); return false; }
+  let sac = [], sacSum = 0;
+  if (abC(cid, 'sacrifice')) {
+    const cand = chars(p.i), total = cand.reduce((s, u) => s + u.lp, 0);
+    if (total < 1500) { UI.toast('生贄にできるキャラクターのLP合計が1500に届きません'); return false; }
+    const r = await UI.pickBoard({ prompt: '生贄にするキャラクターを選択（LP合計1500以上）', cells: cand.map(u => [u.x, u.y]), multi: true, kind: 'target', confirmLabel: '生贄にして配置', cancellable: true, validate: sel => sel.reduce((s, [x, y]) => s + at(x, y).lp, 0) >= 1500, sumLabel: sel => `生贄LP合計：${sel.reduce((s, [x, y]) => s + at(x, y).lp, 0)}` });
+    if (!r) return false;
+    sac = r.map(([x, y]) => at(x, y)); sacSum = sac.reduce((s, u) => s + u.lp, 0);
+  }
+  const freed = new Set(sac.map(u => u.x + ',' + u.y));
+  let rows = stealth ? [1, 2, 3] : [1];
+  if ((c.name === 'オーガ' || c.name === 'ヴァンパイア') && sacSum >= 4500) rows = [1, 2];
+  const cells = [];
+  for (const r of rows) for (let x = 0; x < 7; x++) {
+    const cc = cellOfRow(p.i, r, x);
+    if ((!at(cc.x, cc.y) || freed.has(cc.x + ',' + cc.y)) && (!wallAt(cc.x, cc.y) || abC(cid, 'flight'))) cells.push([cc.x, cc.y]);
+  }
+  if (!cells.length) { UI.toast('配置できるマスがありません'); return false; }
+  const pick = await UI.pickBoard({ prompt: '配置するマスを選択', cells, kind: 'place', cancellable: true });
+  if (!pick) return false;
+  await UI.cutIn(cid);
+  const bonus = sac.reduce((s, u) => s + (u.lp >= 3000 ? 1000 : 500), 0);
+  for (const s of sac) killUnit(s);
+  const hi = p.hand.indexOf(cid); p.hand.splice(hi, 1);
+  if (!stealth) { const k = slotKind(p, c); if (k === 'goblin') p.goblinSlots--; else if (k === 'normal') p.summons++; else if (k === 'extra') p.extra--; }
+  const u = mkUnit(p.i, cid, pick[0][0], pick[0][1]);
+  sfx('summon');
+  u.lp = baseLP(u);
+  if (abC(cid, 'sacrifice') && cid === 'vampire') u.dpBonus = bonus;
+  if (stealth) { u.hidden = true; u.hiddenSince = p.count; }
+  log(`${p.name}：${c.name}を${coord(u.x, u.y)}に配置${stealth ? '（潜伏）' : ''}`);
+  await etb(u, p, stealth);
+  await sanctuaryCheck(u);
+  return true;
+}
+async function etb(u, p, stealth) {
+  if (abU(u, 'witchEtb')) {
+    const idx = r => p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && CARDS[p.deck[i]].rank === r);
+    let got = [];
+    const r2 = idx(2);
+    if (r2.length) got = [r2[rnd(r2.length)]];
+    else { const r1 = idx(1); const pool = [...r1]; for (let k = 0; k < 2 && pool.length; k++) got.push(pool.splice(rnd(pool.length), 1)[0]); }
+    const names = got.map(i => CARDS[p.deck[i]].name);
+    got.sort((a, b) => b - a).forEach(i => p.hand.push(p.deck.splice(i, 1)[0]));
+    log(`${nm(u)}：デッキから${names.join('、') || 'なし'}を手札に加えた`);
+  }
+  if (abU(u, 'wizDice')) {
+    const d = 1 + rnd(6); UI.toast(`🎲 ${nm(u)}のサイコロ：${d}`);
+    if (d >= 4) {
+      const ids = p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && CARDS[p.deck[i]].rank === 1);
+      if (ids.length) { const i = ids[rnd(ids.length)]; const c = p.deck.splice(i, 1)[0]; p.hand.push(c); log(`${nm(u)}：デッキから「${CARDS[c].name}」を手札に加えた`); }
+    }
+  }
+  if (u.cid === 'normalGob' && !stealth) {
+    if (p.hand.some(h => CARDS[h].kind === 'char' && CARDS[h].race === 'ゴブリン' && CARDS[h].rank === CARDS[u.cid].rank)) { p.goblinSlots++; log('ノーマルゴブリン：追加でゴブリンを1体配置できる'); }
+  }
+}
+async function moonReset(u) {
+  if (G.phase !== 'main' || u.owner !== G.active) return;
+  const used = u.uses.moon || 0;
+  if (used >= 2) { UI.toast('月光はゲーム中2回までです'); return; }
+  if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2以上必要です'); return; }
+  const a = await UI.ask(`月光：SCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - used}回）`, ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  spendSC(u, 2); u.uses.moon = used + 1;
+  for (const q of G.players) { q.deck.push(...q.hand); q.hand = []; q.deck = shuffle(q.deck); draw(q, 3); }
+  log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
+}
+/* 非公開（潜伏）の公開：メインステップ中、必要なターンが経っていればいつでも */
+async function revealUnit(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || !u.hidden || u.dead) return;
+  const p = G.players[u.owner], rest = u.sanct ? 0 : u.hiddenSince + 3 - p.count;
+  if (rest > 0) { UI.toast(`潜伏は、あと自分のターン${rest}回後から公開できます`); return; }
+  if (U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y)) { UI.toast('自分のキャラクターと同じマスにいる間は公開できません'); return; }
+  sfx('reveal'); u.hidden = false; u.marked = false; if (u.sanct) { u.sanct = false; u.noSanct = sKey(u.x, u.y); } log(`${nm(u)}が姿を現した（${coord(u.x, u.y)}）`);
+  const foe = U().find(v => !v.dead && !v.hidden && v.owner !== u.owner && v.x === u.x && v.y === u.y);
+  if (foe) { log(`同じマスに${nm(foe)}がいたため、即座にバトル`); await battle(u, foe); }
+}
+/* 弓使い（サイコロ）／警戒 */
+const archerNeed = u => {
+  const c = CARDS[u.cid]; let n = c.archer || null;
+  if (u.weapon === 'bowFine') n = n ? Math.max(1, n - 2) : (String(c.race).includes('エルフ') ? 4 : 6);
+  return n;
+};
+const hasArcher = u => !!archerNeed(u);
+async function archerShot(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.hidden || u.dead) return;
+  const need = archerNeed(u); if (!need) return;
+  if (u.uses.archer === G.turn) { UI.toast('弓使いは1ターンに1度だけです'); return; }
+  if (scAvail(u) < 1 || u.st.petrify != null) { UI.toast('SCが1以上必要です'); return; }
+  const tg = foes(G.players[u.owner]); if (!tg.length) { UI.toast('対象にできる相手キャラクターがいません'); return; }
+  const a = await UI.ask(`弓使い：SCを1消費して、相手キャラ1体を狙いますか？（サイコロ${need}以上でLP-1000）`, ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  const t = await pickUnit(tg, '弓使い：狙う相手のキャラクターを選択'); if (!t) return;
+  spendSC(u, 1); u.uses.archer = G.turn;
+  const d = 1 + rnd(6); UI.toast(`🎲 弓使いのサイコロ：${d}（${need}以上で命中）`);
+  if (d >= need) { log(`弓使い：${nm(u)}の矢が${nm(t)}に命中（サイコロ${d}）。LP-1000`); damage(t, 1000); } else log(`弓使い：${nm(u)}の矢は外れた（サイコロ${d}）`);
+  UI.render();
+}
+async function scoutWatch(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.hidden || u.dead) return;
+  if (u.uses.scout === G.turn) { UI.toast('警戒は1ターンに1度だけです'); return; }
+  if (scAvail(u) < 1 || u.st.petrify != null) { UI.toast('SCが1以上必要です'); return; }
+  const hs = hiddenCards(1 - u.owner).filter(v => rowOf(1 - u.owner, v.y) <= 3);
+  if (!hs.length) { UI.toast('相手のホームテリトリーに非公開のカードがありません'); return; }
+  const a = await UI.ask('警戒：SCを1消費して、相手の非公開カードを1枚確認しますか？', ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  const r = await UI.pickBoard({ prompt: '警戒：確認する非公開カードを選択', cells: [...new Set(hs.map(v => v.x + ',' + v.y))].map(s => s.split(',').map(Number)), kind: 'target', cancellable: true });
+  if (!r) return;
+  const here = hs.filter(v => v.x === r[0][0] && v.y === r[0][1]); if (!here.length) return;
+  const t = here.find(v => v.unit) || here[0];
+  spendSC(u, 1); u.uses.scout = G.turn; for (const h of here) h.ref.marked = true;
+  log(`警戒：${coord(t.x, t.y)}の非公開カードを確認した`);
+  if (UI.peek) UI.peek(u.owner, t.cid, coord(t.x, t.y));
+  UI.render();
+}
+async function monkeyThrow(u) {
+  if (G.phase !== 'main' || u.owner !== G.active) return;
+  const used = u.uses.throw || 0;
+  if (used >= 2) { UI.toast('投擲はゲーム中2回までです'); return; }
+  if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2以上必要です'); return; }
+  const a = await UI.ask(`投擲：SCを2消費して手札に「投石」を出現させますか？（残り${2 - used}回）`, ['使う', 'キャンセル']);
+  if (a !== '使う') return;
+  spendSC(u, 2); u.uses.throw = used + 1; G.players[u.owner].hand.push('stoneThrow'); log('投擲：手札に投石が出現'); UI.render();
+}
+
+/* ===== カード効果 ===== */
+const mine = p => chars(p.i), foes = p => chars(1 - p.i);
+const blizzardTargets = p => foes(p).filter(u => rowOf(p.i, u.y) >= 4);
+const guardPayer = u => !u.hidden && u.spc >= 1 && u.st.petrify == null && CARDS[u.cid].spc > 0 && spcUsable(u) >= 1;
+async function pickUnit(us, prompt) {
+  const r = await UI.pickBoard({ prompt, cells: us.map(u => [u.x, u.y]), kind: 'target', cancellable: true });
+  return r ? at(r[0][0], r[0][1]) : null;
+}
+const ferTargets = p => mine(p).filter(u => CARDS[u.cid].cat.includes('モンスター') && CARDS[u.cid].race === 'ワイルド' && terr(u) === 'home' && scAvail(u) >= 1 && u.spc >= 1 && u.st.petrify == null);
+const canTechPay = u => u.acted === 0 && scAvail(u) >= 1 && u.st.petrify == null && !u.hidden && !u.dead;
+async function equipWeapon(p, cid) {
+  const cs = own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon && (cid !== 'wandFine' || CARDS[u.cid].spc >= 1));
+  const u = await pickUnit(cs, cid === 'wandFine' ? '上等な魔杖を装備するキャラクター（SpC基礎値1以上）を選択' : '武器を装備するキャラクターを選択');
+  if (!u) return false;
+  await UI.cutIn(cid);
+  u.weapon = cid; if (cid === 'shieldFine') u.armor = 1500; if (CARDS[cid].wspc) u.spc += CARDS[cid].wspc;
+  log(`${nm(u)}が${CARDS[cid].name}を装備`);
+  return 'kept';
+}
+const EQUIPPABLE = p => own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon).length ? null : '装備できるキャラクターがいません';
+const EQUIP_WAND = p => own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon && CARDS[u.cid].spc >= 1).length ? null : 'SpCの基礎値が1以上で、武器を装備できるキャラクターがいません';
+const potion = (f) => async function (p, cid) {
+  const t0 = await pickUnit(allChars(), '対象のキャラクターを選択');
+  if (!t0) return false;
+  const t = dwarfRedirect(t0, p);
+  await UI.cutIn(cid);
+  f(t);
+  return true;
+};
+const ACT = {
+  signpost: { async run(p) { if (!(await payCost(p, 1))) return false; await UI.cutIn('signpost'); const n = draw(p, 2); log(`道標：${n}枚引いた`); return true; } },
+  fireball: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), '火球の対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('fireball');
+    if (!(await resist(t, 1, p))) { addStatus(t, 'burn'); damage(t, 2000); log(`火球：${nm(t)}に2000ダメージ`); }
+    return true; } },
+  spark: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), 'スパークの対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('spark');
+    if (!(await resist(t, 2, p))) { damage(t, 2500); log(`スパーク：${nm(t)}に2500ダメージ`); if (!t.dead) addStatus(t, 'paralyze'); }
+    return true; } },
+  sandWall: { async run(p) {
+    const cells = []; for (let x = 0; x < 7; x++) for (let y = 0; y < 7; y++) if (!at(x, y) && !wallAt(x, y)) cells.push([x, y]);
+    const r = await UI.pickBoard({ prompt: '砂壁を置くマスを選択', cells, kind: 'place', cancellable: true }); if (!r) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('sandWall');
+    G.walls[r[0][0] + ',' + r[0][1]] = { owner: p.i, expire: p.count + 3 }; log(`砂壁を${coord(r[0][0], r[0][1])}に設置`); return true; } },
+  freezeWind: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), 'フリーズウインドの対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('freezeWind');
+    if (!(await resist(t, 1, p))) { t.sc = Math.max(0, t.sc - 4); addStatus(t, 'chill'); log(`フリーズウインド：${nm(t)}のSC-4`); }
+    return true; } },
+  shiftForm: { async run(p) {
+    const cs = own(p.i).filter(u => !u.attach.some(a => a.cid === 'shiftForm'));
+    const r = await UI.pickBoard({ prompt: '形質変化をつける自分のキャラクター／アバターを選択', cells: cs.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false;
+    const u = at(r[0][0], r[0][1]);
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('shiftForm');
+    u.attach.push({ cid: 'shiftForm', since: p.count + 1 }); log(`${nm(u)}に形質変化`); return 'kept'; } },
+  teleport: { can: p => (mine(p).length >= 2 ? null : '自分のキャラクターが2体以上必要です'), async run(p) {
+    const r = await UI.pickBoard({ prompt: '位置を入れ替える自分のキャラクターを2体選択', cells: mine(p).map(u => [u.x, u.y]), multi: true, kind: 'target', confirmLabel: '入れ替える', cancellable: true, validate: s => s.length === 2 }); if (!r) return false;
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('teleport');
+    const a = at(r[0][0], r[0][1]), b = at(r[1][0], r[1][1]);
+    log(`テレポート：${nm(a)}（${coord(a.x, a.y)}）と${nm(b)}（${coord(b.x, b.y)}）を入れ替えた`);
+    [a.x, b.x] = [b.x, a.x]; [a.y, b.y] = [b.y, a.y];
+    await sanctuaryCheck(a); await sanctuaryCheck(b); return true; } },
+  reinforce: { async run(p) { if (!(await payCost(p, 2))) return false; await UI.cutIn('reinforce'); draw(p, 1); p.extra++; log('増援召喚：追加で1体召喚できる'); return true; } },
+  magicGuard: { can: p => (!mine(p).length ? '対象にできる自分のキャラクターがいません' : own(p.i).some(guardPayer) ? null : 'SpC1以上のキャラクター／アバターが必要です'), async run(p) {
+    const t = await pickUnit(mine(p), '魔法壁の対象（自分のキャラクター）を選択'); if (!t) return false;
+    const cands = own(p.i).filter(guardPayer);
+    const r = await UI.pickBoard({ who: p.i, prompt: '魔法壁：SpC／SCを消費するキャラクターを選択（SpC1以上）', cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true }); if (!r) return false;
+    const u = at(r[0][0], r[0][1]);
+    const maxN = golemStep(u) ? spcUsable(u) : Math.min(8, spcUsable(u) + Math.floor(scAvail(u) / 2));
+    const labels = [];
+    for (let n = 1; n <= maxN; n++) { const a = Math.min(spcUsable(u), n), c = (n - a) * 2; labels.push(`${n}回分（SpC${a}${c ? '＋SC' + c : ''}）→ 装甲${1000 * n}`); }
+    const ans = await UI.ask(`魔法壁：どれだけ消費しますか？（SpCが尽きたら2SCごとに1回分）`, [...labels, 'キャンセル'], p.i);
+    const n = labels.indexOf(ans) + 1; if (n < 1) return false;
+    const a = Math.min(spcUsable(u), n), c = (n - a) * 2;
+    u.spc -= a; spendSC(u, c);
+    if (golemStep(u) && a > 0) u.uses.gspc = G.turn;
+    await UI.cutIn('magicGuard');
+    t.gArmor += 1000 * n; log(`魔法壁：${nm(t)}に装甲${1000 * n}（SpC${a}${c ? '・SC' + c : ''}消費）`); return true; } },
+  chaosHand: { can: p => (foes(p).length && mine(p).length ? null : '自分と相手のキャラクターが1体ずつ必要です'), async run(p) {
+    const e = await pickUnit(foes(p), '混沌の手：LPを減らす相手キャラを選択'); if (!e) return false;
+    const m = await pickUnit(mine(p), '混沌の手：LPを増やす自分のキャラを選択'); if (!m) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('chaosHand');
+    if (!(await resist(e, 1, p))) damage(e, 1000);
+    m.lp += 1000; m.buffs.push({ k: 'lp', amt: 1000, who: p.i, until: p.count + 2 }); log(`混沌の手：${nm(m)}のLP+1000（一時）`); return true; } },
+  aquaReturn: { can: p => (allChars().some(u => u.lp <= 3000) ? null : 'LP3000以下のキャラクターがいません'), async run(p) {
+    const t = await pickUnit(allChars().filter(u => u.lp <= 3000), 'アクアリターンの対象（LP3000以下）を選択'); if (!t) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('aquaReturn');
+    if (await resist(t, 1, p)) return true;
+    const o = G.players[t.owner]; if (t.weapon) o.grave.push(t.weapon); for (const a of t.attach) o.grave.push(a.cid);
+    o.hand.push(t.cid); delete G.units[t.uid]; t.dead = true; log(`アクアリターン：${CARDS[t.cid].name}が手札に戻った`); return true; } },
+  goldenBody: { can: () => '黄金の体はバトル時にのみ使用できます' },
+  instinct: { async run(p) {
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('instinct');
+    const perm = mine(p).filter(u => CARDS[u.cid].race === 'ワイルド').length >= 3;
+    p.instinct = { until: p.count + 3, perm }; log(`本能解放${perm ? '（永続）' : ''}`); return true; } },
+  blizzard: { can: p => (blizzardTargets(p).length ? null : '対象にできる相手キャラクターがいません（ボーダーゾーン／エネミーテリトリー内が対象）'), async run(p) {
+    if (!(await payCost(p, 4))) return false; await UI.cutIn('blizzard');
+    for (const t of blizzardTargets(p)) {
+      if (t.dead) continue;
+      if (await resist(t, 4, p)) continue;
+      t.sc = Math.max(0, t.sc - 3); addStatus(t, 'chill');
+    }
+    log('終焉のブリザード：相手キャラが「しもやけ」状態になりSC-3'); return true; } },
+  thunderStorm: { async run(p) {
+    if (!(await payCost(p, 4))) return false; await UI.cutIn('thunderStorm');
+    for (const u of chars(p.i).filter(u => terr(u) === 'home')) u.tArmor += 4000;
+    log('サンダーストーム：ホームテリトリーの自分のキャラに装甲値4000（このターン限り）');
+    const flying = (type, i) => allChars().some(u => abU(u, 'flight') && (type === 'col' ? u.x : u.y) === i);
+    const pick = (type, excl) => { const c = [0, 1, 2, 3, 4, 5, 6].filter(i => !excl.includes(i)); const w = c.map(i => (flying(type, i) ? 2 : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); for (let k = 0; k < c.length; k++) { r -= w[k]; if (r < 0) return c[k]; } return c[c.length - 1]; };
+    const rounds = ['col', 'row', 'col'];
+    for (const type of rounds) {
+      if (G.over) break;
+      const chosen = [];
+      if (UI.thunderRound) UI.thunderRound();
+      for (let k = 0; k < 3; k++) {
+        const idx = pick(type, chosen); chosen.push(idx);
+        log(`サンダーストーム：${type === 'col' ? idx + 1 + '列' : String.fromCharCode(65 + idx) + '列'}に落雷`);
+        if (UI.thunderStep) await UI.thunderStep({ type, idx });
+      }
+      const hit = U().filter(u => !isAv(u) && !u.dead && chosen.includes(type === 'col' ? u.x : u.y)).sort((a, b) => a.uid - b.uid);
+      for (const u of hit) {
+        if (u.dead) continue;
+        if (await resist(u, 2, p, { wide: true })) continue;
+        let tg = u;
+        const dw = own(u.owner).find(d => abU(d, 'dwarf') && !d.hidden && !d.dead && d !== u && !d.uses.dwarf);
+        if (dw && (await UI.confirm(`【${G.players[u.owner].name}に確認】庇護：${nm(dw)}が${nm(u)}の代わりに雷のダメージを受けますか？（ゲーム中1度だけ）`, u.owner))) { dw.uses.dwarf = true; tg = dw; log(`庇護：${nm(dw)}が代わりに受けた`); }
+        log(`落雷：${nm(tg)}（${coord(tg.x, tg.y)}）に4000ダメージ`);
+        damage(tg, 4000, { hit: true });
+      }
+      checkAuras(); UI.render();
+    }
+    if (UI.thunderEnd) await UI.thunderEnd();
+    return true; } },
+  createGolem: {
+    can: p => {
+      const cells = [0, 1, 2, 3, 4, 5, 6].filter(x => { const cc = cellOfRow(p.i, 1, x); return !at(cc.x, cc.y) && !wallAt(cc.x, cc.y); });
+      return cells.length || own(p.i).some(u => golemStep(u) && golemStep(u) < 3) ? null : '配置できるマスも、進められるゴーレムもありません';
+    },
+    async run(p, cid) {
+      const ups = own(p.i).filter(u => !u.hidden && golemStep(u) && golemStep(u) < 3);
+      const cells = [0, 1, 2, 3, 4, 5, 6].map(x => cellOfRow(p.i, 1, x)).filter(cc => !at(cc.x, cc.y) && !wallAt(cc.x, cc.y)).map(cc => [cc.x, cc.y]);
+      let mode = 'new';
+      if (ups.length && cells.length) { const a = await UI.ask('クリエイトゴーレム：どちらを行いますか？', ['新しく出す', 'ステップを進める', 'キャンセル']); if (a === 'キャンセル') return false; mode = a === '新しく出す' ? 'new' : 'up'; }
+      else if (ups.length) mode = 'up';
+      let target = null, pos = null;
+      if (mode === 'up') { const r = await UI.pickBoard({ prompt: 'ステップを進めるゴーレムを選択', cells: ups.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false; target = at(r[0][0], r[0][1]); }
+      else { const r = await UI.pickBoard({ prompt: 'ゴーレムを配置するマスを選択', cells, kind: 'place', cancellable: true }); if (!r) return false; pos = r[0]; }
+      if (!(await payCost(p, mode === 'up' ? 2 + golemStep(target) : 2))) return false;
+      await UI.cutIn('createGolem');
+      if (mode === 'up') {
+        const n = golemStep(target) + 1;
+        target.cid = 'golem' + n; target.lp += 2000; target.sc += 2; target.spc += 1;
+        log(`クリエイトゴーレム：${coord(target.x, target.y)}のゴーレムがステップ${n}になった`);
+      } else {
+        const u = mkUnit(p.i, 'golem1', pos[0], pos[1]); u.armor = 2000;
+        log(`クリエイトゴーレム：ゴーレム（ステップ1）を${coord(u.x, u.y)}に配置`);
+      }
+      p.golemRet = p.golemRet || 0;
+      if (p.golemRet < 3 && (await UI.ask(`クリエイトゴーレムを山札に戻し、シャッフルして1枚引きますか？（残り${3 - p.golemRet}回）`, ['戻して引く', '墓地に置く'])) === '戻して引く') {
+        p.golemRet++; p.deck.push(cid); p.deck = shuffle(p.deck); draw(p, 1); log('クリエイトゴーレム：山札に戻してシャッフルし、ランダムに1枚引いた'); return 'kept';
+      }
+      return true;
+    } },
+  thornTrap: { can: p => (trapCells(p).length ? null : '設置できるマスがありません'), async run(p) {
+    const cells = trapCells(p);
+    const r = await UI.pickBoard({ prompt: '棘付きトラップを設置するマス（自分のホームテリトリー）を選択', cells, kind: 'place', cancellable: true }); if (!r) return false;
+    const hid = (await UI.ask('棘付きトラップを非公開で置きますか？', ['非公開で置く', '公開で置く'])) === '非公開で置く';
+    G.traps[sKey(r[0][0], r[0][1])] = { owner: p.i, hidden: hid };
+    log(`棘付きトラップ：${hid ? '非公開で' : ''}${coord(r[0][0], r[0][1])}に設置`); if (!hid) await UI.cutIn('thornTrap'); return true; } },
+  magicSanctuary: { async run(p) {
+    const cells = [];
+    for (let x = 0; x < 7; x++) for (let y = 0; y < 7; y++) if (rowOf(p.i, y) <= 3 && !G.sanctuaries[sKey(x, y)]) cells.push([x, y]);
+    if (!cells.length) { UI.toast('設置できるマスがありません'); return false; }
+    const r = await UI.pickBoard({ prompt: '魔法聖域を設置するマス（自分のホームテリトリー）を選択', cells, kind: 'place', cancellable: true }); if (!r) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('magicSanctuary');
+    const k = sKey(r[0][0], r[0][1]); G.sanctuaries[k] = { owner: p.i };
+    log(`魔法聖域：${coord(r[0][0], r[0][1])}に設置`);
+    for (const u of U().filter(u => u.owner === p.i && !u.dead && !u.hidden && !isAv(u) && u.x === r[0][0] && u.y === r[0][1])) await sanctuaryCheck(u);
+    return true; } },
+  redDragonBreath: { can: p => (own(p.i).some(u => !isAv(u) && canPayAmt(u, holdsAttr(u, 'redDragonBreath') ? 2 : 3)) ? null : 'SpC3を支払えるキャラクターがいません（アバターは対象にできません）'), async run(p) {
+    const u = await payCost(p, 3, v => !isAv(v)); if (!u) return false; await UI.cutIn('redDragonBreath');
+    u.attach.push({ cid: 'redDragonBreath', since: p.count, until: p.count + 2 }); log(`レッドドラゴンブレス：${nm(u)}に「焼却」を与えた`); checkAuras(); return 'kept'; } },
+  windSlash: { async run(p) {
+    const cs = mine(p).filter(u => !isAv(u));
+    const r = await UI.pickBoard({ prompt: 'ウインドスラッシュを装備する自分のユニットを選択', cells: cs.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false;
+    const u = at(r[0][0], r[0][1]);
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('windSlash');
+    u.attach.push({ cid: 'windSlash', since: p.count, until: p.count + 2 }); log(`${nm(u)}にウインドスラッシュ`); return 'kept'; } },
+  swordFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
+  bowFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
+  shieldFine: { can: EQUIPPABLE, run: (p, c) => equipWeapon(p, c) },
+  wandFine: { can: EQUIP_WAND, run: (p, c) => equipWeapon(p, c) },
+  stoneThrow: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => { log(`投石：${nm(t)}に1500ダメージ`); damage(t, 1500); }) },
+  staminaPotion: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => { t.sc += 2; heal(t, 1000); log(`スタミナポーション：${nm(t)}`); }) },
+  magicPotion: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => { t.spc += 1; heal(t, 1000); log(`マジックポーション：${nm(t)}`); }) },
+  hyperPotion: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => {
+    const ss = statusList(t); if (ss.length) { const k = ss[rnd(ss.length)]; cure(t, k); log(`ハイパーポーション：${nm(t)}の${STATUS_NAME[k]}を治療`); }
+    heal(t, 2000); }) },
+  gobFlute: { async run(p) {
+    await UI.cutIn('gobFlute');
+    const pool = [];
+    p.deck.forEach((c, i) => { if (CARDS[c].race === 'ゴブリン') pool.push(['deck', i]); });
+    p.grave.forEach((c, i) => { if (CARDS[c].race === 'ゴブリン') pool.push(['grave', i]); });
+    const pick = shuffle(pool).slice(0, 2);
+    const got = pick.map(([z, i]) => CARDS[p[z][i]].name);
+    const rm = { deck: [], grave: [] }; pick.forEach(([z, i]) => rm[z].push(i));
+    for (const z of ['deck', 'grave']) { rm[z].sort((a, b) => b - a).forEach(i => p.hand.push(p[z].splice(i, 1)[0])); }
+    log(`ゴブリンの笛：${got.join('、') || 'なし'}を手札に加えた`); return true; } },
+  gobParade: { can: p => (mine(p).filter(u => CARDS[u.cid].race === 'ゴブリン' && CARDS[u.cid].cat === 'モンスター').length >= 3 ? (p.parade ? 'すでに効果が適用されています' : (mine(p).some(canTechPay) ? null : 'SCを消費できるキャラクターがいません')) : '種族ゴブリンのモンスターが3体以上必要です'), async run(p) {
+    const cs = mine(p).filter(u => CARDS[u.cid].race === 'ゴブリン' && CARDS[u.cid].cat === 'モンスター' && canTechPay(u));
+    const u = await payTech(p, cs, 'SCを1消費するゴブリンを選択（行動済みは選べません）'); if (!u) return false;
+    await UI.cutIn('gobParade'); p.parade = true;
+    for (const x of mine(p)) if (isGobName(x)) x.lp += 1500;
+    log('ゴブリンパレード：ゴブリンのLP+1500（永続）'); return true; } },
+  assault: { can: p => (mine(p).some(u => canTechPay(u) && mine(p).filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length >= 3) ? null : '同じ種族が3体以上いて、SCを消費できるキャラクターが必要です'), async run(p) {
+    const cs = mine(p).filter(u => canTechPay(u) && mine(p).filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length >= 3);
+    const u = await payTech(p, cs, 'SCを1消費するキャラクターを選択（同じ種族が突撃します）'); if (!u) return false;
+    await UI.cutIn('assault'); G.assault = { owner: p.i, race: CARDS[u.cid].race, turn: G.turn, hit: {} };
+    log(`突撃司令：種族「${CARDS[u.cid].race}」は必ず2マス前進する`); return true; } },
+  petrifyRay: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), '石化光線の対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('petrifyRay');
+    if (!(await resist(t, 1, p))) { addStatus(t, 'petrify'); log(`石化光線：${nm(t)}が石化した`); }
+    return true; } },
+  elixir: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => {
+    for (let g = 0; g < 8 && statusList(t).length; g++) for (const k of statusList(t)) cure(t, k);
+    t.lp = Math.max(t.lp, healCap(t)); t.sc += 2; t.spc += 1; log(`エリクサー：${nm(t)}の状態異常を全て治療し、LPを全回復。SC+2・SpC+1`); }) },
+  shopTicket: { can: () => 'ショップで購入するときに自動で消費されます（使用はできません）', run: async () => false },
+  ferocious: {
+    can: p => (ferTargets(p).length ? null : '自分のホームテリトリーに、SCとSpCが1以上の種族ワイルドのモンスターが必要です'),
+    async run(p, cid) {
+      const ts = ferTargets(p);
+      const t = await pickUnit(ts, '獰猛なる覇者の加護：対象のモンスターを選択（SCとSpCを1ずつ消費）'); if (!t) return false;
+      await UI.cutIn('ferocious');
+      draw(p, 1);
+      spendSC(t, 1); t.spc -= 1; t.extra = p.count + 1; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
+      log(`獰猛なる覇者の加護：${nm(t)}の次の自分のターンの行動回数+1・LP+500（SC-1・SpC-1）`); return true; } },
+  fightSpirit: { can: p => (mine(p).some(u => CARDS[u.cid].race === 'ワイルド' && u.spc >= 1) ? (mine(p).some(canTechPay) ? null : 'SCを消費できるキャラクターがいません') : '現在のSpCが1以上の種族ワイルドが必要です'), async run(p) {
+    const u = await payTech(p, mine(p).filter(canTechPay), '闘争心をつけるキャラクターを選択（SCを1消費）'); if (!u) return false;
+    await UI.cutIn('fightSpirit'); u.attach.push({ cid: 'fightSpirit', since: p.count + 1 }); log(`${nm(u)}に闘争心`); return 'kept'; } },
+};
+async function playHand(idx) {
+  const p = cur();
+  if (G.phase !== 'main' || G.over) return;
+  const cid = p.hand[idx], c = CARDS[cid];
+  if (c.kind === 'char') await summon(p, idx);
+  else {
+    const A = ACT[cid], why = A.can && A.can(p);
+    if (why) { UI.toast(why); return; }
+    p.hand.splice(idx, 1);
+    let r = false;
+    G.curSpell = c.kind === 'spell' ? cid : null;
+    try { r = await A.run(p, cid); } catch (e) { console.error(e); }
+    G.curSpell = null;
+    if (r === false) p.hand.splice(Math.min(idx, p.hand.length), 0, cid);
+    else if (r !== 'kept') p.grave.push(cid);
+    if (r !== false && c.kind === 'spell') await onSpellUsed(p, cid);
+  }
+  afterAction();
+}
+function sanctForce() {
+  for (const u of U()) if (u.hidden && u.sanct && !u.dead && baseLP(u) > 4000 && !U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y)) {
+    u.hidden = false; u.marked = false; u.sanct = false; u.noSanct = sKey(u.x, u.y); log(`${nm(u)}のLPが4000を超えたため、強制的に公開された（${coord(u.x, u.y)}）`);
+    const foe = U().find(v => !v.dead && !v.hidden && v.owner !== u.owner && v.x === u.x && v.y === u.y);
+    if (foe) { log(`同じマスに${nm(foe)}がいたため、即座にバトル`); battle(u, foe); }
+  }
+}
+function afterAction() { sanctForce(); checkAuras(); UI.render(); if (G.over) UI.gameOver(G.over); }
+
+/* ===== マジックサンクチュアリ ===== */
+const sKey = (x, y) => x + ',' + y;
+const trapCells = p => { const out = []; for (let x = 0; x < 7; x++) for (let y = 0; y < 7; y++) if (rowOf(p.i, y) <= 3 && !G.traps[sKey(x, y)]) out.push([x, y]); return out; };
+async function trapCheck(u) {
+  if (!u || u.dead || isAv(u) || u.hidden) return;
+  const k = sKey(u.x, u.y), t = G.traps[k];
+  if (!t || t.owner === u.owner || abU(u, 'flight')) return;
+  delete G.traps[k];
+  log(`棘付きトラップ：${coord(u.x, u.y)}の${t.hidden ? '非公開だった' : ''}トラップが発動（${nm(u)}のLPを5000下げる）`);
+  await UI.cutIn('thornTrap');
+  const before = u.lp; damage(u, 5000);
+  if (!u.dead) { const dealt = before - u.lp; if (dealt > 2000) { u.trapLoss = (u.trapLoss || 0) + (dealt - 2000); log(`${nm(u)}：このダメージのうち回復できるのは2000まで（最大LP-${dealt - 2000}）`); } }
+  UI.render();
+}
+async function sanctuaryCheck(u) {
+  if (!u || u.dead || isAv(u) || u.hidden || abU(u, 'flight')) return;
+  const k = sKey(u.x, u.y);
+  if (u.noSanct && u.noSanct !== k) delete u.noSanct;
+  const s = G.sanctuaries[k];
+  if (!s || s.owner !== u.owner || u.noSanct === k || baseLP(u) > 4000) return;
+  const a = await UI.ask(`【${G.players[u.owner].name}に確認】魔法聖域：${nm(u)}を非公開にしますか？（SCとSpCのターン終了時の回復量+1）`, ['非公開にする', 'しない'], u.owner);
+  if (a !== '非公開にする') return;
+  u.hidden = true; u.sanct = true; u.hiddenSince = G.players[u.owner].count;
+  log(`魔法聖域：${nm(u)}が非公開になった（${coord(u.x, u.y)}）`);
+}
+
+/* ===== 貨幣ゲージ・アイテムショップ ===== */
+const sellOf = cid => (CARDS[cid].kind === 'item' && CARDS[cid].sell != null && !CARDS[cid].noSell ? CARDS[cid].sell : null);
+const canBuyRight = p => p.freeBuy > 0 || p.hand.includes('shopTicket');
+function refreshShop() {
+  const pool = r => Object.keys(CARDS).filter(id => CARDS[id].kind === 'item' && CARDS[id].sell > 0 && CARDS[id].rank === r);
+  const shop = [];
+  for (let k = 0; k < 3; k++) {
+    const r = rnd(100) < 5 ? 2 : 1;
+    let cand = pool(r).filter(id => !shop.some(s => s.cid === id));
+    if (!cand.length) cand = pool(3 - r).filter(id => !shop.some(s => s.cid === id));
+    if (!cand.length) break;
+    const cid = cand[rnd(cand.length)];
+    shop.push({ cid, price: CARDS[cid].sell * 2, sold: false });
+  }
+  G.shop = shop;
+  const keep = [];
+  for (const s of G.shopUsed || []) {
+    if (s.sold) continue;
+    s.age++;
+    if (s.age >= 2) { G.players[s.from].grave.push(s.cid); log(`アイテムショップ：売却品「${CARDS[s.cid].name}」が期限切れで墓地へ`); } else keep.push(s);
+  }
+  G.shopUsed = keep;
+  log(`アイテムショップ入れ替え：${shop.map(s => CARDS[s.cid].name + '(' + s.price + ')').join('、')}`);
+}
+const shopItems = () => [...G.shop, ...(G.shopUsed || [])];
+function sellCard(i) {
+  const p = cur(); if (G.phase !== 'main' || G.over) return;
+  const cid = p.hand[i]; if (!cid || sellOf(cid) == null) return;
+  if (p.sellUsed) { UI.toast('カードを売れるのは1ターンに1回までです'); return; }
+  sfx('coin'); p.sellUsed = true; p.hand.splice(i, 1); p.hand.push('shopTicket'); p.coins += sellOf(cid);
+  G.shopUsed.push({ cid, price: sellOf(cid) * 2, age: 0, from: p.i, used: true, sold: false });
+  log(`${p.name}：${CARDS[cid].name}を売って貨幣ゲージ+${sellOf(cid)}（${p.coins}）。ショップに買値${sellOf(cid) * 2}で並んだ。ショップチケットを1枚入手`); afterAction();
+}
+function buyShop(k) {
+  sfx('coin');
+  const p = cur(); if (G.phase !== 'main' || G.over) return;
+  const s = shopItems()[k]; if (!s || s.sold) { UI.toast('すでに売り切れです'); return; }
+  if (p.coins < s.price) { UI.toast(`貨幣ゲージが足りません（必要${s.price}／所持${p.coins}）`); return; }
+  if (!canBuyRight(p)) { UI.toast('購入権利がありません（無料の購入権は使用済み。ショップチケットが必要です）'); return; }
+  let how;
+  if (p.freeBuy > 0) { p.freeBuy--; how = '無料の購入権'; } else { p.hand.splice(p.hand.indexOf('shopTicket'), 1); p.grave.push('shopTicket'); how = 'ショップチケット'; }
+  p.coins -= s.price; s.sold = true; p.hand.push(s.cid);
+  log(`${p.name}：${CARDS[s.cid].name}を購入（貨幣ゲージ-${s.price}、残り${p.coins}／${how}を消費）`); afterAction();
+}
+
+/* ===== ターン進行 ===== */
+const instinctActive = p => !!p.instinct && (p.instinct.perm || p.count <= p.instinct.until);
+async function startTurn(i) {
+  G.active = i; const p = G.players[i];
+  if (i === 0) refreshShop();
+  G.turn++; p.count++; p.r1Spells = 0; p.sellUsed = false; p.summons = 0; p.extra = 0; p.goblinSlots = 0; G.assault = null;
+  for (const u of own(i)) u.acted = 0;
+  G.phase = 'start'; UI.render();
+  await UI.turnOverlay(p);
+  draw(p, 1); log(`--- ${p.name}のターン${p.count} ---`);
+  G.phase = 'draw'; UI.render();
+  G.phase = 'main'; afterAction();
+}
+async function endTurn() {
+  const p = cur();
+  if (G.over) return false;
+  const forced = own(p.i).filter(mustMove);
+  if (forced.length) { UI.toast(`必ず移動しなければならないキャラクターがいます：${forced.map(nm).join('、')}`); return false; }
+  const c = p.count;
+  for (const k of Object.keys(G.walls)) if (G.walls[k].owner === p.i && c >= G.walls[k].expire) { delete G.walls[k]; log('砂壁が崩れた'); }
+  for (const u of U()) {
+    u.buffs = u.buffs.filter(b => { if (b.who === p.i && G.players[b.who].count >= b.until) { if (b.k === 'lp') u.lp = Math.max(1, u.lp - b.amt); return false; } return true; });
+    if (u.owner === p.i) {
+      u.attach = u.attach.filter(a => { if (a.until !== undefined && c >= a.until) { p.grave.push(a.cid); return false; } return true; });
+      if (u.st.petrify != null && c >= u.st.petrify) delete u.st.petrify;
+    }
+  }
+  if (p.instinct && !p.instinct.perm && c >= p.instinct.until) p.instinct = null;
+  for (const u of own(p.i)) {
+    u.tArmor = 0;
+    const b = baseLP(u); if (u.lp < b) u.lp = b;
+    const home = terr(u) !== 'enemy';
+    u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1) + (u.sanct ? 1 : 0)));
+    u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + (home ? 1 : 0) + (u.sanct ? 1 : 0)));
+  }
+  if (!(p.i === 0 && p.count === 1)) { p.coins++; log(`${p.name}：ターン終了で貨幣ゲージ+1（${p.coins}）`); }
+  await startTurn(1 - p.i);
+  return true;
+}
+
+'use strict';
+/* ===== UI ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let screen = 'cards';
+const MOB = () => window.matchMedia && window.matchMedia('(max-width:700px)').matches;
+let ONL = null, LOB = null;
+const VW = () => (ONL ? ONL.me : G.active);
+let userDecks = [];
+try { userDecks = JSON.parse(localStorage.getItem('bgDecks_v1') || '[]'); } catch (e) { }
+const saveDecks = () => { try { localStorage.setItem('bgDecks_v1', JSON.stringify(userDecks)); } catch (e) { } };
+const allDecks = () => PRESETS.concat(userDecks);
+const CARD_IDS = Object.keys(CARDS).filter(k => k !== 'avatar');
+const DECK_IDS = CARD_IDS.filter(k => !CARDS[k].token);
+const RACES = [...new Set(CARD_IDS.map(k => CARDS[k].race).filter(Boolean))];
+const KIND_ORDER = { char: 0, spell: 1, item: 2, tech: 3 };
+const F = { kind: 'all', rank: 'all', race: 'all', q: '' };
+const B = { id: null, name: '新しいデッキ', list: {}, F: { kind: 'all', rank: 'all', race: 'all', q: '' } };
+const PREP = { a: 'p_oudo', b: 'p_gob' };
+const STATUS_ICON = { burn: '🔥', chill: '❄', frost: '🧊', poison: '☠', venom: '☠☠', petrify: '🪨', paralyze: '⚡' };
+const STATUS_DESC = { paralyze: 'まひ：1ターンにSCを1つしか使えない（2回行動でも2回目の行動はできない）', burn: 'やけど：回復効果のLP増加が500減る', chill: 'しもやけ：回復効果のLP増加が500減る', frost: '凍傷：回復効果のLP増加が1000減り、LPが2000下がる（ターン終了時に回復しない）', poison: '毒：LP-500・SC-1（ターン終了時に回復しない）', venom: '猛毒：LP-1500・SC-2（ターン終了時に回復しない）', petrify: '石化：SC・SpCを消費する行動や効果を使えない' };
+
+function cardSort(a, b) { const A = CARDS[a], Bc = CARDS[b]; return KIND_ORDER[A.kind] - KIND_ORDER[Bc.kind] || A.rank - Bc.rank || A.name.localeCompare(Bc.name, 'ja'); }
+function filterIds(f, deck) {
+  return (deck ? DECK_IDS : CARD_IDS).filter(id => {
+    const c = CARDS[id];
+    if (f.kind !== 'all' && c.kind !== f.kind) return false;
+    if (f.rank !== 'all' && String(c.rank) !== f.rank) return false;
+    if (f.race !== 'all' && c.race !== f.race) return false;
+    if (f.q && !(c.name + c.txt.join('') + (c.cond || '') + (c.cat || '') + (c.race || '')).includes(f.q)) return false;
+    return true;
+  }).sort(cardSort);
+}
+/* 「」つきの効果（キーワード能力）：カード面には名前だけを出し、タップで詳しい解説を見られる */
+const KEYWORDS = ['庇護', '生贄', '狂乱', '魔法耐性', '超魔法耐性', '焼却', '飛翔', '再生', '超再生', '潜伏', '弓使い', '警戒', '月光', '投擲', '超範囲', 'ハンティング', 'アサシン', 'ふいうち', '装甲値'];
+function kwOf(t) {
+  const r = /^([^：（]{1,8})(（[^）]*）)?：/.exec(t);
+  return r && KEYWORDS.includes(r[1]) ? r[1] + (r[2] || '') : null;
+}
+function showKeyword(ref) {
+  const [cid, i] = ref.split('|'), t = CARDS[cid] && CARDS[cid].txt[+i]; if (!t) return;
+  const k = kwOf(t), body = t.slice(t.indexOf('：') + 1);
+  let el = document.getElementById('kwpop'); if (!el) { el = document.createElement('div'); el.id = 'kwpop'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="kwbox"><div class="kwt">「${esc(k)}」</div><div class="kwd">${esc(body)}</div><div class="note">${esc(CARDS[cid].name)}　（どこかをタップして閉じる）</div></div>`;
+  el.style.display = 'flex'; el.onclick = () => { el.style.display = 'none'; };
+}
+const chipH = (cls, label, v) => `<span class="chip ${cls}">${label} ${v}</span>`;
+function cardHTML(cid, o = {}) {
+  const c = CARDS[cid];
+  let type = c.kind === 'char' || c.kind === 'avatar' ? `${c.cat}／${c.race || '—'}${c.kind === 'char' && charAttrs(cid).length ? '／' + charAttrs(cid).join('・') + '属性' : ''}` : c.kind === 'spell' ? `スペル${c.equip ? '／装備魔法' : ''}${c.attr ? '／' + c.attr + '属性' : ''}${c.wide ? '／超範囲' : ''}` : c.kind === 'item' ? (c.weapon ? 'アイテム（武器）' : 'アイテム') : 'テクニック';
+  let stats = '';
+  if (c.kind === 'char' || c.kind === 'avatar') stats = chipH('lp', 'LP', c.lp) + chipH('op', 'OP', c.op) + chipH('dp', 'DP', c.dp) + chipH('sc', 'SC', c.sc) + chipH('spc', 'SpC', c.spc);
+  else if (c.cost) stats = chipH('cost', '消費', c.cost);
+  if (c.kind === 'item' && c.sell != null) stats += chipH('sell', '売値', c.sell);
+  let text = '';
+  if (c.cond) text += `<div class="c-cond"><b>発動条件</b> ${esc(c.cond)}</div>`;
+  text += c.txt.map((t, i) => { const k = kwOf(t); return k ? `<p class="kwp"><button type="button" class="kw" data-kw="${cid}|${i}">「${esc(k)}」</button></p>` : `<p>${esc(t)}</p>`; }).join('');
+  const attrs = (o.uid ? ` data-uid="${o.uid}"` : '');
+  return `<div class="card rank${c.rank} k-${c.kind} ${o.cls || ''}" data-card="${cid}"${attrs}><div class="c-head"><span class="c-name">${esc(c.name)}</span><span class="c-rank">R${c.rank}</span></div><div class="c-art">${artSVG(cid)}</div><div class="c-type">${esc(type)}</div><div class="c-text">${text}</div><div class="c-stats">${stats}</div></div>`;
+}
+function filterBar(f, scope) {
+  const sel = (key, opts) => `<select data-sel="${scope}.${key}">${opts.map(([v, l]) => `<option value="${v}" ${f[key] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+  return `<div class="bar">${sel('kind', [['all', 'すべての種類'], ['char', 'キャラクター'], ['spell', 'スペル'], ['item', 'アイテム'], ['tech', 'テクニック']])}${sel('rank', [['all', 'すべてのランク'], ['1', 'ランク1'], ['2', 'ランク2'], ['3', 'ランク3']])}${sel('race', [['all', 'すべての種族'], ...RACES.map(r => [r, r])])}<input type="search" placeholder="名前・能力で検索" value="${esc(f.q)}" data-in="${scope}.q"></div>`;
+}
+
+/* ---------- 画面1: カード一覧 ---------- */
+function renderCards() {
+  $('#app').innerHTML = `<h2>カード一覧</h2><p class="note">カードをクリックで詳細。長押し（右クリック）でも全体を表示できます。能力・ステータスは各カードに記載。「」つきの効果はタップで詳しい解説が見られます。</p>${filterBar(F, 'F')}<div class="grid" id="grid"></div>`;
+  fillGrid();
+}
+function fillGrid() {
+  const ids = filterIds(F);
+  $('#grid').innerHTML = ids.length ? ids.map(id => `<div class="gcard" data-act="detail" data-card="${id}">${cardHTML(id, { cls: 'full' })}</div>`).join('') : '<p class="note">該当するカードがありません</p>';
+}
+
+/* ---------- 画面2: デッキ構築 ---------- */
+function loadDeck(id) {
+  const d = allDecks().find(d => d.id === id);
+  if (d) { B.id = d.preset ? null : d.id; B.name = d.preset ? d.name + '（コピー）' : d.name; B.list = { ...d.list }; B.src = d.id; }
+}
+function renderBuilder() {
+  const v = validateDeck(B.list);
+  const ids = Object.keys(B.list).filter(k => B.list[k] > 0).sort(cardSort);
+  $('#app').innerHTML = `<h2>デッキ構築</h2>
+  <div class="bar"><select data-sel="loadDeck"><option value="">— 保存済みデッキを読み込む —</option>${allDecks().map(d => `<option value="${d.id}">${esc(d.name)}${d.preset ? '（標準）' : ''}</option>`).join('')}</select>
+  <button class="btn" data-act="newDeck">新規</button><button class="btn" data-act="dupDeck">複製</button><button class="btn danger" data-act="delDeck" ${B.id ? '' : 'disabled'}>削除</button></div>
+  <div class="builder"><div><div class="minibar mob-only"><b class="${deckSize(B.list) === 30 && !v.err.length ? 'ok' : 'err'}">${deckSize(B.list)}/30枚${v.err.length ? '　✖' + v.err.length : ''}</b><span class="note">R1:${v.r[0]} R2:${v.r[1]} R3:${v.r[2]}</span><button class="btn sm" data-act="goDeck">デッキ確認・保存 ↓</button></div><h3>カードプール</h3>${filterBar(B.F, 'BF')}<p class="note">タップで1枚追加。「−」で削除。長押しで効果の全体表示。</p><div class="grid" id="pool"></div></div>
+  <div><div class="panel sticky" id="deckpanel"><button class="btn sm mob-only" data-act="goPool" style="margin-bottom:6px">↑ カードを追加する</button><input type="text" id="dname" value="${esc(B.name)}" style="width:100%;margin-bottom:8px" placeholder="デッキ名">
+  <div class="bar"><button class="btn main" data-act="saveDeck">保存</button><button class="btn" data-act="saveAs">名前を付けて保存</button></div>
+  <div class="pinfo"><b class="${v.r[0] + v.r[1] + v.r[2] === 30 ? 'ok' : 'err'}">${deckSize(B.list)} / 30枚</b><span class="note">R1:${v.r[0]}　R2:${v.r[1]}　R3:${v.r[2]}</span></div>
+  ${v.err.map(e => `<div class="err">✖ ${esc(e)}</div>`).join('')}${v.warn.map(e => `<div class="warn">⚠ ${esc(e)}</div>`).join('')}${!v.err.length ? '<div class="ok">✔ 構築ルールに違反していません</div>' : ''}
+  <div style="max-height:52vh;overflow:auto;margin-top:8px">${ids.map(id => `<div class="drow" data-card="${id}"><span class="r">R${CARDS[id].rank}</span><span class="n">${esc(CARDS[id].name)}</span><b>×${B.list[id]}</b><button class="btn sm" data-act="dec" data-id="${id}">−</button><button class="btn sm" data-act="inc" data-id="${id}">＋</button></div>`).join('') || '<p class="note">カードを追加してください</p>'}</div></div></div></div>`;
+  fillPool();
+}
+function fillPool() {
+  const ids = filterIds(B.F, true);
+  $('#pool').innerHTML = ids.map(id => { const n = B.list[id] || 0; return `<div class="gcard" data-act="inc" data-id="${id}" data-card="${id}">${n ? `<span class="cnt">×${n}</span>` : ''}${cardHTML(id, { cls: 'sm' })}</div>`; }).join('');
+}
+function saveDeckAs(asNew) {
+  const name = ($('#dname').value || '').trim() || '名無しデッキ'; B.name = name;
+  if (!asNew && B.id) { const d = userDecks.find(d => d.id === B.id); if (d) { d.name = name; d.list = { ...B.list }; saveDecks(); UI.toast('保存しました'); renderBuilder(); return; } }
+  const d = { id: 'u' + Date.now(), name, list: { ...B.list } }; userDecks.push(d); B.id = d.id; saveDecks(); UI.toast('「' + name + '」を保存しました'); renderBuilder();
+}
+
+/* ---------- 画面3: 対戦準備 ---------- */
+function renderPrep() {
+  const opt = cur => allDecks().map(d => `<option value="${d.id}" ${d.id === cur ? 'selected' : ''}>${esc(d.name)}</option>`).join('');
+  const info = id => { const d = allDecks().find(d => d.id === id); const v = validateDeck(d.list); return `<div class="note">${deckSize(d.list)}枚　R1:${v.r[0]} R2:${v.r[1]} R3:${v.r[2]}</div>${v.err.map(e => `<div class="err">✖ ${esc(e)}</div>`).join('')}${v.warn.map(e => `<div class="warn">⚠ ${esc(e)}</div>`).join('')}`; };
+  const okA = !validateDeck(allDecks().find(d => d.id === PREP.a).list).err.length, okB = !validateDeck(allDecks().find(d => d.id === PREP.b).list).err.length;
+  $('#app').innerHTML = `<h2>対戦準備</h2><h3>同じ端末で対戦</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>先行</h3><select data-sel="prep.a">${opt(PREP.a)}</select>${info(PREP.a)}</div>
+  <div class="panel" style="min-width:300px"><h3>後攻</h3><select data-sel="prep.b">${opt(PREP.b)}</select>${info(PREP.b)}</div></div>
+  <p class="note">同じデッキを両者が選ぶこともできます。この版は<b>1台の端末で交代して遊ぶ</b>形式です（ターン開始時に画面を渡す確認が出ます）。オンラインで遊ぶ場合は、下の「オンライン対戦」を使ってください。</p>
+  <button class="btn main" data-act="start" ${okA && okB ? '' : 'disabled'}>対戦開始</button>${okA && okB ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}${lobbyHTML()}`;
+}
+
+/* ---------- 画面4: 対戦 ---------- */
+function localAsk(msg, btns) { return new Promise(res => { const el = $('#dlg'); el.innerHTML = `<div class="dbox"><p>${esc(msg)}</p><div class="dbtn">${btns.map((b, i) => `<button class="btn ${i === 0 ? 'main' : ''}" data-i="${i}">${esc(b)}</button>`).join('')}</div></div>`; el.style.display = 'flex'; el.onclick = e => { const b = e.target.closest('button[data-i]'); if (!b) return; el.style.display = 'none'; el.onclick = null; res(btns[+b.dataset.i]); }; }); }
+
+/* ---------- 効果音（Web Audio で合成。外部ファイル不要） ---------- */
+const SFX = (() => {
+  let ctx = null, master = null, last = {}, on = true;
+  try { on = localStorage.getItem('bg_sfx') !== '0'; } catch (e) { }
+  const get = () => {
+    if (!on) return null;
+    try {
+      if (!ctx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; ctx = new AC(); master = ctx.createGain(); master.gain.value = .45; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000; master.connect(lp); lp.connect(ctx.destination); }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    } catch (e) { return null; }
+  };
+  const tone = (f, d, type = 'sine', v = .3, to = null, at = 0) => {
+    const c = get(); if (!c) return; const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + Math.min(.02, d / 3)); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + d + .05);
+  };
+  const noise = (d, f = 1000, type = 'lowpass', v = .3, to = null, at = 0, q = 1) => {
+    const c = get(); if (!c) return; const t = c.currentTime + at, n = Math.max(1, Math.floor(c.sampleRate * d)), b = c.createBuffer(1, n, c.sampleRate), a = b.getChannelData(0);
+    for (let i = 0; i < n; i++) a[i] = Math.random() * 2 - 1;
+    const s = c.createBufferSource(); s.buffer = b; const fl = c.createBiquadFilter(); fl.type = type; fl.Q.value = q; fl.frequency.setValueAtTime(f, t); if (to) fl.frequency.exponentialRampToValueAtTime(to, t + d);
+    const g = c.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    s.connect(fl); fl.connect(g); g.connect(master); s.start(t);
+  };
+  const arp = (fs, step = .09, type = 'sine', v = .22, d = .25) => fs.forEach((f, i) => tone(f, d, type, v, null, i * step));
+  const S = {
+    // カードに触れた時：軽いスイッチを押したような「カチッ」
+    switch: () => { noise(.012, 3200, 'highpass', .1); tone(1650, .03, 'triangle', .07, 1050); noise(.01, 2200, 'bandpass', .06, null, .032, 2); tone(900, .03, 'triangle', .04, 650, .032); },
+    select: () => tone(700, .04, 'sine', .08),
+    tick: () => tone(640, .035, 'sine', .07),
+    draw: () => noise(.05, 3000, 'bandpass', .05),
+    error: () => tone(300, .1, 'sine', .09, 200),
+    move: () => { noise(.05, 400, 'lowpass', .09); tone(180, .07, 'sine', .09, 120); },
+    summon: () => { tone(392, .18, 'triangle', .09); tone(587, .26, 'triangle', .08, null, .08); noise(.1, 500, 'lowpass', .05); },
+    clash: () => { noise(.08, 2000, 'bandpass', .11, 900, 0, 2); tone(240, .1, 'triangle', .07, 140); },
+    hit: () => { noise(.06, 1000, 'lowpass', .11); tone(160, .07, 'sine', .09, 80); },
+    kill: () => { tone(260, .3, 'triangle', .09, 90); noise(.2, 700, 'lowpass', .09, 200); },
+    status: () => tone(330, .2, 'sine', .07, 200),
+    reveal: () => tone(420, .2, 'sine', .09, 700),
+    coin: () => { tone(1175, .08, 'triangle', .07); tone(1568, .18, 'triangle', .07, null, .07); },
+    turn: () => { tone(494, .12, 'triangle', .09); tone(659, .18, 'triangle', .09, null, .1); },
+    fire: () => { noise(.4, 600, 'lowpass', .11, 2200); noise(.3, 2500, 'highpass', .035, 4000, .05); },
+    wind: () => noise(.5, 500, 'bandpass', .1, 1800, 0, 1.2),
+    thunder: () => { noise(.05, 5000, 'highpass', .12); noise(.5, 300, 'lowpass', .15, 90, .03); tone(70, .4, 'sine', .12, 45, .03); },
+    water: () => { tone(660, .2, 'sine', .08, 380); tone(880, .16, 'sine', .055, 500, .08); },
+    earth: () => { tone(90, .25, 'sine', .15, 55); noise(.15, 350, 'lowpass', .09); },
+    ice: () => arp([1568, 2093, 2637], .06, 'sine', .055, .28),
+    magic: () => arp([523, 784, 1047], .07, 'sine', .075, .25),
+    heal: () => arp([523, 659, 784], .09, 'sine', .085, .3),
+    dark: () => { tone(130, .4, 'triangle', .09, 90); noise(.3, 250, 'lowpass', .06); },
+    trap: () => { noise(.06, 3500, 'highpass', .11); tone(900, .15, 'triangle', .065, 500, .01); },
+    sword: () => { noise(.1, 3500, 'highpass', .08, 6500); tone(1300, .08, 'triangle', .05, 800); },
+    bow: () => { noise(.08, 2200, 'bandpass', .09, 700, 0, 2); tone(280, .06, 'triangle', .06, 140); },
+    dragon: () => { tone(100, .45, 'triangle', .11, 60); noise(.4, 500, 'lowpass', .09, 1800); },
+    win: () => arp([523, 659, 784, 1047], .12, 'triangle', .13, .45),
+    lose: () => arp([392, 349, 311, 262], .22, 'sine', .11, .55),
+  };
+  const BY_CARD = { thornTrap: 'trap', darkAssassin: 'dark', elixir: 'heal', staminaPotion: 'heal', magicPotion: 'heal', hyperPotion: 'heal', goblinFlute: 'magic', redDragonBreath: 'dragon', redDragon: 'dragon', moonDragon: 'magic', magicSanctuary: 'magic', swordFine: 'sword', shieldFine: 'sword', bowFine: 'bow', darkAssassinX: 'dark', goldenBody: 'magic', ferocious: 'dragon', fightSpirit: 'dragon', instinct: 'dragon', assault: 'sword', stoneThrow: 'earth', petrifyRay: 'dark', aquaReturn: 'water', sandWall: 'earth' };
+  const BY_ATTR = { '火': 'fire', '風': 'wind', '雷': 'thunder', '水': 'water', '土': 'earth', '雪': 'ice', '氷': 'ice' };
+  const forCard = cid => {
+    if (BY_CARD[cid]) return BY_CARD[cid];
+    const c = CARDS[cid]; if (!c) return 'magic';
+    if (c.attr) return BY_ATTR[c.attr.split('・')[0]] || 'magic';
+    return c.kind === 'item' ? (c.weapon ? 'sword' : 'heal') : c.kind === 'char' ? 'summon' : 'magic';
+  };
+  return {
+    get on() { return on; },
+    set(v) { on = !!v; try { localStorage.setItem('bg_sfx', v ? '1' : '0'); } catch (e) { } if (on) get(); },
+    unlock() { get(); },
+    play(n) { try { const now = Date.now(); if (last[n] && now - last[n] < 60) return; last[n] = now; if (S[n]) S[n](); } catch (e) { } },
+    card(cid) { this.play(forCard(cid)); },
+  };
+})();
+function localPick(o) { return new Promise(res => { UI.pk = { o, sel: [], res }; UI.sel = null; UI.selHand = null; renderBattle(); if (MOB()) try { window.scrollTo(0, 0); } catch (e) { } }); }
+const UI = {
+  pk: null, sel: null, selHand: null, busy: false, wait: null, overShown: false,
+  render() { if (screen === 'battle') renderBattle(); },
+  sfx(n) { SFX.play(n); },
+  toast(m) { if (!/^🎲/.test(m) && !/のターン$/.test(m)) SFX.play('error'); const d = document.createElement('div'); d.textContent = m; $('#toast').appendChild(d); setTimeout(() => d.remove(), 3000); },
+  ask(msg, btns, who) { who = who == null ? G.active : who; return ONL ? onlineInput('ans', who, () => localAsk(msg, btns)) : localAsk(msg, btns); },
+  async confirm(msg, who) { return (await UI.ask(msg, ['はい', 'いいえ'], who)) === 'はい'; },
+  cutIn(cid) { SFX.card(cid); if (ONL && ONL.queue.length) return Promise.resolve(); return new Promise(res => { const ms = { 1: 700, 2: 1200, 3: 1700 }[CARDS[cid].rank] || 700; const el = $('#cutin'); el.innerHTML = `<div class="cutcard">${cardHTML(cid, { cls: 'full lg' })}</div>`; el.style.display = 'flex'; const done = () => { clearTimeout(t); el.style.display = 'none'; el.onclick = null; res(); }; const t = setTimeout(done, ms); el.onclick = done; }); },
+  turnOverlay(p) { SFX.play('turn'); if (ONL) { UI.toast(`${p.name}のターン`); return Promise.resolve(); } return localAsk(`${p.name}のターン${p.count + 1}です。画面を${p.name}のプレイヤーに渡し、相手に手札が見えないようにしてください。`, [`${p.name}：ターン開始`]); },
+  gameOver(w) {
+    if (UI.overShown) return; UI.overShown = true;
+    SFX.play(ONL && w !== ONL.me ? 'lose' : 'win');
+    const wn = G.players[w].name, ln = G.players[1 - w].name;
+    const resign = G.log.slice(0, 6).some(l => l.includes('投了した'));
+    const you = ONL ? (w === ONL.me) : null;
+    const big = ONL ? (you ? '🏆 あなたの勝利！' : '💀 あなたの敗北…') : `🏆 ${wn}の勝利！`;
+    const el = document.createElement('div'); el.id = 'gameover'; el.className = 'gameover ' + (you === false ? 'lose' : 'win');
+    el.innerHTML = `<div class="gobox"><div class="gobig">${big}</div><div class="gosub">勝者：<b>${wn}</b>${ONL ? (you ? '（あなた）' : '（相手）') : ''}　／　敗者：${ln}</div><div class="gosub small">${resign ? `${ln}が投了しました` : `${ln}のアバターが倒されました`}</div><button class="btn main" id="goback">対戦準備へ戻る</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector('#goback').onclick = () => { el.remove(); UI.overShown = false; UI.busy = false; UI.pk = null; leaveOnline(); screen = 'prep'; G = null; show(); };
+  },
+  pickBoard(o) { const who = o.who == null ? G.active : o.who; return ONL ? onlineInput('pick', who, () => localPick(o)) : localPick(o); },
+};
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function paintTh() {
+  const th = UI.th;
+  document.querySelectorAll('#app .cell').forEach(c => {
+    const x = +c.dataset.x, y = +c.dataset.y; let roll = false, hit = false;
+    if (th) { const m = s => !!s && (s.type === 'col' ? x === s.idx : y === s.idx); roll = m(th.roll); hit = th.hit.some(m); }
+    c.classList.toggle('th-roll', roll); c.classList.toggle('th-hit', hit);
+  });
+}
+/* サンダーストーム：1列あたり約1秒のルーレット演出。選ばれた列は黄色く光る */
+UI.thunderStep = async function (s) {
+  if (!UI.th) { UI.th = { roll: null, hit: [] }; if (MOB()) try { window.scrollTo(0, 0); } catch (e) { } renderBattle(); }
+  const ticks = 12;
+  for (let i = 0; i < ticks; i++) { UI.th.roll = { type: s.type, idx: (((s.idx - (ticks - 1 - i)) % 7) + 7) % 7 }; paintTh(); await sleep(50 + i * 7); }
+  UI.th.roll = null; UI.th.hit.push(s); paintTh(); await sleep(350);
+};
+UI.thunderRound = function () { if (UI.th) { UI.th.hit = []; UI.th.roll = null; paintTh(); } };
+UI.thunderEnd = async function () { await sleep(600); UI.th = null; paintTh(); };
+function finishPick(r) { const pk = UI.pk; UI.pk = null; renderBattle(); pk.res(r); }
+const chip = (k, v, b) => `<span class="st-${k} ${v > b ? 'up' : v < b ? 'down' : ''}">${k}${v}${v > b ? '▲' : v < b ? '▼' : ''}</span>`;
+function unitHTML(u) {
+  const c = CARDS[u.cid], mineU = u.owner === VW();
+  if (u.hidden && !mineU) return `<div class="unit fh foe ${u.marked ? 'mk' : ''}">${u.marked ? '👁' : '?'}</div>`;
+  const st = statusList(u).map(k => STATUS_ICON[k]).join('');
+  const aa = armorTotal(u) > 0 ? `<span class="armor">装甲${armorTotal(u)}</span>` : '';
+  const eq = (u.weapon ? '⚔' : '') + u.attach.map(a => ({ shiftForm: '↗', windSlash: '🌀', fightSpirit: '🐾', redDragonBreath: '🔥' }[a.cid])).join('');
+  return `<div class="unit ${mineU ? 'mine' : 'foe'} ${u.hidden ? 'hid' : ''}" data-card="${u.cid}" data-uid="${u.uid}"><div class="uart">${artSVG(u.cid)}</div><div class="un">${esc(c.name.replace(/（.*）/, ''))}${u.hidden ? (u.sanct ? '（聖域）' : '（潜伏）') + (u.marked ? '👁' : '') : ''}</div><div class="stat">${st}${eq}</div><div class="us">${chip('LP', u.lp, baseLP(u))}${chip('OP', OP(u), c.op)}${chip('DP', DP(u), c.dp)}${chip('SC', u.sc, baseSC(u))}${chip('SpC', u.spc, baseSpC(u))}${aa}</div></div>`;
+}
+function hlMap() {
+  const m = {};
+  if (UI.pk) { for (const [x, y] of UI.pk.o.cells) m[x + ',' + y] = 'hl-' + (UI.pk.o.kind || 'target'); for (const [x, y] of UI.pk.sel) m[x + ',' + y] += ' picked'; }
+  else if (UI.sel && G.units[UI.sel]) { const u = G.units[UI.sel]; m[u.x + ',' + u.y] = 'hl-sel'; if (G.phase === 'action' && (!ONL || G.active === ONL.me)) for (const mv of movesFor(u)) m[mv.x + ',' + mv.y] = mv.type === 'attack' ? 'hl-attack' : 'hl-move'; }
+  return m;
+}
+function unitActions(u, can) {
+  const btn = [];
+  const dis = (cond) => (can && cond ? '' : 'disabled');
+  if (u.hidden) {
+    const rest = u.sanct ? 0 : u.hiddenSince + 3 - G.players[u.owner].count, share = U().some(v => v !== u && !v.dead && v.owner === u.owner && v.x === u.x && v.y === u.y);
+    btn.push(`<button class="btn main" data-act="reveal" data-uid="${u.uid}" ${dis(rest <= 0 && !share)}>公開する</button><span class="note">${rest > 0 ? `あと${rest}ターン後から公開可` : share ? '自分のキャラと同じマスでは公開できません' : '相手と同じマスなら公開と同時にバトル'}</span>`);
+  } else {
+    if (hasArcher(u)) btn.push(`<button class="btn" data-act="archer" data-uid="${u.uid}" ${dis(u.sc >= 1 && u.uses.archer !== G.turn)}>弓使い（サイコロ${archerNeed(u)}以上）</button>`);
+    if (abU(u, 'scout')) btn.push(`<button class="btn" data-act="scout" data-uid="${u.uid}" ${dis(u.sc >= 1 && u.uses.scout !== G.turn)}>警戒</button>`);
+  }
+  return btn.length ? `<div class="panel"><div class="bar">${btn.join('')}</div></div>` : '';
+}
+UI.peek = function (who, cid, pos) {
+  if (ONL && ONL.me !== who) return;
+  const el = $('#modal');
+  el.innerHTML = `<div class="mbox"><h3>警戒：${esc(pos)}の非公開カード</h3><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="note" style="text-align:center">${ONL ? 'あなただけに表示しています' : '※相手に見えないように確認してください'}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+};
+function renderBattle() {
+  if (!G) { $('#app').innerHTML = '<h2>対戦</h2><p class="note">「対戦準備」から対戦を開始してください。</p>'; return; }
+  const ap = cur(), p = G.players[VW()], flip = VW() === 1, hl = hlMap(), mineTurn = !ONL || G.active === ONL.me;
+  let cells = '';
+  for (let ry = 0; ry < 7; ry++) for (let rx = 0; rx < 7; rx++) {
+    const x = flip ? 6 - rx : rx, y = flip ? 6 - ry : ry;
+    const t = at(x, y), w = wallAt(x, y), row = rowOf(VW(), y), hb = t && !t.hidden ? hiddenAt(x, y) : [];
+    const acted = t && t.owner === VW() && t.acted > 0 ? ' acted' : '';
+    cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${acted}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${G.traps && G.traps[x + ',' + y] && true ? `<span class="sbadge trap ${G.traps[x + ',' + y].owner === VW() ? '' : 'foe'}" title="${G.traps[x + ',' + y].hidden ? '非公開カード' : '棘付きトラップ'}">${G.traps[x + ',' + y].hidden ? (G.traps[x + ',' + y].marked ? '👁' : '▲') : '⚠'}</span>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
+  }
+  const phaseName = { start: '—', draw: 'ドロー', main: 'メインステップ', action: 'アクションステップ' }[G.phase];
+  const showHand = ONL ? true : G.phase !== 'start';
+  const hand = showHand ? p.hand.map((cid, i) => `<div class="hcard ${UI.selHand === i ? 'sel' : ''}" data-act="hand" data-i="${i}">${cardHTML(cid, { cls: 'sm' })}</div>`).join('') : p.hand.map(() => '<div class="back"></div>').join('');
+  const o = G.players[1 - VW()];
+  let pkp = '';
+  if (UI.pk) {
+    const pk = UI.pk.o;
+    pkp = `<div class="panel pkpanel" style="border-color:var(--spc)"><b>${esc(pk.prompt)}</b>${pk.multi ? `<div class="note">${pk.sumLabel ? pk.sumLabel(UI.pk.sel) : `選択中 ${UI.pk.sel.length}`}</div>` : ''}<div class="bar">${pk.multi ? `<button class="btn main" data-act="pkok" ${!pk.validate || pk.validate(UI.pk.sel) ? '' : 'disabled'}>${esc(pk.confirmLabel || '決定')}</button>` : ''}${pk.cancellable === false ? '' : `<button class="btn" data-act="pkcancel">${esc(pk.cancelLabel || 'キャンセル')}</button>`}</div></div>`;
+  }
+  let selp = '';
+  if (UI.selHand != null && p.hand[UI.selHand] && !UI.pk) {
+    const cid = p.hand[UI.selHand];
+    selp = `<div class="panel">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${G.phase === 'main' && !UI.busy && mineTurn && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）${p.sellUsed ? '※今ターン売却済み' : ''}</button>` : ''}<span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
+  } else if (UI.sel && G.units[UI.sel] && !UI.pk) { const su = G.units[UI.sel], sc = CARDS[su.cid]; selp = MOB() ? `<div class="panel strip"><b class="serif">${esc(sc.name.replace(/（.*）/, ''))}</b><span class="badge">${coord(su.x, su.y)}</span><span class="st-LP">LP${su.lp}</span><span class="st-OP">OP${OP(su)}</span><span class="st-DP">DP${DP(su)}</span><span class="st-SC">SC${su.sc}</span><span class="st-SpC">SpC${su.spc}</span>${statusList(su).map(k => STATUS_ICON[k]).join('')}${su.acted ? '<span class="note">行動済</span>' : ''}<button class="btn sm" data-act="udetail" data-uid="${su.uid}">詳細</button></div>` : `<div class="panel">${unitDetail(su)}</div>`; }
+  if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
+  $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : '【相手の番】') : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
+  ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
+  <button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div class="panel warn">⏳ ${esc(UI.wait)}</div>` : ''}
+  <div class="battle"><div><div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
+  <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>
+  <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
+  <div>${pkp}${selp}${shopHTML(p, G.phase === 'main' && !UI.busy && mineTurn)}<div class="panel desk-only"><b class="serif">ログ</b><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></div></div></div>
+  <h3 style="margin:10px 0 0">${p.name}の手札（${p.hand.length}）</h3><div class="hand">${hand}</div><details class="panel mob-only"><summary class="serif">ログ・山札 ${p.deck.length}枚・墓地 ${p.grave.length}枚・スペル使用 自${p.spellsUsed}／相${o.spellsUsed}</summary><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></details>`;
+  paintTh();
+}
+function unitDetail(u) {
+  const c = CARDS[u.cid];
+  const sts = statusList(u).map(k => `<span class="tag bad" title="${STATUS_DESC[k]}">${STATUS_ICON[k]} ${STATUS_NAME[k]}</span>`).join('') || '<span class="note">なし</span>';
+  const desc = statusList(u).map(k => `<div class="note">${STATUS_DESC[k]}</div>`).join('');
+  const buffs = [];
+  if (u.dpBonus) buffs.push(`生贄によるDP+${u.dpBonus}`);
+  for (const b of u.buffs) buffs.push(`${b.k.toUpperCase()}+${b.amt}（一時）`);
+  if (u.weapon) buffs.push(`装備：${CARDS[u.weapon].name}`);
+  for (const a of u.attach) buffs.push(`${CARDS[a.cid].name}${a.since > G.players[u.owner].count ? '（次のターンから有効）' : ''}`);
+  return `<b class="serif">${esc(c.name)}</b> <span class="note">（${G.players[u.owner].name}）</span><div class="kv"><span class="st-LP">LP ${u.lp}/${baseLP(u)}</span>　<span class="st-OP">OP ${OP(u)}</span>　<span class="st-DP">DP ${DP(u)}</span>　<span class="st-SC">SC ${u.sc}/${baseSC(u)}</span>　<span class="st-SpC">SpC ${u.spc}/${baseSpC(u)}</span>${armorTotal(u) ? `<br><span class="armor">装甲値 ${armorTotal(u)}（LPとは別の値。受けるダメージを先に肩代わりする）</span>` : ''}<br><b>状態異常</b> ${sts}${desc}<b>強化・装備</b> ${buffs.join('、') || 'なし'}<br><b>位置</b> ${coord(u.x, u.y)}　<b>領域</b> ${{ home: 'ホームテリトリー', border: 'ボーダーゾーン', enemy: 'エネミーテリトリー' }[terr(u)]}　${u.acted ? '<b>行動済</b>' : '未行動'}${u.placedAt === G.turn && !isAv(u) ? '　（配置したターン）' : ''}</div>${c.txt.map(t => `<p class="note">${esc(t)}</p>`).join('')}<div class="note">長押しでカード全体を表示</div>`;
+}
+function showDetail(cid, uid) {
+  const el = $('#modal');
+  let extra = '';
+  if (uid && G && G.units[uid]) extra = `<div class="panel" style="max-width:300px">${unitDetail(G.units[uid])}</div>`;
+  el.innerHTML = `<div class="mbox"><div class="mrow">${cardHTML(cid, { cls: 'full lg' })}${extra}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+}
+function shopHTML(p, can) {
+  const items = shopItems();
+  if (!items.length) return '';
+  const row = (s, k) => `<div class="shoprow${s.sold ? ' sold' : ''}"><span class="n" data-card="${s.cid}">${esc(CARDS[s.cid].name)}<small>（R${CARDS[s.cid].rank}）</small></span><b>💰${s.price}</b><button class="btn sm" data-act="buy" data-k="${k}" ${!can || s.sold || p.coins < s.price || !canBuyRight(p) ? 'disabled' : ''}>${s.sold ? '売切' : '購入'}</button></div>`;
+  const n = G.shop.length;
+  return `<div class="panel shop"><b class="serif">🏪 アイテムショップ</b> <span class="note">所持💰${p.coins}</span><div class="note">購入権：${p.freeBuy > 0 ? '無料の購入権あり（1回）' : p.hand.includes('shopTicket') ? 'ショップチケット×' + p.hand.filter(c => c === 'shopTicket').length : '<span class="warn">なし（ショップチケットが必要）</span>'}</div>${G.shop.map((s, k) => row(s, k)).join('')}${G.shopUsed && G.shopUsed.length ? `<div class="note" style="margin-top:6px">売却品（売られたカード・買値。2往復で消えます）</div>${G.shopUsed.map((s, k) => row(s, n + k)).join('')}` : ''}<div class="note">ターンが1往復するたびに入れ替わります（共有・各1個）</div></div>`;
+}
+function showHandSheet(i) {
+  const p = G.players[VW()], cid = p.hand[i]; if (!cid) return;
+  const mineTurn = !ONL || G.active === ONL.me, can = G.phase === 'main' && !UI.busy && mineTurn;
+  const el = $('#modal');
+  el.innerHTML = `<div class="mbox"><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="sheetPlay" data-i="${i}" ${can ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sheetSell" data-i="${i}" ${can && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<button class="btn" data-act="closeModal">閉じる</button></div>${can ? '' : `<div class="note" style="text-align:center">${!mineTurn ? '相手のターンです' : 'メインステップのみ使用できます'}</div>`}</div>`;
+  el.style.display = 'flex';
+}
+function showGrave(i) {
+  const g = G.players[i].grave, el = $('#modal');
+  el.innerHTML = `<div class="mbox"><h3>${G.players[i].name}の墓地（${g.length}枚）</h3><div class="grid">${g.map(c => cardHTML(c, { cls: 'sm' })).join('') || '<p class="note">墓地は空です</p>'}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+}
+
+/* ---------- 操作 ---------- */
+async function guarded(fn) {
+  if (UI.busy) return; UI.busy = true; UI.sel = null; UI.selHand = null;
+  try { await fn(); } catch (e) { console.error(e); UI.toast('エラー：' + e.message); }
+  UI.busy = false; if (G) afterAction();
+}
+function onCell(x, y) {
+  if (!G || G.over) return;
+  if (UI.pk) {
+    const pk = UI.pk, k = x + ',' + y;
+    if (!pk.o.cells.some(c => c[0] === x && c[1] === y)) return;
+    if (!pk.o.multi) return finishPick([[x, y]]);
+    const i = pk.sel.findIndex(c => c[0] === x && c[1] === y);
+    if (i >= 0) pk.sel.splice(i, 1); else pk.sel.push([x, y]);
+    return renderBattle();
+  }
+  if (UI.busy || G.phase === 'start') return;
+  let t = at(x, y);
+  const hMine = U().find(u => u.hidden && !u.dead && u.owner === VW() && u.x === x && u.y === y);
+  if (hMine && (!t || t.owner !== VW() || t.hidden || UI.sel === t.uid)) t = hMine;
+  if (UI.sel && G.units[UI.sel] && G.phase === 'action') {
+    const u = G.units[UI.sel], mv = movesFor(u).find(m => m.x === x && m.y === y);
+    if (mv && (!ONL || G.active === ONL.me)) return doAct({ t: 'move', uid: u.uid, x, y });
+  }
+  if (t && t.owner === VW()) {
+    UI.sel = t.uid; UI.selHand = null; renderBattle();
+    if (G.phase === 'main' && abU(t, 'throw') && (!ONL || G.active === ONL.me)) doAct({ t: 'throw', uid: t.uid });
+    if (G.phase === 'main' && abU(t, 'moonReset') && (!ONL || G.active === ONL.me)) doAct({ t: 'moon', uid: t.uid });
+  } else if (t && !t.hidden) { UI.sel = t.uid; UI.selHand = null; renderBattle(); }
+  else { UI.sel = null; renderBattle(); }
+}
+function onClick(e) {
+  SFX.unlock();
+  if (e.target.closest && e.target.closest('[data-card]')) SFX.play('switch');
+  const kwEl = e.target.closest('[data-kw]');
+  if (kwEl) { e.stopPropagation(); e.preventDefault(); lpFired = false; showKeyword(kwEl.dataset.kw); return; }
+  if (lpFired) { lpFired = false; return; }
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const a = el.dataset.act;
+  if (e.target.closest('[data-card]')) { /* カードに触れた音は上で鳴らし済み */ } else if (['hand', 'cell', 'sheetHand', 'grave'].includes(a)) SFX.play('select'); else if (['toAction', 'endTurn', 'play', 'pkok', 'buy', 'sell', 'sheetSell'].includes(a)) SFX.play('tick');
+  switch (a) {
+    case 'nav': screen = el.dataset.s; show(); break;
+    case 'detail': showDetail(el.dataset.card); break;
+    case 'sheetPlay': $('#modal').style.display = 'none'; doAct({ t: 'play', i: +el.dataset.i }); break;
+    case 'udetail': $('#modal').style.display = 'none'; showDetail(G.units[+el.dataset.uid].cid, +el.dataset.uid); break;
+    case 'goDeck': { const t = $('#deckpanel'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); } break;
+    case 'goPool': window.scrollTo({ top: 0, behavior: 'smooth' }); break;
+    case 'closeModal': $('#modal').style.display = 'none'; break;
+    case 'inc': { const id = el.dataset.id; B.list[id] = (B.list[id] || 0) + 1; renderBuilder(); break; }
+    case 'dec': { const id = el.dataset.id; if (B.list[id] > 1) B.list[id]--; else delete B.list[id]; renderBuilder(); e.stopPropagation(); break; }
+    case 'newDeck': B.id = null; B.name = '新しいデッキ'; B.list = {}; renderBuilder(); break;
+    case 'dupDeck': B.id = null; B.name = ($('#dname').value || 'デッキ') + '（複製）'; renderBuilder(); break;
+    case 'delDeck': if (B.id && confirm('このデッキを削除しますか？')) { userDecks = userDecks.filter(d => d.id !== B.id); saveDecks(); B.id = null; B.list = {}; B.name = '新しいデッキ'; renderBuilder(); } break;
+    case 'saveDeck': saveDeckAs(false); break;
+    case 'saveAs': saveDeckAs(true); break;
+    case 'start': startBattle(); break;
+    case 'cell': onCell(+el.dataset.x, +el.dataset.y); break;
+    case 'hand': if (UI.pk || UI.busy || G.phase === 'start') break; if (MOB()) { showHandSheet(+el.dataset.i); break; } { const i = +el.dataset.i; if (UI.selHand === i && G.phase === 'main' && (!ONL || G.active === ONL.me)) doAct({ t: 'play', i }); else { UI.selHand = i; UI.sel = null; renderBattle(); } } break;
+    case 'reveal': doAct({ t: 'reveal', uid: +el.dataset.uid }); break;
+    case 'archer': doAct({ t: 'archer', uid: +el.dataset.uid }); break;
+    case 'scout': doAct({ t: 'scout', uid: +el.dataset.uid }); break;
+    case 'play': { const i = UI.selHand; if (i != null) doAct({ t: 'play', i }); } break;
+    case 'sell': { const i = UI.selHand; if (i != null) { UI.selHand = null; doAct({ t: 'sell', i }); } } break;
+    case 'sheetSell': $('#modal').style.display = 'none'; doAct({ t: 'sell', i: +el.dataset.i }); break;
+    case 'buy': doAct({ t: 'buy', k: +el.dataset.k }); break;
+    case 'pkok': if (UI.pk && (!UI.pk.o.validate || UI.pk.o.validate(UI.pk.sel))) finishPick(UI.pk.sel); break;
+    case 'pkcancel': finishPick(null); break;
+    case 'toAction': UI.selHand = null; doAct({ t: 'toAction' }); break;
+    case 'endTurn': { const f = own(VW()).filter(mustMove); if (f.length) { UI.toast('必ず移動しなければならないキャラクターがいます：' + f.map(nm).join('、')); break; } doAct({ t: 'end' }); } break;
+    case 'grave': showGrave(+el.dataset.i); break;
+    case 'giveup': localAsk(`${cur().name}が投了します。よろしいですか？`, ['投了する', 'やめる']).then(y => { if (y === '投了する') doAct({ t: 'giveup' }); }); break;
+    case 'mkRoom': createRoom(); break;
+    case 'joinRoom': joinRoom(($('#roomcode') || {}).value || ''); break;
+    case 'leaveRoom': leaveLobby(); break;
+    case 'lobReady': lobReady(); break;
+  }
+}
+function startBattle() {
+  const da = allDecks().find(d => d.id === PREP.a), db = allDecks().find(d => d.id === PREP.b);
+  UI.pk = null; UI.sel = null; UI.selHand = null; UI.busy = false;
+  newGame(mk(da.list), mk(db.list));
+  screen = 'battle'; show();
+  startTurn(0);
+}
+function show() {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.s === screen));
+  ({ cards: renderCards, builder: renderBuilder, prep: renderPrep, battle: renderBattle })[screen]();
+}
+
+/* ---------- 操作の実行（ローカル／オンライン共通） ---------- */
+async function execEv(ev) {
+  if (!G || G.over) return;
+  switch (ev.t) {
+    case 'play': await playHand(ev.i); break;
+    case 'sell': sellCard(ev.i); break;
+    case 'buy': buyShop(ev.k); break;
+    case 'move': { const u = G.units[ev.uid]; const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
+    case 'throw': { const u = G.units[ev.uid]; if (u) await monkeyThrow(u); break; }
+    case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
+    case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
+    case 'archer': { const u = G.units[ev.uid]; if (u) await archerShot(u); break; }
+    case 'scout': { const u = G.units[ev.uid]; if (u) await scoutWatch(u); break; }
+    case 'toAction': if (G.phase === 'main') G.phase = 'action'; break;
+    case 'end': await endTurn(); break;
+    case 'giveup': if (!G.over) { G.over = 1 - G.active; log(`${cur().name}が投了した`); } if (UI.gameOver) UI.gameOver(G.over); break;
+  }
+}
+async function doAct(ev) {
+  if (!G || G.over) return;
+  if (!ONL) return guarded(() => execEv(ev));
+  if (UI.busy || UI.pk || ONL.pending || G.active !== ONL.me) return;
+  ONL.pending = true; UI.sel = null; UI.selHand = null;
+  try { await writeEv(ev); } catch (e) { ONL.pending = false; UI.toast('送信に失敗しました。もう一度お試しください'); }
+}
+
+/* ---------- オンライン（PeerJS によるP2P通信：サーバー不要） ----------
+   ・ホストが6桁の部屋番号を発行（PeerJSのIDは "taisen-bg-" + 部屋番号）
+   ・ゲストがその番号を入力して接続（ブラウザ同士が直接つながる。最初の接続の取り次ぎだけ PeerJS の公開ブローカーを使う）
+   ・全ての操作を「連番つきイベント」として互いに送り、両方のブラウザが同じ乱数の種で同じ順に再生するため、盤面は常に一致する */
+const PEER_PREFIX = 'taisen-bg-';
+let PEER = null, CONN = null, EARLY = {};
+let LOBERR = '';
+function lobErr(m) { LOBERR = m; if (screen === 'prep') renderPrep(); }
+function loadPeerJS() {
+  return new Promise((res, rej) => {
+    if (window.Peer) return res();
+    const urls = ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+    let i = 0;
+    const next = () => {
+      if (window.Peer) return res();
+      if (i >= urls.length) return rej(new Error('PeerJSを読み込めませんでした'));
+      const s = document.createElement('script'); s.src = urls[i++]; s.onload = () => (window.Peer ? res() : next()); s.onerror = next; document.head.appendChild(s);
+    };
+    next();
+  });
+}
+function openPeer(id) {
+  return new Promise((res, rej) => {
+    let opened = false;
+    const p = id ? new Peer(id, { debug: 0 }) : new Peer({ debug: 0 });
+    p.on('open', () => { opened = true; PEER = p; res(p); });
+    p.on('error', e => { if (!opened) { try { p.destroy(); } catch (_) { } rej(e); } else UI.toast('通信エラー：' + (e.type || e.message)); });
+    p.on('disconnected', () => { if (opened && !p.destroyed) { try { p.reconnect(); } catch (_) { } } });
+    setTimeout(() => { if (!opened) { try { p.destroy(); } catch (_) { } rej({ type: 'timeout' }); } }, 15000);
+  });
+}
+function closeNet() {
+  try { CONN && CONN.close(); } catch (e) { }
+  try { PEER && PEER.destroy(); } catch (e) { }
+  CONN = null; PEER = null; EARLY = {};
+}
+const netSend = m => { try { if (CONN && CONN.open) CONN.send(m); } catch (e) { } };
+
+/* --- イベントの送受信 --- */
+function pushEv(ev) { if (ONL.waiters.length) ONL.waiters.shift()(ev); else ONL.queue.push(ev); }
+function take() { return new Promise(res => { if (ONL.queue.length) res(ONL.queue.shift()); else ONL.waiters.push(res); }); }
+function flushEv(o) { while (o.buf[o.recv + 1] !== undefined) { const e = o.buf[o.recv + 1]; delete o.buf[o.recv + 1]; o.recv++; pushEv(e); } }
+function netEv(n, ev) { const o = ONL; if (!o) { EARLY[n] = ev; return; } if (n <= o.recv) return; o.buf[n] = ev; flushEv(o); }
+async function writeEv(ev) {
+  if (!CONN || !CONN.open) throw new Error('相手と接続されていません');
+  const n = ONL.recv + 1; netSend({ k: 'ev', n, ev }); netEv(n, ev);
+}
+async function onlineInput(kind, who, localFn) {
+  if (ONL.queue.length && ONL.queue[0].t === kind) return (await take()).v;
+  if (who === ONL.me) {
+    const v = await localFn();
+    await writeEv({ t: kind, v: v === undefined ? null : v });
+    return (await take()).v;
+  }
+  UI.wait = `${G.players[who].name}の入力を待っています…`; renderBattle();
+  const ev = await take();
+  UI.wait = null;
+  return ev.v;
+}
+async function runLoop() {
+  const me = ONL;
+  while (ONL === me && !me.stop) {
+    const ev = await take();
+    if (ONL !== me || me.stop) break;
+    me.pending = false; UI.busy = true; UI.wait = null;
+    try { await execEv(ev); } catch (e) { console.error(e); UI.toast('エラー：' + e.message); }
+    if (ONL !== me) break;
+    UI.busy = false;
+    if (G) afterAction();
+  }
+}
+
+/* --- 接続の管理 --- */
+function setupConn(conn) {
+  conn.on('data', onNet);
+  conn.on('close', () => onNetClose(conn));
+  conn.on('error', () => onNetClose(conn));
+}
+function onNetClose(conn) {
+  if (CONN !== conn) return;
+  CONN = null;
+  if (ONL && !ONL.stop) {
+    if (!G || !G.over) { UI.wait = '相手との接続が切れました。もう一度対戦するには「部屋を出る」から入り直してください。'; UI.toast('相手との接続が切れました'); if (screen === 'battle') renderBattle(); }
+  } else if (LOB && LOB.role === 'host' && LOB.room) {
+    LOB.room.guest = false; LOB.room.guestReady = false; LOB.starting = false; if (screen === 'prep') renderPrep();
+  } else if (LOB && LOB.role === 'guest') { lobErr('部屋の主との接続が切れました。'); LOB = null; renderPrep(); }
+}
+function onNet(m) {
+  if (!m) return;
+  if (m.k === 'ev') return netEv(m.n, m.ev);
+  if (m.k === 'room' && LOB && LOB.role === 'guest') { LOB.room = m.room; onRoomChange(); return; }
+  if (m.k === 'patch' && LOB && LOB.role === 'host') { LOB.room = Object.assign(LOB.room || {}, m.patch); netSend({ k: 'room', room: LOB.room }); onRoomChange(); return; }
+  if (m.k === 'hello' && LOB && LOB.role === 'host' && LOB.room) { LOB.room.guest = true; netSend({ k: 'room', room: LOB.room }); if (screen === 'prep') renderPrep(); return; }
+  if (m.k === 'full') { lobErr('その部屋はすでに満員です。'); closeNet(); LOB = null; renderPrep(); }
+}
+function roomUpdate(patch) {
+  const L = LOB; if (!L) return;
+  if (L.role === 'host') { L.room = Object.assign(L.room || {}, patch); netSend({ k: 'room', room: L.room }); onRoomChange(); }
+  else netSend({ k: 'patch', patch });
+}
+function leaveOnline() {
+  if (ONL) { ONL.stop = true; ONL = null; }
+  closeNet(); LOB = null;
+}
+
+/* ---------- オンライン：部屋（ロビー） ---------- */
+async function createRoom() {
+  LOBERR = ''; closeNet();
+  try { await loadPeerJS(); } catch (e) { return lobErr('通信ライブラリ（PeerJS）を読み込めませんでした。ネット接続を確認してください。'); }
+  try {
+    let ok = false;
+    for (let k = 0; k < 8 && !ok; k++) {
+      const code = String(100000 + Math.floor(Math.random() * 900000));
+      try { await openPeer(PEER_PREFIX + code); ok = code; } catch (e) { if (e && e.type === 'unavailable-id') continue; throw e; }
+    }
+    if (!ok) return lobErr('部屋番号の確保に失敗しました。もう一度お試しください。');
+    PEER.on('connection', conn => {
+      if (CONN && CONN.open) { conn.on('open', () => { try { conn.send({ k: 'full' }); } catch (e) { } setTimeout(() => conn.close(), 400); }); return; }
+      CONN = conn; setupConn(conn);
+      const onOpen = () => { if (LOB && LOB.room) { LOB.room.guest = true; LOB.room.guestReady = false; netSend({ k: 'room', room: LOB.room }); if (screen === 'prep') renderPrep(); } };
+      if (conn.open) onOpen(); else conn.on('open', onOpen);
+    });
+    enterLobby(ok, 'host');
+  } catch (e) { lobErr('部屋を作れませんでした（' + ((e && (e.type || e.message)) || '不明') + '）。'); }
+}
+async function joinRoom(code) {
+  LOBERR = ''; code = String(code).trim();
+  if (!/^\d{6}$/.test(code)) return lobErr('6桁の部屋番号を入力してください。');
+  closeNet();
+  try { await loadPeerJS(); } catch (e) { return lobErr('通信ライブラリ（PeerJS）を読み込めませんでした。ネット接続を確認してください。'); }
+  try {
+    await openPeer(null);
+    await new Promise((res, rej) => {
+      const conn = PEER.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
+      const to = setTimeout(() => rej({ type: 'timeout' }), 15000);
+      PEER.once('error', e => { clearTimeout(to); rej(e); });
+      CONN = conn; setupConn(conn);
+      conn.on('open', () => { clearTimeout(to); netSend({ k: 'hello' }); res(); });
+    });
+    enterLobby(code, 'guest');
+  } catch (e) {
+    closeNet();
+    lobErr(e && e.type === 'peer-unavailable' ? 'その番号の部屋はありません。' : e && e.type === 'timeout' ? '接続できませんでした（時間切れ）。番号と、相手がまだ部屋を開いているかを確認してください。' : '入室できませんでした（' + ((e && (e.type || e.message)) || '不明') + '）。');
+  }
+}
+function enterLobby(code, role) {
+  LOB = { code, role, room: role === 'host' ? { created: Date.now(), guest: false, status: 'lobby', hostReady: false, guestReady: false } : null, deckId: PREP.a, starting: false, started: null };
+  screen = 'prep'; show();
+}
+function leaveLobby() { if (ONL) return; closeNet(); LOB = null; renderPrep(); }
+function onRoomChange() {
+  const L = LOB, r = L && L.room; if (!r) { if (screen === 'prep') renderPrep(); return; }
+  if (r.status === 'playing' && !ONL && L.started !== r.seed) { L.started = r.seed; startOnline(); return; }
+  if (L.role === 'host' && r.status === 'lobby' && r.hostReady && r.guestReady && r.guest && !L.starting) {
+    L.starting = true;
+    roomUpdate({ status: 'playing', seed: 1 + Math.floor(Math.random() * 2147483000), seat0: Math.random() < .5 ? 'host' : 'guest' });
+    return;
+  }
+  if (screen === 'prep' && !ONL) renderPrep();
+}
+async function lobReady() {
+  const L = LOB; if (!L || !L.room) return;
+  const r = L.room, role = L.role, key = role + 'Ready';
+  if (r[key]) { roomUpdate({ [key]: false }); return; }
+  const d = allDecks().find(d => d.id === L.deckId), v = validateDeck(d.list);
+  if (v.err.length) return UI.toast('構築ルール違反のデッキでは対戦できません');
+  const ids = Object.keys(d.list).sort().flatMap(k => Array(d.list[k]).fill(k));
+  roomUpdate({ [role + 'Deck']: ids, [role + 'DeckName']: d.name, [key]: true });
+}
+const pubInfo = ids => { const m = {}; for (const id of ids || []) if (CARDS[id] && CARDS[id].rank >= 2 && CARDS[id].kind !== 'char') m[id] = (m[id] || 0) + 1; return Object.entries(m).map(([id, n]) => `${esc(CARDS[id].name)}${n > 1 ? '×' + n : ''}（R${CARDS[id].rank}）`).join('、') || 'なし'; };
+function lobbyHTML() {
+  if (!LOB) return `<h3 style="margin-top:22px">オンライン対戦</h3><div class="panel"><p class="note">「部屋をつくる」で表示される6桁の番号を相手に伝え、相手が同じ番号を入力して入室します。入室後に各自がデッキを選び、双方が「対戦可能」を押すと始まります。先行・後攻はランダムです。<br>※ 相手と同じページ（同じURL）を開いてください。通信はブラウザ同士の直接接続（P2P）で、サーバーは要りません。</p><div class="bar"><button class="btn main" data-act="mkRoom">部屋をつくる</button><span class="note">または</span><input type="text" id="roomcode" inputmode="numeric" maxlength="6" placeholder="部屋番号（6桁）" style="width:150px"><button class="btn" data-act="joinRoom">入室</button></div>${LOBERR ? `<div class="err">${esc(LOBERR)}</div>` : ''}</div>`;
+  const r = LOB.room || {}, role = LOB.role, opp = role === 'host' ? 'guest' : 'host';
+  const d = allDecks().find(d => d.id === LOB.deckId) || allDecks()[0], v = validateDeck(d.list), ready = !!r[role + 'Ready'];
+  const myIds = Object.keys(d.list).flatMap(k => Array(d.list[k]).fill(k));
+  const starting = r.status === 'playing';
+  return `<h3 style="margin-top:22px">オンライン対戦　<span class="badge serif">部屋番号 ${esc(LOB.code)}</span></h3><div class="mrow">
+  <div class="panel" style="min-width:300px"><b>あなた（${role === 'host' ? '部屋の主' : '入室者'}）</b><br><select data-sel="lob.deck" ${ready ? 'disabled' : ''}>${allDecks().map(x => `<option value="${x.id}" ${x.id === LOB.deckId ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+  <div class="note">${deckSize(d.list)}枚　R1:${v.r[0]} R2:${v.r[1]} R3:${v.r[2]}</div>${v.err.map(e => `<div class="err">✖ ${esc(e)}</div>`).join('')}
+  <div class="note">相手に公開される情報（キャラ以外のランク2以上）：${pubInfo(myIds)}</div>
+  <div class="bar"><button class="btn ${ready ? '' : 'main'}" data-act="lobReady" ${starting || (!ready && v.err.length) ? 'disabled' : ''}>${ready ? '✔ 対戦可能（クリックで取り消し）' : '対戦可能'}</button></div></div>
+  <div class="panel" style="min-width:300px"><b>相手</b><br>${r[opp] ? (r[opp + 'Ready'] ? `<span class="ok">✔ 対戦可能</span><div class="note">デッキ：${esc(r[opp + 'DeckName'] || '')}</div><div class="note">公開情報（キャラ以外のランク2以上）：${pubInfo(r[opp + 'Deck'])}</div>` : '<span class="warn">入室済み・デッキ選択中…</span>') : '<span class="note">相手の入室を待っています…</span>'}</div></div>
+  <p class="note">${starting ? '対戦を開始します…' : '双方が「対戦可能」を押すと、先行・後攻がランダムに決まって開始します。'}</p><div class="bar"><button class="btn danger" data-act="leaveRoom" ${starting ? 'disabled' : ''}>部屋を出る</button></div>`;
+}
+
+async function startOnline() {
+  const L = LOB, r = L.room;
+  const seat = r.seat0 === L.role ? 0 : 1;
+  const d0 = r.seat0 === 'host' ? r.hostDeck : r.guestDeck, d1 = r.seat0 === 'host' ? r.guestDeck : r.hostDeck;
+  const me = { code: L.code, me: seat, queue: [], waiters: [], recv: 0, buf: Object.assign({}, EARLY), pending: false, stop: false, seed: r.seed, got: true };
+  EARLY = {};
+  ONL = me;
+  seedRng(r.seed);
+  UI.pk = null; UI.sel = null; UI.selHand = null; UI.busy = true; UI.wait = null; UI.overShown = false;
+  newGame(d0.slice(), d1.slice());
+  screen = 'battle'; show();
+  UI.toast(`あなたは${seat === 0 ? '先行' : '後攻'}です`);
+  await startTurn(0);
+  UI.busy = false;
+  flushEv(me);
+  runLoop();
+}
+
+/* ---------- イベント ---------- */
+let lpTimer = null, lpFired = false;
+document.addEventListener('pointerdown', e => {
+  const el = e.target.closest('[data-card]'); if (!el) return;
+  lpFired = false; clearTimeout(lpTimer);
+  lpTimer = setTimeout(() => { lpFired = true; showDetail(el.dataset.card, el.dataset.uid); }, 500);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => document.addEventListener(ev, () => clearTimeout(lpTimer)));
+document.addEventListener('scroll', () => clearTimeout(lpTimer), true);
+document.addEventListener('contextmenu', e => { const el = e.target.closest('[data-card]'); if (el) { e.preventDefault(); lpFired = false; showDetail(el.dataset.card, el.dataset.uid); } });
+document.addEventListener('click', onClick);
+document.addEventListener('change', e => {
+  const s = e.target.dataset.sel; if (!s) return;
+  const v = e.target.value;
+  if (s === 'loadDeck') { if (v) { loadDeck(v); renderBuilder(); } return; }
+  if (s === 'prep.a') { PREP.a = v; renderPrep(); return; }
+  if (s === 'prep.b') { PREP.b = v; renderPrep(); return; }
+  if (s === 'lob.deck') { if (LOB) { LOB.deckId = v; renderPrep(); } return; }
+  const [sc, k] = s.split('.');
+  if (sc === 'F') { F[k] = v; renderCards(); } else { B.F[k] = v; renderBuilder(); }
+});
+document.addEventListener('input', e => {
+  const s = e.target.dataset.in;
+  if (s === 'F.q') { F.q = e.target.value; fillGrid(); }
+  else if (s === 'BF.q') { B.F.q = e.target.value; fillPool(); }
+  else if (e.target.id === 'dname') B.name = e.target.value;
+});
+document.querySelectorAll('nav button').forEach(b => b.dataset.act = 'nav');
+{ const sb = document.getElementById('sfxbtn'); if (sb) { const paint = () => { sb.textContent = SFX.on ? '🔊' : '🔇'; }; paint(); sb.onclick = e => { e.stopPropagation(); SFX.set(!SFX.on); paint(); SFX.play('select'); }; } }
+show();
+</script>
+</body></html>
