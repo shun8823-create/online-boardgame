@@ -2091,3 +2091,121 @@ document.querySelectorAll('nav button').forEach(b => b.dataset.act = 'nav');
 show();
 </script>
 </body></html>
+<style>
+  /* 既存のSVGを非表示にして、Geminiの画像を綺麗に表示する設定 */
+  .card .c-art svg, .unit .uart svg { display: none !important; }
+  .card .c-art, .unit .uart {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
+</style>
+
+<script>
+(function() {
+  // 1. あなたが作ってくれた66枚のカード名とハイフン付き英語名の連想リスト
+  const imageMap = {
+    "アバター": "avatar.jpg",
+    "駆け出し冒険者": "beginner-adventurer.jpg",
+    "駆け出し魔法使い": "beginner-wizard.jpg",
+    "ノーマルゴブリン": "normal-goblin.jpg",
+    "ホブゴブリン": "hobgoblin.jpg",
+    "スライム": "slime.jpg",
+    "ベテラン冒険者": "veteran-adventurer.jpg",
+    "ベテラン魔法使い": "veteran-wizard.jpg",
+    "ドワーフの戦士": "dwarf-warrior.jpg",
+    "ゴブリンウィザード": "goblin-wizard.jpg",
+    "オーガ": "ogre.jpg",
+    "レッドボア": "red-boar.jpg",
+    "エルフの魔法使い": "elf-wizard.jpg",
+    "レッドドラゴン": "red-dragon.jpg",
+    "トロール": "troll.jpg",
+    "氷の魔女（アイスウィッチ）": "ice-witch.jpg",
+    "ゴーレム（ステップ1）": "golem.jpg",
+    "ゴーレム（ステップ2）": "golem2.jpg",
+    "ゴーレム（ステップ3）": "golem3.jpg",
+    "駆け出しレンジャー": "beginner-ranger.jpg",
+    "闇夜の暗殺者": "dark-night-assasin.jpg",
+    "ベテランレンジャー": "veteran-ranger.jpg",
+    "ムーンライトドラゴン": "moonlight-dragon.jpg",
+    "天空の覇者（ストームイーグル）": "storm-eagle.jpg",
+    "ブラックウルフ": "black-wolf.jpg",
+    "キラータイガー": "killer-tiger.jpg",
+    "ブラッドスネーク": "blood-snake.jpg",
+    "グレートモンキー": "great-monkey.jpg",
+    "ヴァンパイア": "vampire.jpg",
+    "コカトリス": "cockatrice.jpg",
+    "クリエイトゴーレム": "create-golem.jpg",
+    "石化光線": "petrified-rays.jpg",
+    "スパーク": "spark.jpg",
+    "魔法聖域（スペルサンクチュアリ）": "magic-sanctuary.jpg",
+    "道標（マジックサイン）": "magic-sign.jpg",
+    "火球（ファイアボール）": "fire-ball.jpg",
+    "砂壁（サンドウォール）": "sand-wall.jpg",
+    "フリーズウインド": "freeze wind.jpg",
+    "形質変化": "trait-change.jpg",
+    "テレポート": "teleport.jpg",
+    "増援召喚": "reinforcements.jpg",
+    "魔法壁（マジックガード）": "magic-guard.jpg",
+    "混沌の手（ドレインハンド）": "drain-hand.jpg",
+    "アクアリターン": "aqua-return.jpg",
+    "黄金の体": "gold skin.jpg",
+    "本能解放": "instinct-release.jpg",
+    "終焉のブリザード": "blizzard-of-the-end.jpg",
+    "サンダーストーム": "thunder-storm.jpg",
+    "ウインドスラッシュ": "wind-slash.jpg",
+    "レッドドラゴンブレス": "red-dragon-bless.jpg",
+    "上等な剣": "high-class-sword.jpg",
+    "上等な弓": "high-class-bow.jpg",
+    "棘付きトラップ": "needle-trap.jpg",
+    "上等な魔杖": "high-class-wand.jpg",
+    "上等な盾": "high-class-shield.jpg",
+    "投石": "throwing-stone.jpg",
+    "スタミナポーション": "stamina-potion.jpg",
+    "マジックポーション": "magic-potion.jpg",
+    "ショップチケット": "shop-ticket.jpg",
+    "エリクサー": "elixir.jpg",
+    "ハイパーポーション": "hyper-potion.jpg",
+    "ゴブリンの笛": "goblin-whistle.jpg",
+    "ゴブリンパレード": "goblin-parade.jpg",
+    "突撃司令": "assault-command.jpg",
+    "獰猛なる覇者の加護": "storm-eagle-protection.jpg",
+    "闘争心": "fighting-spirit.jpg"
+  };
+
+  // 2. 画面上のカードや盤面を常に監視して、名前を見つけたら背景画像をあてはめる処理
+  function applyImages() {
+    // 手札や図鑑のカードに画像を適用
+    document.querySelectorAll('.card').forEach(cardEl => {
+      const nameEl = cardEl.querySelector('.c-name');
+      const artEl = cardEl.querySelector('.c-art');
+      if (nameEl && artEl) {
+        const cardName = nameEl.textContent.trim();
+        if (imageMap[cardName]) {
+          artEl.style.backgroundImage = `url('ボードゲームの画像/${imageMap[cardName]}')`;
+        }
+      }
+    });
+
+    // 盤面のユニットに画像を適用
+    document.querySelectorAll('.unit').forEach(unitEl => {
+      const nameEl = unitEl.querySelector('.un');
+      const artEl = unitEl.querySelector('.uart');
+      if (nameEl && artEl) {
+        const unitName = nameEl.textContent.trim();
+        if (imageMap[unitName]) {
+          artEl.style.backgroundImage = `url('ボードゲームの画像/${imageMap[unitName]}')`;
+        }
+      }
+    });
+  }
+
+  // ゲームの画面が更新されるたびに自動で実行する設定
+  const observer = new MutationObserver(applyImages);
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  // 最初の起動時にも実行
+  window.addEventListener('DOMContentLoaded', applyImages);
+  setTimeout(applyImages, 500);
+})();
+</script>
