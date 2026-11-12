@@ -15,8 +15,8 @@ const CARD_IDS = Object.keys(CARDS).filter(k => k !== 'avatar');
 const DECK_IDS = CARD_IDS.filter(k => !CARDS[k].token);
 const RACES = [...new Set(CARD_IDS.map(k => CARDS[k].race).filter(Boolean))];
 const KIND_ORDER = { char: 0, spell: 1, item: 2, tech: 3 };
-const F = { kind: 'all', rank: 'all', race: 'all', q: '' };
-const B = { id: null, name: '新しいデッキ', list: {}, F: { kind: 'all', rank: 'all', race: 'all', q: '' } };
+const F = { kind: 'all', rank: 'all', race: 'all', attr: 'all', q: '' };
+const B = { id: null, name: '新しいデッキ', list: {}, F: { kind: 'all', rank: 'all', race: 'all', attr: 'all', q: '' } };
 const PREP = { a: 'p_oudo', b: 'p_gob' };
 const STATUS_ICON = { burn: '🔥', chill: '❄', frost: '🧊', poison: '☠', venom: '☠☠', petrify: '🪨', paralyze: '⚡' };
 const STATUS_DESC = { paralyze: 'まひ：1ターンにSCを1つしか使えない（2回行動でも2回目の行動はできない）', burn: 'やけど：回復効果のLP増加が750減る', chill: 'しもやけ：回復効果のLP増加が500減る', frost: '凍傷：回復効果のLP増加が1000減り、LPが2000下がる（ターン終了時に回復しない）', poison: '毒：LP-500・SC-1（ターン終了時に回復しない）', venom: '猛毒：LP-1500・SC-2（ターン終了時に回復しない）', petrify: '石化：SC・SpCを消費する行動や効果を使えない' };
@@ -28,7 +28,8 @@ function filterIds(f, deck) {
     if (f.kind !== 'all' && c.kind !== f.kind) return false;
     if (f.rank !== 'all' && String(c.rank) !== f.rank) return false;
     if (f.race !== 'all' && c.race !== f.race) return false;
-    if (f.q && !(c.name + c.txt.join('') + (c.cond || '') + (c.cat || '') + (c.race || '')).includes(f.q)) return false;
+    if (f.attr && f.attr !== 'all' && !cardAttrs(id).includes(f.attr)) return false;
+    if (f.q && !(c.name + c.txt.join('') + (c.cond || '') + (c.cat || '') + (c.race || '') + cardAttrs(id).join('') + '属性').includes(f.q)) return false;
     return true;
   }).sort(cardSort);
 }
@@ -80,9 +81,10 @@ function cardHTML(cid, o = {}) {
   const attrs = (o.uid ? ` data-uid="${o.uid}"` : '');
   return `<div class="card rank${c.rank} k-${c.kind} ${o.cls || ''}" data-card="${cid}"${attrs}><div class="c-head"><span class="c-name">${esc(c.name)}</span><span class="c-rank">R${c.rank}</span></div><div class="c-art${artImgUrl(cid) ? ' img' : ''}">${artSVG(cid)}</div><div class="c-type">${esc(type)}</div><div class="c-text">${text}</div><div class="c-stats">${stats}</div></div>`;
 }
+const ATTRS = ['火', '水', '風', '土', '雷', '雪', '光', '闇'].filter(a => CARD_IDS.some(id => cardAttrs(id).includes(a))).concat([...new Set(CARD_IDS.flatMap(id => cardAttrs(id)))].filter(a => !['火', '水', '風', '土', '雷', '雪', '光', '闇'].includes(a)));
 function filterBar(f, scope) {
   const sel = (key, opts) => `<select data-sel="${scope}.${key}">${opts.map(([v, l]) => `<option value="${v}" ${f[key] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
-  return `<div class="bar">${sel('kind', [['all', 'すべての種類'], ['char', 'キャラクター'], ['spell', 'スペル'], ['item', 'アイテム'], ['tech', 'テクニック']])}${sel('rank', [['all', 'すべてのランク'], ['1', 'ランク1'], ['2', 'ランク2'], ['3', 'ランク3']])}${sel('race', [['all', 'すべての種族'], ...RACES.map(r => [r, r])])}<input type="search" placeholder="名前・能力で検索" value="${esc(f.q)}" data-in="${scope}.q"></div>`;
+  return `<div class="bar">${sel('kind', [['all', 'すべての種類'], ['char', 'キャラクター'], ['spell', 'スペル'], ['item', 'アイテム'], ['tech', 'テクニック']])}${sel('rank', [['all', 'すべてのランク'], ['1', 'ランク1'], ['2', 'ランク2'], ['3', 'ランク3']])}${sel('race', [['all', 'すべての種族'], ...RACES.map(r => [r, r])])}${sel('attr', [['all', 'すべての属性'], ...ATTRS.map(a => [a, a + '属性'])])}<input type="search" placeholder="名前・能力で検索" value="${esc(f.q)}" data-in="${scope}.q"></div>`;
 }
 
 /* ---------- 画面1: カード一覧 ---------- */

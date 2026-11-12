@@ -145,6 +145,7 @@ function killUnit(u) {
   u.dead = true; sfx('kill');
   const p = G.players[u.owner];
   if (isAv(u)) { if (!G.over) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
+  else if (CARDS[u.cid].token) log(`${lnm(u)}が破壊された（デッキ外へ）`); // スペルの効果で出たキャラクターは墓地に行かずデッキ外へ
   else { p.grave.push(u.cid); log(`${lnm(u)}が破壊された`); }
   for (const w of wps(u)) p.grave.push(w);
   dropAttach(u, p);
@@ -152,7 +153,7 @@ function killUnit(u) {
 }
 /* シードラゴン：手札1枚につきLPが上がる（ホーム／ボーダー＝1000、エネミー＝500）。手札の枚数や位置が変わるたびに、増減した分だけ現在LPと上限が動く（減る場合も最低LP1は残り、これで破壊されることはない） */
 const seaBonus = u => G.players[u.owner].hand.length * (terr(u) === 'enemy' ? 500 : 1000);
-const hbTarget = u => (abC(u.cid, 'seaHand') ? seaBonus(u) : 0) + (dangerLP(u) ? 1000 : 0); // 手札数によるLP（シードラゴン）＋危険海流域のLP+1000
+const hbTarget = u => (abC(u.cid, 'seaHand') ? seaBonus(u) : 0) + (dangerLP(u) ? 500 : 0) - (aquaticOn(u) && !isAv(u) && terr(u) === 'enemy' ? 500 : 0); // 手札数によるLP（シードラゴン）＋危険海流域のLP+500－水棲のエネミーでのLP-500
 function syncHBu(u) { if (!u || u.dead) return; const nb = hbTarget(u), d = nb - (u.hbA || 0); if (!d) return; u.hbA = nb; u.lp = d > 0 ? u.lp + d : Math.max(1, u.lp + d); }
 function syncHB() { if (G) for (const u of U()) syncHBu(u); }
 function damage(u, n, opts) {
@@ -838,8 +839,8 @@ const ACT = {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('aquaReturn');
     if (await resist(t, 1, p)) return true;
     const o = G.players[t.owner]; for (const w of wps(t)) o.grave.push(w); dropAttach(t, o);
-    o.hand.push(t.cid); delete G.units[t.uid]; t.dead = true; log(`アクアリターン：${CARDS[t.cid].name}が手札に戻った`);
-    if (t.owner !== p.i) { (o.ban = o.ban || []).push({ cid: t.cid, turn: G.turn + 1 }); log(`${o.name}は次のターン、「${CARDS[t.cid].name}」を盤に出せない`); }
+    if (!CARDS[t.cid].token) o.hand.push(t.cid); delete G.units[t.uid]; t.dead = true; log(CARDS[t.cid].token ? `アクアリターン：${CARDS[t.cid].name}がデッキ外へ戻った` : `アクアリターン：${CARDS[t.cid].name}が手札に戻った`);
+    if (t.owner !== p.i && !CARDS[t.cid].token) { (o.ban = o.ban || []).push({ cid: t.cid, turn: G.turn + 1 }); log(`${o.name}は次のターン、「${CARDS[t.cid].name}」を盤に出せない`); }
     return true; } },
   goldenBody: { can: () => '黄金の体はバトル時にのみ使用できます' },
   dangerSea: { can: p => (p.dangerSea ? '危険海流域の効果はすでに永続しています（重複しません）' : null), async run(p) {
@@ -855,10 +856,15 @@ const ACT = {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('instinct');
     const perm = mine(p).filter(u => CARDS[u.cid].race === 'ワイルド').length >= 3;
     p.instinct = { until: p.count + 3, perm }; log(`本能解放${perm ? '（永続）' : ''}`); return true; } },
-  seaRoar: { can: p => (seaRoarTargets(p).length ? null : '対象にできる相手キャラクターがいません（相手のホームテリトリー／ボーダーゾーン内が対象）'), async run(p) {
+  seaRoar: { can: p => (waterCount(p.deckList) < 15 && p.hand.length < 2 ? '水属性が15枚未満のデッキでは、使用前に捨てる手札がもう1枚必要です' : seaRoarTargets(p).length ? null : '対象にできる相手キャラクターがいません（相手のホームテリトリー／ボーダーゾーン内が対象）'), async run(p) {
     const t = await pickUnit(seaRoarTargets(p), '海竜の咆哮の対象を選択'); if (!t) return false;
-    if (!(await payCost(p, 4))) return false; await UI.cutIn('seaRoar');
-    const n = Math.max(0, p.hand.length - 1); // 使用後の手札の枚数から1引いた数
+    if (!(await payCost(p, 4))) return false;
+    if (waterCount(p.deckList) < 15 && p.hand.length) { // 自分のデッキに水属性が15枚未満なら、使用する前に手札を1枚捨てる
+      const di = p.hand.length === 1 ? 0 : ((await UI.pickCards('海竜の咆哮', '水属性のカードが15枚未満のため、使用前に捨てる手札を1枚選んでください', p.hand.slice(), 1, p.i, 1)) || [0])[0];
+      const dc = p.hand.splice(di, 1)[0]; p.grave.push(dc); syncHB(); log(`${p.name}：海竜の咆哮の使用前に「${CARDS[dc].name}」を捨てた`);
+    }
+    await UI.cutIn('seaRoar');
+    const n = Math.max(0, p.hand.length - 1); // 捨てた後の手札の枚数から1引いた数
     if (!(await resist(t, 4, p))) { damage(t, 1000 * n); log(`海竜の咆哮：手札（使用後の枚数−1）${n}枚、${lnm(t)}に${1000 * n}ダメージ`); }
     return true; } },
   blizzard: { can: p => (blizzardTargets(p).length ? null : '対象にできる相手キャラクターがいません（ボーダーゾーン／エネミーテリトリー内が対象）'), async run(p) {
