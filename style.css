@@ -376,3 +376,6 @@ html{-webkit-text-size-adjust:100%}
 .zleg{font:inherit;font-size:11px;color:var(--text);background:#2a2d31;border:1px solid #555d64;border-radius:12px;padding:3px 10px;cursor:pointer;min-height:26px}
 .zleg.off{opacity:.55;text-decoration:line-through}
 @media(max-width:700px){.zleg{min-height:38px;font-size:12px}}
+
+.rankA{background:linear-gradient(160deg,#3a3f5c,#1a1c30);border:3px solid #e6e8ff;box-shadow:0 0 0 1px #8a90c8,0 0 16px #b8c0ffaa}
+.card.rankA .c-art{border-color:#e6e8ff;box-shadow:0 0 0 1px #5a5f9a,0 0 8px #c8d0ffaa,inset 0 0 0 1px #ffffffcc}

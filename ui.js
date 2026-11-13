@@ -34,7 +34,7 @@ function filterIds(f, deck) {
   }).sort(cardSort);
 }
 /* 「」つきの効果（キーワード能力）：カード面には名前だけを出し、タップで詳しい解説を見られる */
-const KEYWORDS = ['庇護', '生贄', '狂乱', '魔法耐性', '超魔法耐性', '焼却', '飛翔', '再生', '超再生', '潜伏', '弓使い', '警戒', '月光', '投擲', '超範囲', 'カウンター', 'スペルドロー', 'スペルコレクト', 'ハンティング', 'アサシン', 'ふいうち', '装甲値', '剣士', '光属性', '水棲', 'エレメンタルコレクト'];
+const KEYWORDS = ['庇護', '生贄', '狂乱', '魔法耐性', '超魔法耐性', '焼却', '飛翔', '再生', '超再生', '潜伏', '弓使い', '警戒', '月光', '投擲', '超範囲', 'カウンター', 'スペルドロー', 'スペルコレクト', 'ハンティング', 'アサシン', 'ふいうち', '装甲値', '剣士', '光属性', '水棲', 'エレメンタルコレクト', 'ヒール', 'キュア・ディジーズ', '魔法耐性2', 'エンジェル', 'エンジェルカウント', 'エンジェルポイント'];
 function kwOf(t) {
   const r = /^([^：（]{1,10})(（[^）]*）)?：/.exec(t);
   return r && KEYWORDS.includes(r[1]) ? r[1] + (r[2] || '') : null;
@@ -79,7 +79,7 @@ function cardHTML(cid, o = {}) {
   if (c.cond) text += `<div class="c-cond"><b>発動条件</b> ${esc(c.cond)}</div>`;
   text += c.txt.map((t, i) => { const k = kwOf(t); return k ? `<p class="kwp"><button type="button" class="kw" data-kw="${cid}|${i}">「${esc(k)}」</button></p>` : `<p>${inlKw(stTxt(esc(t)))}</p>`; }).join('');
   const attrs = (o.uid ? ` data-uid="${o.uid}"` : '');
-  return `<div class="card rank${c.rank} k-${c.kind} ${o.cls || ''}" data-card="${cid}"${attrs}><div class="c-head"><span class="c-name">${esc(c.name)}</span><span class="c-rank">R${c.rank}</span></div><div class="c-art${artImgUrl(cid) ? ' img' : ''}">${artSVG(cid)}</div><div class="c-type">${esc(type)}</div><div class="c-text">${text}</div><div class="c-stats">${stats}</div></div>`;
+  return `<div class="card ${c.angel ? 'rankA' : 'rank' + c.rank} k-${c.kind} ${o.cls || ''}" data-card="${cid}"${attrs}><div class="c-head"><span class="c-name">${esc(c.name)}</span><span class="c-rank">${c.angel ? 'AC' + c.ac : 'R' + c.rank}</span></div><div class="c-art${artImgUrl(cid) ? ' img' : ''}">${artSVG(cid)}</div><div class="c-type">${esc(type)}</div><div class="c-text">${text}</div><div class="c-stats">${stats}</div></div>`;
 }
 const ATTRS = ['火', '水', '風', '土', '雷', '雪', '光', '闇'].filter(a => CARD_IDS.some(id => cardAttrs(id).includes(a))).concat([...new Set(CARD_IDS.flatMap(id => cardAttrs(id)))].filter(a => !['火', '水', '風', '土', '雷', '雪', '光', '闇'].includes(a)));
 function filterBar(f, scope) {
@@ -376,13 +376,13 @@ function renderBattle() {
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : '【相手の番】') : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
   ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
   ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div class="panel warn">⏳ ${esc(UI.wait)}</div>` : ''}
-  <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラOP+3000</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
+  <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラOP+3000</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>${zoneLeg ? `<div class="zlegs">${zoneLeg}</div>` : ''}
-  <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
+  <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
   <div class="bside"><div id="hovp"></div>${pkp}${selp}<div class="panel desk-only logp"><b class="serif">戦況ログ</b><div class="log">${G.log.slice(0, 60).map(l => `<div>${esc(l)}</div>`).join('')}</div></div>${pcv ? handPC : ''}</div>
   ${pcv ? '' : `<div class="bhand ${hh ? 'hid' : ''}"><h3 style="margin:0 0 2px">${p.name}の手札（${p.hand.length}）${hh ? `<span class="note">　${UI.hideHand ? '非表示中' : '選択中のため一時的に非表示'}</span>` : ''}</h3>${hh ? '' : `<div class="hand">${hand}</div>`}</div>`}
-  <div class="bshop"><div class="panel desk-only binfo"><b class="serif">自分（${p.name}）</b><div class="kv">山札${p.deck.length}／墓地${p.grave.length}／手札${p.hand.length}<br><b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b><br>配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div><hr style="border:0;border-top:1px solid #3a4046"><b class="serif">相手（${o.name}）</b><div class="kv">山札${o.deck.length}／墓地${o.grave.length}／手札${o.hand.length}<br><b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b></div></div>${shopHTML(p, G.phase === 'main' && !UI.busy && mineTurn)}</div></div>
-  <details class="panel mob-only"><summary class="serif">ログ・山札 ${p.deck.length}枚・墓地 ${p.grave.length}枚・スペル使用 自${p.spellsUsed}／相${o.spellsUsed}</summary><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></details>`;
+  <div class="bshop"><div class="panel desk-only binfo"><b class="serif">自分（${p.name}）</b><div class="kv">山札${p.deck.length}／墓地${p.grave.length}／手札${p.hand.length}<br><b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b><br>配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div><hr style="border:0;border-top:1px solid #3a4046"><b class="serif">相手（${o.name}）</b><div class="kv">山札${o.deck.length}／墓地${o.grave.length}／手札${o.hand.length}<br><b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b></div></div>${shopHTML(p, G.phase === 'main' && !UI.busy && mineTurn)}</div></div>
+  <details class="panel mob-only"><summary class="serif">ログ・山札 ${p.deck.length}枚・墓地 ${p.grave.length}枚・スペル使用 自${p.spellsUsed}／相${o.spellsUsed}・AP 自${p.ap}／相${o.ap}</summary><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></details>`;
   paintTh(); pcEnhance();
 }
 /* ---------- パソコン専用：操作を減らす補助 ---------- */
@@ -535,6 +535,8 @@ function onCell(x, y) {
   if (t && t.owner === VW()) {
     UI.sel = t.uid; UI.selHand = null; renderBattle();
     if (G.phase === 'main' && abU(t, 'throw') && (!ONL || G.active === ONL.me)) doAct({ t: 'throw', uid: t.uid });
+    if (G.phase === 'main' && abU(t, 'angelFetch') && (!ONL || G.active === ONL.me)) doAct({ t: 'angelFetch', uid: t.uid });
+    if (G.phase === 'main' && abU(t, 'healA') && (!ONL || G.active === ONL.me)) doAct({ t: 'priest', uid: t.uid });
     if (G.phase === 'main' && abU(t, 'moonReset') && (!ONL || G.active === ONL.me)) doAct({ t: 'moon', uid: t.uid });
   } else if (t && !t.hidden) { UI.sel = t.uid; UI.selHand = null; renderBattle(); }
   else { UI.sel = null; renderBattle(); }
@@ -623,6 +625,8 @@ async function execEv(ev) {
     case 'buy': buyShop(ev.k); break;
     case 'move': { const u = G.units[ev.uid]; const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
     case 'throw': { const u = G.units[ev.uid]; if (u) await monkeyThrow(u); break; }
+    case 'angelFetch': { const u = G.units[ev.uid]; if (u) await angelFetchAct(u); break; }
+    case 'priest': { const u = G.units[ev.uid]; if (u) await priestAct(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
     case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
     case 'flame': { const u = G.units[ev.uid]; if (u) await flameStart(u); break; }
