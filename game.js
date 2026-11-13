@@ -593,7 +593,7 @@ function slotKind(p, c) {
 async function summon(p, idx) {
   const cid = p.hand[idx], c = CARDS[cid];
   if ((p.ban || []).some(b => b.cid === cid && b.turn === G.turn)) { UI.toast(`アクアリターンの効果で、このターンは「${c.name}」を盤に出せません`); return false; }
-  if (abC(cid, 'moonCond') && p.spellsUsed < 3) { UI.toast(`このゲーム中にスペルを3回以上使用していないと盤に出せません（現在${p.spellsUsed}回）`); return false; }
+  if (abC(cid, 'moonCond') && p.spellsUsed < 4) { UI.toast(`このゲーム中にスペルを4回以上使用していないと盤に出せません（現在${p.spellsUsed}回）`); return false; }
   if (abC(cid, 'hobCond') && goblinCount(p) < 9) { UI.toast('デッキに種族ゴブリンが9枚以上ないと場に出せません'); return false; }
   if (abC(cid, 'tigerCond') && wildCount(p) < 10) { UI.toast('デッキに種族ワイルドのキャラが10体以上ないと配置できません'); return false; }
   if (abC(cid, 'crabCond') && p.hand.length - 1 < 5) { UI.toast('手札にこのカードを除いて5枚以上ないと盤に出せません'); return false; }
