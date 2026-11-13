@@ -709,14 +709,24 @@ async function moonReset(u) {
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
 }
 /* 神官：ヒール／キュア・ディジーズ（それぞれ1ターンに1度、SpC1を消費） */
-const priestCan = (u, k) => !u.dead && !u.hidden && !isAv(u) && abU(u, k === 'heal' ? 'healA' : 'cureA') && u.uses[k] !== G.turn && u.spc >= 1 && u.st.petrify == null;
+const priestCan = (u, k) => !u.dead && !u.hidden && !isAv(u) && abU(u, { heal: 'healA', cure: 'cureA', mail: 'mailA' }[k]) && u.uses[k] !== G.turn && u.spc >= 1 && u.st.petrify == null;
 async function priestAct(u) {
   if (G.phase !== 'main' || u.owner !== G.active || u.dead) return;
-  const ks = ['heal', 'cure'].filter(k => priestCan(u, k));
-  if (!ks.length) { UI.toast(abU(u, 'healA') ? 'ヒール・キュア・ディジーズは1ターンに1度ずつ、SpCが1以上必要です' : ''); return; }
-  const name = { heal: 'ヒール', cure: 'キュア・ディジーズ' };
+  const ks = ['heal', 'cure', 'mail'].filter(k => priestCan(u, k));
+  if (!ks.length) { UI.toast(abU(u, 'healA') ? 'ヒール・キュア・ディジーズ・ホーリーメールは1ターンに1度ずつ、SpCが1以上必要です' : ''); return; }
+  const name = { heal: 'ヒール', cure: 'キュア・ディジーズ', mail: 'ホーリーメール' };
   const a = await UI.ask(`${nm(u)}：どの効果を使いますか？（SpC1を消費）`, [...ks.map(k => name[k]), 'キャンセル']);
   const k = ks.find(x => name[x] === a); if (!k) return;
+  if (k === 'mail') { // ホーリーメール：SpC1を消費してサイコロを振り、6以上ならデッキから光属性のスペルをランダムに1枚手札に加える
+    const p = G.players[u.owner]; u.spc -= 1; u.uses.mail = G.turn;
+    const d = rollD6(); UI.toast(`🎲 ホーリーメール：サイコロ ${d}`);
+    if (d >= 6) {
+      const ids = p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && cardAttrs(p.deck[i]).includes('光'));
+      if (ids.length) { const i = ids[rnd(ids.length)], c = p.deck.splice(i, 1)[0]; p.hand.push(c); syncHB(); log(`ホーリーメール：${lnm(u)}がSpC1を消費（出目${d}）、デッキから「${CARDS[c].name}」を手札に加えた`); UI.toast(`ホーリーメール：${CARDS[c].name}を手札に加えた`); }
+      else log(`ホーリーメール：${lnm(u)}がSpC1を消費（出目${d}）、デッキに光属性のスペルがなかった`);
+    } else log(`ホーリーメール：${lnm(u)}がSpC1を消費（出目${d}）、失敗`);
+    afterAction(); return;
+  }
   const t = await pickUnit(chars(u.owner), `${name[k]}の対象（自分のキャラクター）を選択`); if (!t) return;
   if (k === 'cure' && !statusList(t).length) { UI.toast('対象に状態異常がありません'); return; }
   u.spc -= 1; u.uses[k] = G.turn;
