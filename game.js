@@ -58,7 +58,7 @@ function mkUnit(owner, cid, x, y) {
 function newGame(d0, d1) {
   UIDC = 1;
   G = { turn: 0, active: 0, phase: 'start', over: null, shop: [], shopUsed: [], sanctuaries: {}, traps: {}, units: {}, walls: {}, log: [], assault: null,
-    players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, coins: 0, freeBuy: 1, sellUsed: false, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null })) };
+    players: [d0, d1].map((d, i) => ({ i, name: i ? '後攻' : '先行', deck: shuffle(d), deckList: [...d], hand: [], grave: [], count: 0, coins: 0, freeBuy: 1, sellUsed: false, spellsUsed: 0, r1Spells: 0, summons: 0, extra: 0, goblinSlots: 0, parade: false, instinct: null, reshuffled: false, avatar: null, ap: 0, angelPool: ['angelLow', 'angelMid', 'angelHigh'], angelUsed: {} })) };
   for (const p of G.players) {
     const c = cellOfRow(p.i, 1, 3);
     p.avatar = mkUnit(p.i, 'avatar', c.x, c.y).uid;
@@ -146,7 +146,7 @@ function killUnit(u) {
   const p = G.players[u.owner];
   if (isAv(u)) { if (!G.over) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
   else if (CARDS[u.cid].token) log(`${lnm(u)}が破壊された（デッキ外へ）`); // スペルの効果で出たキャラクターは墓地に行かずデッキ外へ
-  else { p.grave.push(u.cid); log(`${lnm(u)}が破壊された`); }
+  else { p.grave.push(u.cid); (G.deadLog = G.deadLog || []).push({ cid: u.cid, owner: u.owner, turn: G.turn }); log(`${lnm(u)}が破壊された`); }
   for (const w of wps(u)) p.grave.push(w);
   dropAttach(u, p);
   delete G.units[u.uid];
@@ -155,7 +155,14 @@ function killUnit(u) {
 const seaBonus = u => G.players[u.owner].hand.length * (terr(u) === 'enemy' ? 500 : 1000);
 const hbTarget = u => (abC(u.cid, 'seaHand') ? seaBonus(u) : 0) + (dangerLP(u) ? 500 : 0) - (aquaticOn(u) && !isAv(u) && terr(u) === 'enemy' ? 500 : 0); // 手札数によるLP（シードラゴン）＋危険海流域のLP+500－水棲のエネミーでのLP-500
 function syncHBu(u) { if (!u || u.dead) return; const nb = hbTarget(u), d = nb - (u.hbA || 0); if (!d) return; u.hbA = nb; u.lp = d > 0 ? u.lp + d : Math.max(1, u.lp + d); }
-function syncHB() { if (G) for (const u of U()) syncHBu(u); }
+const isAngel = u => !!u && !isAv(u) && !!CARDS[u.cid].angel;
+function angelRecall() { // 盤にエンジェルがいる状態でデッキが0になったら、再びデッキ外へ送られる
+  for (const p of G.players) if (!p.deck.length) for (const u of U().filter(v => v.owner === p.i && isAngel(v))) {
+    delete G.units[u.uid]; u.dead = true; if (!p.angelPool.includes(u.cid)) p.angelPool.push(u.cid);
+    log(`${p.name}の山札が0になったため、${CARDS[u.cid].name}はデッキ外へ送られた`); UI.toast(`${CARDS[u.cid].name}はデッキ外へ送られた`);
+  }
+}
+function syncHB() { if (G) { for (const u of U()) syncHBu(u); angelRecall(); } }
 function damage(u, n, opts) {
   syncHB();
   if (u.dead || (u.hidden && !(opts && opts.hit)) || n <= 0) return;
@@ -204,6 +211,7 @@ function dirsFor(u, assault) {
   const DIAG = [[-1, dy], [1, dy], [-1, -dy], [1, -dy]];
   let dirs = tkOn(u, 'mutate') ? DIAG : hasShift(u) ? [[-1, dy], [1, dy], [-1, -dy], [1, -dy]] : [[0, dy], [-1, 0], [1, 0], [0, -dy]];
   if (!assault && wps(u).length && abU(u, 'heroDiag') && !u.diagUsed && !(tkOn(u, 'mutate') || hasShift(u))) dirs = dirs.concat(DIAG);
+  if (!assault && abU(u, 'omni') && !(tkOn(u, 'mutate') || hasShift(u))) dirs = G.players[u.owner].count % 2 === 0 ? [[0, dy], [-1, 0], [1, 0], [0, -dy]] : DIAG; // エンジェル：使用者の偶数ターンは前後左右、奇数ターンは斜め前方・斜め後方にしか移動できない
   if (assault) dirs = dirs.filter(d => d[1] === dy);
   return dirs;
 }
@@ -476,17 +484,19 @@ const canPayAmt = (u, n) => !u.hidden && CARDS[u.cid].spc > 0 && u.st.petrify ==
 const isLightSp = sp => !!sp && (CARDS[sp].attr || '').split('・').includes('光');
 const holdsLight = u => !isAv(u) && (charAttrs(u.cid).includes('光') || wps(u).some(c => (CARDS[c].wattr || []).includes('光')));
 const isUndead = u => !isAv(u) && String(CARDS[u.cid].race).includes('アンデット');
+const nonLightSp = sp => !!sp && !!CARDS[sp].attr && CARDS[sp].attr.split('・').some(a => a !== '光');
+const priestBlock = (u, sp = G.curSpell) => !isAv(u) && abC(u.cid, 'priest') && nonLightSp(sp); // 神官：光属性以外の属性をもつスペルでは、SpCを消費する対象にできない
 const lightPen = (u, sp) => isLightSp(sp) && !isAv(u) && !holdsAttr(u, sp); // 光属性のスペルを光属性を持たないキャラのSpCで使うと+1
 const spReduce = (u, n, sp = G.curSpell) => (sp && n >= 2 && holdsAttr(u, sp) ? n - 1 : (lightPen(u, sp) ? n + 1 : n)); // 属性一致：SpC2以上のスペルは必要SpC-1
 async function payCost(p, n, flt) {
   const n0 = n;
-  const cands = own(p.i).filter(u => canPayAmt(u, spReduce(u, n0)) && (!flt || flt(u)));
+  const cands = own(p.i).filter(u => canPayAmt(u, spReduce(u, n0)) && !priestBlock(u) && (!flt || flt(u)));
   if (!cands.length) { UI.toast(`SpC${n}を支払えるキャラクター／アバターがいません`); return null; }
   const r = await UI.pickBoard({ who: p.i, prompt: `SpC${n}を消費するキャラクターを選択`, cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true });
   if (!r) return null;
   const u = at(r[0][0], r[0][1]);
   n = spReduce(u, n0); if (n < n0) log(`${lnm(u)}は属性が一致するため、必要SpCが${n0}から${n}になった`);
-  if (n > n0) { u.noSpc = G.turn; log(`${lnm(u)}は光属性を持たないため、必要SpCが${n0}から${n}になり、このターンSpCを回復しない`); UI.toast(`光属性を持たないため消費SpC+1・このターンSpC回復なし`); }
+  if (n > n0) { u.noSpc = G.turn; log(`${lnm(u)}は光属性を持たないため、必要SpCが${n0}から${n}になり、このターンSC・SpCを回復しない`); UI.toast(`光属性を持たないため消費SpC+1・このターンSC／SpC回復なし`); }
   const use = Math.min(spcUsable(u), n), need = n - use, sc = need * 2;
   if (sc > 0) { if (!(await UI.confirm(`⚠ ${nm(u)}はSpCが${need}足りないため、SCを${sc}消費します。使用しますか？`, p.i))) return null; }
   u.spc -= use; spendSC(u, sc);
@@ -503,7 +513,7 @@ async function goldenPrompt(side) {
   if (isAv(side) || side.dead) return false;
   const p = G.players[side.owner];
   if (!p.hand.includes('goldenBody')) return false;
-  if (!own(p.i).some(u => canPayAmt(u, 3))) return false;
+  if (!own(p.i).some(u => canPayAmt(u, 3) && !priestBlock(u, 'goldenBody'))) return false;
   const a = await UI.ask(`【${p.name}に確認】${nm(side)}がバトルします。手札の「黄金の体」（SpC3）を使用しますか？`, ['使用する', '使用しない'], side.owner);
   if (a !== '使用する') return false;
   const py = await payCost(p, 3);
@@ -517,10 +527,19 @@ async function goldenPrompt(side) {
 /* 魔法耐性は1ターンに1度。「魔法耐性」を重複して持つ数（カード自身の「魔法耐性N」＋武器が与える魔法耐性）だけ、1ターンに使える回数が増える */
 const resistMax = u => Math.min(2, (abC(u.cid, 'magicResist') ? (CARDS[u.cid].mres || 1) : 0) + wps(u).filter(c => (CARDS[c].wab || []).includes('magicResist')).length); // 重複は「魔法耐性2」まで（上限2）
 const hasResist = u => abU(u, 'magicResist') || abU(u, 'superResist');
-async function lightUndead(u, why) { if (u.dead || u.hidden || !isUndead(u)) return; log(`光属性：${why}アンデットの${lnm(u)}のLPが2000下がる`); UI.toast(`光属性：${lnm(u)}のLPが2000下がる`); damage(u, 2000, { hit: true, pierce: true }); } // 光属性によるアンデットへのダメージは装甲の影響を受けない
+async function lightUndead(u, why, spCost) { // 光属性：アンデットのLPのステータスを2000下げる（装甲無視）。スペルの対象にとられた場合は、カードの消費SpCを参照した魔法耐性で防げる
+  if (u.dead || u.hidden || !isUndead(u)) return;
+  if (spCost != null && await tryResist(u, spCost, null, { wide: true, what: '光属性によるLPのステータス減少' })) { log(`光属性：${lnm(u)}は魔法耐性でLPのステータス減少を防いだ`); return; }
+  log(`光属性：${why}アンデットの${lnm(u)}のLPのステータスが2000下がる`); UI.toast(`光属性：${lnm(u)}のLPのステータスが2000下がる`);
+  u.lpBonus = (u.lpBonus || 0) - 2000; damage(u, 2000, { hit: true, pierce: true });
+}
+const spListed = cid => parseInt(String(CARDS[cid].cost).replace(/\D/g, ''), 10) || 0; // カードに記載された消費SpC
 async function resist(t, cost, caster, opts = {}) {
-  if (isLightSp(G.curSpell)) await lightUndead(t, '光属性のスペルの対象にとられた');
+  if (isLightSp(G.curSpell)) await lightUndead(t, '光属性のスペルの対象にとられた', spListed(G.curSpell));
   if (t.dead) return true;
+  return tryResist(t, cost, caster, opts);
+}
+async function tryResist(t, cost, caster, opts = {}) {
   if (!hasResist(t) || t.hidden || t.dead) return false;
   if (!opts.wide && t.owner === caster.i) return false;
   const sup = abU(t, 'superResist');
@@ -530,13 +549,18 @@ async function resist(t, cost, caster, opts = {}) {
   const mrN = resistMax(t), mu = t.uses.mr && t.uses.mr.turn === G.turn ? t.uses.mr.n : 0;
   if (!sup && mu >= Math.max(1, mrN)) return false;
   if (t.spc + (t.rspc || 0) < need || t.st.petrify != null) return false;
-  const a = await UI.ask(`【${G.players[t.owner].name}に確認】${nm(t)}の${sup ? '超魔法耐性' : '魔法耐性'}：SpC${need}（耐性SpCを先に使用）を支払い、スペルの効果を打ち消しますか？${sup ? `（このターンあと${2 - rs}回）` : `（このターンあと${Math.max(1, mrN) - mu}回）`}`, ['打ち消す', '受ける'], t.owner);
-  if (a === '打ち消す') { const fromR = Math.min(t.rspc || 0, need); t.rspc = (t.rspc || 0) - fromR; t.spc -= need - fromR; if (sup) t.uses.sr = { turn: G.turn, n: rs + 1 }; else t.uses.mr = { turn: G.turn, n: mu + 1 }; log(`${lnm(t)}は${sup ? '超魔法耐性' : '魔法耐性'}でスペルを打ち消した`); return true; }
+  const a = await UI.ask(`【${G.players[t.owner].name}に確認】${nm(t)}の${sup ? '超魔法耐性' : '魔法耐性'}：SpC${need}（耐性SpCを先に使用）を支払い、${opts.what || 'スペルの効果'}を打ち消しますか？${sup ? `（このターンあと${2 - rs}回）` : `（このターンあと${Math.max(1, mrN) - mu}回）`}`, ['打ち消す', '受ける'], t.owner);
+  if (a === '打ち消す') { const fromR = Math.min(t.rspc || 0, need); t.rspc = (t.rspc || 0) - fromR; t.spc -= need - fromR; if (sup) t.uses.sr = { turn: G.turn, n: rs + 1 }; else t.uses.mr = { turn: G.turn, n: mu + 1 }; log(`${lnm(t)}は${sup ? '超魔法耐性' : '魔法耐性'}で${opts.what ? '光属性の効果' : 'スペル'}を打ち消した`); return true; }
   return false;
 }
 /* スペル使用の記録と、氷の魔女の誘発 */
+async function gainAP(p, n) { // 光属性のスペルを使うたび、使用したプレイヤーにエンジェルポイント（AP）が溜まる。APがACに達したエンジェルは、デッキ外から手札に加わる
+  p.ap += n; log(`${p.name}：エンジェルポイント+${n}（AP ${p.ap}）`);
+  for (const a of p.angelPool.filter(k => CARDS[k].ac <= p.ap)) { p.angelPool.splice(p.angelPool.indexOf(a), 1); p.hand.push(a); log(`${p.name}：APが${CARDS[a].ac}に達し、デッキ外から${CARDS[a].name}が手札に加わった`); UI.toast(`AP${CARDS[a].ac}：${CARDS[a].name}が手札に加わった`); }
+}
 async function onSpellUsed(p, cid) {
   p.spellsUsed++;
+  if (CARDS[cid].ap) await gainAP(p, CARDS[cid].ap);
   const c = CARDS[cid]; let fire = false;
   if (c.rank >= 2) fire = true; else { p.r1Spells++; if (p.r1Spells % 2 === 0) fire = true; }
   if (!fire) return;
@@ -550,8 +574,9 @@ async function onSpellUsed(p, cid) {
 }
 function dwarfRedirect(t, user) {
   if (t.owner === user.i) return t;
-  const d = own(t.owner).find(u => abU(u, 'dwarf') && !u.hidden && u !== t && !u.uses.dwarf);
-  if (!d) return t;
+  const ds = own(t.owner).filter(u => abU(u, 'dwarf') && !u.hidden && u !== t && !u.uses.dwarf); // 対象にされなかった庇護キャラの中からランダムに選ばれる
+  if (!ds.length) return t;
+  const d = ds.length === 1 ? ds[0] : ds[rnd(ds.length)];
   d.uses.dwarf = true; log(`庇護：対象が${lnm(d)}に変更された`); UI.toast(`庇護：対象が${nm(d)}に変更された`);
   return d;
 }
@@ -574,9 +599,11 @@ async function summon(p, idx) {
   if (abC(cid, 'crabCond') && p.hand.length - 1 < 5) { UI.toast('手札にこのカードを除いて5枚以上ないと盤に出せません'); return false; }
   if (abC(cid, 'krakenCond') && p.hand.filter((h, i) => i !== idx && cardAttrs(h).includes('水')).length < 4) { UI.toast('手札に水属性のカード（このカードを除く）が4枚以上ないと盤に出せません'); return false; }
   if (abC(cid, 'darkCond') && hiddenCards(p.i).filter(v => rowOf(p.i, v.y) <= 3).length < 2) { UI.toast('ホームテリトリーに非公開カードが2枚以上ないと盤に出せません'); return false; }
+  const ang = !!c.angel;
+  if (ang && p.reshuffled) { UI.toast('デッキが2周目の時、エンジェルは盤に出せません'); return false; }
   let stealth = false;
   if (abC(cid, 'stealth')) stealth = (await UI.ask(HID_Q, HID_A)) === HID_A[0];
-  if (!stealth && !slotKind(p, c)) { UI.toast('このターンはこれ以上キャラクターを配置できません'); return false; }
+  if (!stealth && !ang && !slotKind(p, c)) { UI.toast('このターンはこれ以上キャラクターを配置できません'); return false; }
   let sac = [], sacSum = 0;
   if (abC(cid, 'sacrifice')) {
     const cand = chars(p.i), total = cand.reduce((s, u) => s + u.lp, 0);
@@ -586,12 +613,13 @@ async function summon(p, idx) {
     sac = r.map(([x, y]) => at(x, y)); sacSum = sac.reduce((s, u) => s + u.lp, 0);
   }
   const freed = new Set(sac.map(u => u.x + ',' + u.y));
-  let rows = stealth ? [1, 2, 3] : [1];
+  let rows = stealth || ang ? [1, 2, 3] : [1];
   if ((c.name === 'オーガ' || cid === 'vampire') && sacSum >= 4500) rows = [1, 2];
   const cells = [];
   for (const r of rows) for (let x = 0; x < 7; x++) {
     const cc = cellOfRow(p.i, r, x);
-    if ((!at(cc.x, cc.y) || freed.has(cc.x + ',' + cc.y)) && (!wallAt(cc.x, cc.y) || abC(cid, 'flight'))) cells.push([cc.x, cc.y]);
+    const free = ang ? !U().some(v => !v.dead && v.x === cc.x && v.y === cc.y && !(v.hidden && v.owner === p.i)) : (!at(cc.x, cc.y) || freed.has(cc.x + ',' + cc.y)); // エンジェル：非公開カード以外のカードの無いマス
+    if (free && (!wallAt(cc.x, cc.y) || abC(cid, 'flight'))) cells.push([cc.x, cc.y]);
   }
   if (!cells.length) { UI.toast('配置できるマスがありません'); return false; }
   const pick = await UI.pickBoard({ prompt: '配置するマスを選択', cells, kind: 'place', cancellable: true });
@@ -609,7 +637,7 @@ async function summon(p, idx) {
   if (!stealth) await UI.cutIn(cid);
   for (const s of sac) killUnit(s);
   const hi = p.hand.indexOf(cid); p.hand.splice(hi, 1); syncHB();
-  if (!stealth) { const k = slotKind(p, c); if (k === 'goblin') p.goblinSlots--; else if (k === 'normal') p.summons++; else if (k === 'extra') p.extra--; }
+  if (!stealth && !ang) { const k = slotKind(p, c); if (k === 'goblin') p.goblinSlots--; else if (k === 'normal') p.summons++; else if (k === 'extra') p.extra--; }
   const u = mkUnit(p.i, cid, pick[0][0], pick[0][1]);
   sfx('summon');
   u.lp = baseLP(u);
@@ -680,6 +708,34 @@ async function moonReset(u) {
   for (const q of G.players) { q.deck.push(...q.hand); q.hand = []; q.deck = shuffle(q.deck); draw(q, 3); }
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
 }
+/* 神官：ヒール／キュア・ディジーズ（それぞれ1ターンに1度、SpC1を消費） */
+const priestCan = (u, k) => !u.dead && !u.hidden && !isAv(u) && abU(u, k === 'heal' ? 'healA' : 'cureA') && u.uses[k] !== G.turn && u.spc >= 1 && u.st.petrify == null;
+async function priestAct(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.dead) return;
+  const ks = ['heal', 'cure'].filter(k => priestCan(u, k));
+  if (!ks.length) { UI.toast(abU(u, 'healA') ? 'ヒール・キュア・ディジーズは1ターンに1度ずつ、SpCが1以上必要です' : ''); return; }
+  const name = { heal: 'ヒール', cure: 'キュア・ディジーズ' };
+  const a = await UI.ask(`${nm(u)}：どの効果を使いますか？（SpC1を消費）`, [...ks.map(k => name[k]), 'キャンセル']);
+  const k = ks.find(x => name[x] === a); if (!k) return;
+  const t = await pickUnit(chars(u.owner), `${name[k]}の対象（自分のキャラクター）を選択`); if (!t) return;
+  if (k === 'cure' && !statusList(t).length) { UI.toast('対象に状態異常がありません'); return; }
+  u.spc -= 1; u.uses[k] = G.turn;
+  if (k === 'heal') { const b = t.lp; heal(t, 2000); log(`ヒール：${lnm(u)}がSpC1を消費し、${lnm(t)}のLPを回復（${b}→${t.lp}）`); }
+  else { const ss = statusList(t), s0 = ss[rnd(ss.length)]; cure(t, s0); log(`キュア・ディジーズ：${lnm(u)}がSpC1を消費し、${lnm(t)}の${STATUS_NAME[s0]}を治療`); }
+  UI.toast(`${name[k]}：${nm(t)}`); afterAction();
+}
+/* エンジェルの効果：メインステップ中にSCを2つ消費し、デッキ外から指定のカードを手札に加える（ゲーム中1度だけ） */
+async function angelFetchAct(u) {
+  const p = G.players[u.owner], f = CARDS[u.cid].fetch;
+  if (G.phase !== 'main' || u.owner !== G.active || u.dead || u.hidden || !f) return;
+  if (p.angelUsed[u.cid]) { UI.toast('この効果はゲーム中1度だけ使えます'); return; }
+  if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2つ必要です'); return; }
+  const a = await UI.ask(`${nm(u)}：SCを2つ消費して、デッキ外から「${CARDS[f.cid].name}」を${f.n}枚手札に加えますか？（ゲーム中1度だけ）`, ['使う', 'やめる']);
+  if (a !== '使う') return;
+  spendSC(u, 2); p.angelUsed[u.cid] = true;
+  for (let i = 0; i < f.n; i++) p.hand.push(f.cid);
+  log(`${lnm(u)}：SCを2つ消費し、デッキ外から「${CARDS[f.cid].name}」${f.n}枚を手札に加えた`); UI.toast(`${CARDS[f.cid].name}を${f.n}枚手札に加えた`); afterAction();
+}
 /* 非公開（潜伏）の公開：メインステップ中、必要なターンが経っていればいつでも */
 async function revealUnit(u) {
   if (G.phase !== 'main' || u.owner !== G.active || !u.hidden || u.dead) return;
@@ -739,12 +795,14 @@ async function monkeyThrow(u) {
 }
 
 /* ===== カード効果 ===== */
-const mine = p => chars(p.i), foes = p => chars(1 - p.i);
-const seaRoarTargets = p => foes(p).filter(u => terr(u) !== 'enemy'); // 相手のキャラクターが、自分の側から見てホーム／ボーダーにいる
+const mine = p => chars(p.i).filter(u => !isAngel(u)), foes = p => chars(1 - p.i);
+const seaRoarTargets = p => foes(p).filter(u => rowOf(p.i, u.y) <= 4); // 使用者から見てホームテリトリー／ボーダーゾーン（行は使用者視点）にいる相手のキャラクター
 const blizzardTargets = p => foes(p).filter(u => rowOf(p.i, u.y) >= 4);
 const breezeOk = u => !isAv(u) && !abC(u.cid, 'noEquipSp'); // 装備魔法は重複装備の制限を受けない
 const guardPayer = u => !u.hidden && u.spc >= 1 && u.st.petrify == null && CARDS[u.cid].spc > 0 && spcUsable(u) >= 1;
 async function pickUnit(us, prompt) {
+  us = us.filter(u => !(isAngel(u) && u.owner === G.active)); // エンジェルは、自分が使うスペル・アイテム・テクニックの対象外
+  if (!us.length) { UI.toast('対象にできるキャラクターがいません'); return null; }
   const r = await UI.pickBoard({ prompt, cells: us.map(u => [u.x, u.y]), kind: 'target', cancellable: true });
   return r ? at(r[0][0], r[0][1]) : null;
 }
@@ -752,7 +810,7 @@ const ferTargets = p => mine(p).filter(u => CARDS[u.cid].cat.includes('モンス
 const canTechPay = u => u.acted === 0 && scAvail(u) >= 1 && u.st.petrify == null && !u.hidden && !u.dead;
 const canEquip = (u, cid) => !isAv(u) && CARDS[u.cid].weapon && (!u.weapon || (!u.weapon2 && isShieldW(cid) !== isShieldW(u.weapon))) && (!isHeavyW(cid) || u.lp >= 4000) && (!u.weapon || u.lp >= 4000) && (cid !== 'wandFine' || CARDS[u.cid].spc >= 1) && (!CARDS[cid].heroOnly || u.cid === 'hero') && (!CARDS[cid].humanoidOnly || String(CARDS[u.cid].cat).includes('ヒューマノイド'));
 async function equipWeapon(p, cid) {
-  const cs = own(p.i).filter(u => canEquip(u, cid));
+  const cs = own(p.i).filter(u => !isAngel(u) && canEquip(u, cid));
   const u = await pickUnit(cs, cid === 'wandFine' ? '上等な魔杖を装備するキャラクター（SpC基礎値1以上）を選択' : '武器を装備するキャラクターを選択');
   if (!u) return false;
   await UI.cutIn(cid);
@@ -778,6 +836,8 @@ const potion = (f) => async function (p, cid) {
 const tkAct = (cid, key, label, name) => ({ can: () => (allChars().length ? null : '対象にできるキャラクターがいません'), async run(p) {
   const t = await pickUnit(allChars(), `${name}の対象を選択（次の${'そのキャラクターの持ち主の'}ターンの間「${label}」）`); if (!t) return false;
   await UI.cutIn(cid); { t.tk = t.tk || {}; const nx = G.players[t.owner].count + 1; t.tk[key] = (t.tk[key] || []).filter(n => n !== nx).concat(nx); } log(`${name}：${lnm(t)}は次の${G.players[t.owner].name}のターンの間「${label}」`); return 'kept'; } });
+const rezCands = p => [...new Set((G.deadLog || []).filter(d => d.owner === p.i && d.turn === G.turn - 1 && p.grave.includes(d.cid) && !CARDS[d.cid].token && !(p.ban || []).some(b => b.cid === d.cid && b.turn === G.turn)).map(d => d.cid))]; // 前の相手のターン中に破壊され、墓地にいるキャラクター
+const rezCells = p => [0, 1, 2, 3, 4, 5, 6].map(x => cellOfRow(p.i, 1, x)).filter(cc => !at(cc.x, cc.y) && !wallAt(cc.x, cc.y)).map(cc => [cc.x, cc.y]);
 const ACT = {
   signpost: { async run(p) { if (!(await payCost(p, 1))) return false; await UI.cutIn('signpost'); const n = draw(p, 2); log(`道標：${n}枚引いた`); return true; } },
   fireball: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
@@ -801,7 +861,7 @@ const ACT = {
     if (!(await resist(t, 1, p))) { t.sc = Math.max(0, t.sc - 4); addStatus(t, 'chill'); log(`フリーズウインド：${lnm(t)}のSC-4`); }
     return true; } },
   shiftForm: { async run(p) {
-    const cs = own(p.i).filter(u => !u.attach.some(a => a.cid === 'shiftForm') && !abC(u.cid, 'noEquipSp'));
+    const cs = own(p.i).filter(u => !isAngel(u) && !u.attach.some(a => a.cid === 'shiftForm') && !abC(u.cid, 'noEquipSp'));
     const r = await UI.pickBoard({ prompt: '形質変化をつける自分のキャラクター／アバターを選択', cells: cs.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false;
     const u = at(r[0][0], r[0][1]);
     if (!(await payCost(p, 1))) return false; await UI.cutIn('shiftForm');
@@ -895,9 +955,7 @@ const ACT = {
       for (const u of hit) {
         if (u.dead) continue;
         if (await resist(u, 2, p, { wide: true })) continue;
-        let tg = u;
-        const dw = own(u.owner).find(d => abU(d, 'dwarf') && !d.hidden && !d.dead && d !== u && !d.uses.dwarf);
-        if (dw && (await UI.confirm(`【${G.players[u.owner].name}に確認】庇護：${lnm(dw)}が${lnm(u)}の代わりに雷のダメージを受けますか？（ゲーム中1度だけ）`, u.owner))) { dw.uses.dwarf = true; tg = dw; log(`庇護：${lnm(dw)}が代わりに受けた`); }
+        const tg = u; // 庇護はアイテムに対してのみ使える（スペルには使えない）
         log(`落雷：${lnm(tg)}（${coord(tg.x, tg.y)}）に4000ダメージ`);
         damage(tg, 4000, { hit: true });
       }
@@ -1026,13 +1084,61 @@ const ACT = {
   elixir: { can: () => (allChars().length ? null : '対象がいません'), run: potion(t => {
     for (let g = 0; g < 8 && statusList(t).length; g++) for (const k of statusList(t)) cure(t, k);
     t.lp = Math.max(t.lp, healCap(t)); t.sc += 2; t.spc += 1; log(`エリクサー：${lnm(t)}の状態異常を全て治療し、LPを全回復。SC+2・SpC+1`); }) },
+  electraHeal: { can: p => (chars(p.i).length ? null : '対象にできる自分のキャラクターがいません'), async run(p) {
+    const a = await UI.ask('エレクトラヒール：どちらを使いますか？', ['全員：LP2000回復＋状態異常1つ治療', '1体：LP全回復＋状態異常全治療', 'キャンセル']);
+    if (!a || a === 'キャンセル') return false;
+    const all = a.startsWith('全員');
+    let t = null;
+    if (!all) { t = await pickUnit(chars(p.i), 'エレクトラヒールの対象（自分のキャラクター）を選択'); if (!t) return false; }
+    if (!(await payCost(p, 3))) return false; await UI.cutIn('electraHeal');
+    if (all) {
+      for (const u of chars(p.i)) {
+        const ss = statusList(u); if (ss.length) { const k = ss[rnd(ss.length)]; cure(u, k); log(`エレクトラヒール：${lnm(u)}の${STATUS_NAME[k]}を治療`); }
+        heal(u, 2000);
+      }
+      log('エレクトラヒール：自分のキャラクター全員のLPを2000回復');
+    } else {
+      if (await resist(t, 3, p)) return true; if (t.dead) return true;
+      for (let g = 0; g < 8 && statusList(t).length; g++) for (const k of statusList(t)) cure(t, k);
+      t.lp = Math.max(t.lp, healCap(t)); log(`エレクトラヒール：${lnm(t)}のLPを全回復し、状態異常を全て治療`);
+    }
+    return true; } },
+  holyLight: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), 'ホーリーライトの対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('holyLight');
+    if (!(await resist(t, 2, p))) { t.sc = Math.max(0, t.sc - 4); log(`ホーリーライト：${lnm(t)}のSCを4減らした`); }
+    return true; } },
+  holySmite: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
+    const t = await pickUnit(foes(p), 'ホーリースマイトの対象を選択'); if (!t) return false;
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('holySmite');
+    if (!(await resist(t, 2, p)) && !t.dead) { const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリースマイト：サイコロ ${d}${up ? '（ダメージ+500）' : ''}`); log(`ホーリースマイト：サイコロ ${d}、${lnm(t)}に${2000 + up}ダメージ`); damage(t, 2000 + up, { hit: true }); }
+    return true; } },
+  holyProt: { can: p => (chars(p.i).length ? null : '対象にできる自分のキャラクターがいません'), async run(p) {
+    const t = await pickUnit(chars(p.i), 'ホーリープロテクションの対象（自分のキャラクター）を選択'); if (!t) return false;
+    if (!(await payCost(p, 2))) return false; await UI.cutIn('holyProt');
+    if (await resist(t, 2, p)) return true; if (t.dead) return true;
+    const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリープロテクション：サイコロ ${d}${up ? '（装甲値+500）' : ''}`); t.gArmor += 1500 + up; log(`ホーリープロテクション：サイコロ ${d}、${lnm(t)}に装甲値${1500 + up}`); return true; } },
+  resurrection: {
+    can: p => (rezCands(p).length ? (rezCells(p).length ? (own(p.i).some(u => canPayAmt(u, 4) && !priestBlock(u, 'resurrection')) ? null : 'SpC4を支払えるキャラクターがいません') : '1列目に空いているマスがありません') : '前の相手のターン中に破壊され、墓地にいる自分のキャラクターがいません'),
+    async run(p) {
+      const cs = rezCands(p); let cid = cs[0];
+      if (cs.length > 1) { const r = UI.pickCards ? await UI.pickCards('リザレクション', `【${p.name}】蘇らせるキャラクターを選ぶ`, cs, 1, p.i, 1) : [0]; cid = cs[(r && r[0]) || 0] || cs[0]; }
+      const r = await UI.pickBoard({ prompt: `${CARDS[cid].name}を置くマスを選択（1列目）`, cells: rezCells(p), kind: 'place', cancellable: true }); if (!r) return false;
+      if (!(await payCost(p, 4))) return false; await UI.cutIn('resurrection');
+      p.grave.splice(p.grave.indexOf(cid), 1);
+      const u = mkUnit(p.i, cid, r[0][0], r[0][1]), c = CARDS[cid];
+      u.lpBonus = Math.max(1 - c.lp, Math.min(-1000, 4000 - c.lp)); u.lp = baseLP(u);
+      if (c.startArmor) u.armor = c.startArmor;
+      sfx('summon'); log(`リザレクション：${lnm(u)}を${coord(u.x, u.y)}に蘇らせた（LPのステータス${u.lpBonus}）`);
+      await etb(u, p, false); await sanctuaryCheck(u);
+      return true; } },
   shopTicket: { can: () => 'ショップで購入するときに自動で消費されます（使用はできません）', run: async () => false },
   tkFrenzy: tkAct('tkFrenzy', 'frenzy', '狂乱', '発狂'),
   tkAmbush: tkAct('tkAmbush', 'ambush', 'ふいうち', '奇襲'),
   tkChase: tkAct('tkChase', 'chase', 'ハンティング', '追跡'),
   tkMutate: tkAct('tkMutate', 'mutate', '斜め移動のみ', '変異'),
   tkAgile: { can: p => (own(p.i).some(u => !u.hidden && !isAv(u) && u.placedAt === G.turn && u.agile !== G.turn) ? null : 'このターンに配置したキャラクターがいません'), async run(p) {
-    const cs = own(p.i).filter(u => !u.hidden && !isAv(u) && u.placedAt === G.turn && u.agile !== G.turn);
+    const cs = own(p.i).filter(u => !u.hidden && !isAv(u) && !isAngel(u) && u.placedAt === G.turn && u.agile !== G.turn);
     const t = await pickUnit(cs, '俊敏の対象（このターンに配置した自分のキャラクター）を選択'); if (!t) return false;
     await UI.cutIn('tkAgile'); t.agile = G.turn; log(`俊敏：${lnm(t)}は配置したターンから移動できる`); return 'kept'; } },
   ferocious: {
@@ -1186,7 +1292,7 @@ async function endTurn() {
     u.tArmor = 0;
     const b = baseLP(u); if (u.lp < b && !u.incPen) u.lp = b; // 焼却を受けている間はターン終了時にLPが回復しない
     const home = terr(u) !== 'enemy';
-    u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1) + (u.sanct ? 1 : 0) + (abU(u, 'superRegen') ? 1 : 0))); // 超再生：ターン終了時のSC回復量+1
+    if (u.noSpc !== G.turn) u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1) + (u.sanct ? 1 : 0) + (abU(u, 'superRegen') ? 1 : 0))); // 超再生：ターン終了時のSC回復量+1
     { const pts = u.noSpc === G.turn ? 0 : (home ? 1 : 0) + (u.sanct ? 1 : 0), gap = Math.max(0, baseSpC(u) - u.spc), use = Math.min(gap, pts);
       u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + use));
       // 通常のSpCが優先して回復し、通常のSpCが最大になっている場合のみ、余った分が魔法耐性用SpCの回復に回る

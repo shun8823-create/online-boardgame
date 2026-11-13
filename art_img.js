@@ -1,5 +1,16 @@
 /* カードイラスト（画像ファイル）：id → images/ 内の相対パス */
 const ART_IMG_B64 = {
+  angelLow: 'img_angelLow.jpg',
+  angelMid: 'img_angelMid.jpg',
+  angelHigh: 'img_angelHigh.jpg',
+  bishop: 'img_bishop.jpg',
+  paladin: 'img_paladin.jpg',
+  priest: 'img_priest.jpg',
+  electraHeal: 'img_electraHeal.jpg',
+  holyLight: 'img_holyLight.jpg',
+  holySmite: 'img_holySmite.jpg',
+  holyProt: 'img_holyProt.jpg',
+  resurrection: 'img_resurrection.jpg',
   redDragonBreath: 'img_redDragonBreath.jpg',
   vetRanger: 'img_vetRanger.jpg',
   thunderStorm: 'img_thunderStorm.jpg',
