@@ -1,5 +1,6 @@
 /* カードイラスト（画像ファイル）：id → images/ 内の相対パス */
 const ART_IMG_B64 = {
+  limitBreak: 'img_limitBreak.jpg',
   angelLow: 'img_angelLow.jpg',
   angelMid: 'img_angelMid.jpg',
   angelHigh: 'img_angelHigh.jpg',

@@ -96,6 +96,8 @@ function breakArmor(u, n) { for (const k of ['tArmor', 'gArmor', 'fArmor', 'armo
 const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
 const fArmorCheck = u => { if (u.extra && terr(u) !== 'home') { u.extra = 0; log(`${lnm(u)}の「獰猛なる覇者の加護」の効果がホームテリトリーを出たため消えた`); } };
 const baseActs = u => ((abU(u, 'twoActions') || (u.k2 && abU(u, 'knightCmd'))) && !assaultOn(u) ? 2 : 1);
+const avMax = u => (CARDS[u.cid].maxMove || 4) + (u.mvUp || 0); // アバターがゲーム中に動ける回数の上限（限界突破で増える）
+const avLeft = u => Math.max(0, avMax(u) - (u.mvDone || 0));
 const actLimit = u => (u.extra === G.players[u.owner].count && !assaultOn(u) ? Math.min(2, baseActs(u) + 1) : baseActs(u));
 const extraOnly = u => u.extra === G.players[u.owner].count && u.acted >= baseActs(u);
 const healPen = u => (u.st.burn ? 750 : 0) + (u.st.chill ? 500 : 0) + (u.st.frost ? 1000 : 0);
@@ -203,6 +205,7 @@ function canActNow(u) {
   if (u.owner !== G.active) return false;
   if (u.st.petrify != null) return false;
   if (u.acted >= actLimit(u)) return false;
+  if (isAv(u) && avLeft(u) <= 0) return false;
   if (u.placedAt === G.turn && !isAv(u) && !abU(u, 'haste') && !assaultOn(u) && u.agile !== G.turn) return false;
   return true;
 }
@@ -319,7 +322,7 @@ async function doMove(u, mv) {
   sfx('move');
   const from = { x: u.x, y: u.y };
   if (!assaultOn(u)) spendSC(u, mv.cost + ex);
-  u.acted++;
+  u.acted++; if (isAv(u)) u.mvDone = (u.mvDone || 0) + 1;
   if (u.mvTurn !== G.turn) { u.mvTurn = G.turn; u.mvN = 0; }
   u.mvN++;
   if (u.k2 && u.mvN >= 2) { u.k2 = false; log(`${lnm(u)}：1ターンに2回移動したため、行動回数が1回に戻った`); }
@@ -884,17 +887,17 @@ const ACT = {
     [a.x, b.x] = [b.x, a.x]; [a.y, b.y] = [b.y, a.y];
     await sanctuaryCheck(a); await sanctuaryCheck(b); return true; } },
   reinforce: { async run(p) { if (!(await payCost(p, 2))) return false; await UI.cutIn('reinforce'); draw(p, 1); p.extra++; log('増援召喚：追加で1体召喚できる'); return true; } },
-  magicGuard: { can: p => (!mine(p).length ? '対象にできる自分のキャラクターがいません' : own(p.i).some(guardPayer) ? null : 'SpC1以上のキャラクター／アバターが必要です'), async run(p) {
+  magicGuard: { can: p => (!mine(p).length ? '対象にできる自分のキャラクターがいません' : own(p.i).some(u => guardPayer(u) && spcUsable(u) + Math.floor(scAvail(u) / 2) >= 2) ? null : '追加で払う分を含め、SpC（SC2でSpC1の代用）が合計2以上あるキャラクター／アバターが必要です'), async run(p) {
     const t = await pickUnit(mine(p), '魔法壁の対象（自分のキャラクター）を選択'); if (!t) return false;
-    const cands = own(p.i).filter(guardPayer);
-    const r = await UI.pickBoard({ who: p.i, prompt: '魔法壁：SpC／SCを消費するキャラクターを選択（SpC1以上）', cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true }); if (!r) return false;
+    const cands = own(p.i).filter(u => guardPayer(u) && spcUsable(u) + Math.floor(scAvail(u) / 2) >= 2);
+    const r = await UI.pickBoard({ who: p.i, prompt: '魔法壁：SpC／SCを消費するキャラクターを選択（基本SpC1＋追加1以上）', cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true }); if (!r) return false;
     const u = at(r[0][0], r[0][1]);
-    const maxN = Math.min(8, spcUsable(u) + Math.floor(scAvail(u) / 2));
+    const maxN = Math.min(8, spcUsable(u) + Math.floor(scAvail(u) / 2) - 1); // 追加で払える回数（基本の1を除く）
     const labels = [];
-    for (let n = 1; n <= maxN; n++) { const a = Math.min(spcUsable(u), n), c = (n - a) * 2; labels.push(`${n}回分（SpC${a}${c ? '＋SC' + c : ''}）→ 装甲${1000 * n}`); }
-    const ans = await UI.ask(`魔法壁：どれだけ消費しますか？（SpCが尽きたら2SCごとに1回分）`, [...labels, 'キャンセル'], p.i);
+    for (let n = 1; n <= maxN; n++) { const a = Math.min(spcUsable(u), n + 1), c = (n + 1 - a) * 2; labels.push(`装甲${1000 * n}（合計SpC${a}${c ? '＋SC' + c : ''}）`); }
+    const ans = await UI.ask(`魔法壁：基本のSpC1に加え、追加でどれだけ消費しますか？（SpCが尽きたら2SCごとに1回分）`, [...labels, 'キャンセル'], p.i);
     const n = labels.indexOf(ans) + 1; if (n < 1) return false;
-    const a = Math.min(spcUsable(u), n), c = (n - a) * 2;
+    const a = Math.min(spcUsable(u), n + 1), c = (n + 1 - a) * 2;
     u.spc -= a; spendSC(u, c);
     await UI.cutIn('magicGuard');
     t.gArmor += 1000 * n; log(`魔法壁：${lnm(t)}に装甲${1000 * n}（SpC${a}${c ? '・SC' + c : ''}消費）`); return true; } },
@@ -912,6 +915,11 @@ const ACT = {
     if (!CARDS[t.cid].token) o.hand.push(t.cid); delete G.units[t.uid]; t.dead = true; log(CARDS[t.cid].token ? `アクアリターン：${CARDS[t.cid].name}がデッキ外へ戻った` : `アクアリターン：${CARDS[t.cid].name}が手札に戻った`);
     if (t.owner !== p.i && !CARDS[t.cid].token) { (o.ban = o.ban || []).push({ cid: t.cid, turn: G.turn + 1 }); log(`${o.name}は次のターン、「${CARDS[t.cid].name}」を盤に出せない`); }
     return true; } },
+  limitBreak: { can: p => (own(p.i).some(isAv) ? (own(p.i).some(u => canPayAmt(u, 1) && !priestBlock(u, 'limitBreak')) ? null : 'SpC1を支払えるキャラクターがいません') : 'アバターがいません'), async run(p) {
+    const av = own(p.i).find(isAv); if (!av) return false;
+    if (!(await payCost(p, 1))) return false; await UI.cutIn('limitBreak');
+    av.mvUp = (av.mvUp || 0) + 2;
+    log(`限界突破：アバターの最大移動回数が${avMax(av)}回になった（残り${avLeft(av)}回）`); return true; } },
   goldenBody: { can: () => '黄金の体はバトル時にのみ使用できます' },
   dangerSea: { can: p => (p.dangerSea ? '危険海流域の効果はすでに永続しています（重複しません）' : null), async run(p) {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('dangerSea');
@@ -1125,8 +1133,8 @@ const ACT = {
     return true; } },
   holyProt: { can: p => (chars(p.i).length ? null : '対象にできる自分のキャラクターがいません'), async run(p) {
     const t = await pickUnit(chars(p.i), 'ホーリープロテクションの対象（自分のキャラクター）を選択'); if (!t) return false;
-    if (!(await payCost(p, 2))) return false; await UI.cutIn('holyProt');
-    if (await resist(t, 2, p)) return true; if (t.dead) return true;
+    if (!(await payCost(p, 3))) return false; await UI.cutIn('holyProt');
+    if (await resist(t, 3, p)) return true; if (t.dead) return true;
     const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリープロテクション：サイコロ ${d}${up ? '（装甲値+500）' : ''}`); t.gArmor += 1500 + up; log(`ホーリープロテクション：サイコロ ${d}、${lnm(t)}に装甲値${1500 + up}`); return true; } },
   resurrection: {
     can: p => (rezCands(p).length ? (rezCells(p).length ? (own(p.i).some(u => canPayAmt(u, 4) && !priestBlock(u, 'resurrection')) ? null : 'SpC4を支払えるキャラクターがいません') : '1列目に空いているマスがありません') : '前の相手のターン中に破壊され、墓地にいる自分のキャラクターがいません'),
