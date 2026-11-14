@@ -310,7 +310,7 @@ function unitHTML(u) {
   const st = statusList(u).map(k => STATUS_ICON[k]).join('');
   const aa = armorTotal(u) > 0 ? `<span class="armor">装甲${armorTotal(u)}</span>` : '';
   const eq = (u.weapon ? '⚔' : '') + u.attach.map(a => ({ shiftForm: '↗', windSlash: '🌀', fightSpirit: '🐾', redDragonBreath: '🔥' }[a.cid])).join('') + tkTags(u) + (abU(u, 'incinerate') ? '🔥' : '');
-  return `<div class="unit rk${c.rank || 1} ${mineU ? 'mine' : 'foe'} ${u.hidden ? 'hid' : ''}" data-card="${u.cid}" data-uid="${u.uid}"><div class="uart">${artSVG(u.cid)}</div>${u.hidden ? `<div class="un">${u.sanct ? '聖域' : '潜伏'}${u.marked ? '👁' : ''}</div>` : ''}<div class="stat">${st}${eq}</div><div class="us">${chip('LP', u.lp, baseLP(u))}${chip('OP', OP(u), c.op)}${chip('DP', DP(u), c.dp)}${chip('SC', u.sc, baseSC(u))}${chip('SpC', u.spc, baseSpC(u))}${baseRSpC(u) ? chip('耐', u.rspc || 0, baseRSpC(u)) : ''}${aa}</div></div>`;
+  return `<div class="unit rk${c.rank || 1} ${mineU ? 'mine' : 'foe'} ${u.hidden ? 'hid' : ''}" data-card="${u.cid}" data-uid="${u.uid}"><div class="uart">${artSVG(u.cid)}</div>${u.hidden ? `<div class="un">${u.sanct ? '聖域' : '潜伏'}${u.marked ? '👁' : ''}</div>` : ''}<div class="stat">${st}${eq}</div><div class="us">${chip('LP', u.lp, baseLP(u))}${chip('OP', OP(u), c.op)}${chip('DP', DP(u), c.dp)}${chip('SC', u.sc, baseSC(u))}${chip('SpC', u.spc, baseSpC(u))}${baseRSpC(u) ? chip('耐', u.rspc || 0, baseRSpC(u)) : ''}${isAv(u) ? chip('移', avLeft(u), avMax(u)) : ''}${aa}</div></div>`;
 }
 function hlMap() {
   const m = {};

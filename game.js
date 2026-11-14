@@ -1039,7 +1039,7 @@ const ACT = {
   swordFine: { can: EQP('swordFine'), run: (p, c) => equipWeapon(p, c) },
   heroSword: { can: p => {
     if (own(p.i).some(u => canEquip(u, 'heroSword'))) return null; // 盤に勇者がいるなら通常の武器として装備できる
-    if (allChars().some(u => u.cid === 'hero')) return '盤に勇者がいるため配置できません（装備できる勇者もいません）';
+    if (own(p.i).some(u => u.cid === 'hero')) return '自分の盤に勇者がいるため配置できません（装備できる勇者もいません）';
     if (!p.deck.includes('hero') && !p.grave.includes('hero')) return 'デッキにも墓地にも勇者がいません';
     return cellsRow1(p).length ? null : '1列目に空きマスがありません'; },
     async run(p, cid) {
