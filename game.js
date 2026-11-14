@@ -70,7 +70,7 @@ function draw(p, n = 1) {
   let k = 0;
   for (let i = 0; i < n; i++) {
     if (!p.deck.length) {
-      if (!p.reshuffled && p.grave.length) { p.deck = shuffle(p.grave); p.grave = []; p.reshuffled = true; log(`${p.name}：墓地をシャッフルして山札にした`); if (!G.lap) { G.lap = p.name; log(`【二周目突入】${p.name}の山札が尽き、二周目に入った！お互いの全てのキャラクターのOPが+3000される`); if (UI.lap) UI.lap(p.name); } }
+      if (!p.reshuffled && p.grave.length) { p.deck = shuffle(p.grave); p.grave = []; p.reshuffled = true; log(`${p.name}：墓地をシャッフルして山札にした`); }
       else break;
     }
     p.hand.push(p.deck.shift()); k++;
@@ -88,7 +88,7 @@ const baseSC = u => CARDS[u.cid].sc - u.scPen;
 const wRSpC = u => wps(u).reduce((s, c, i, arr) => { const v = CARDS[c].wrspc || 0; if (!v) return s; const had = abC(u.cid, 'magicResist') || arr.some((d, j) => j !== i && (CARDS[d].wab || []).includes('magicResist')); return s + (had ? Math.min(v, 1) : v); }, 0);
 const baseRSpC = u => (CARDS[u.cid].rspc || 0) + wRSpC(u); // 魔法耐性用SpC（魔法耐性・超魔法耐性の支払い専用）
 const baseSpC = u => CARDS[u.cid].spc + wSum(u, 'wspc');
-function OP(u) { let v = CARDS[u.cid].op + (u.ambushNow ? 1000 : 0) + (G.lap && CARDS[u.cid].kind === 'char' ? 3000 : 0); v += wSum(u, 'wop'); for (const a of u.attach) v += CARDS[a.cid].aop || 0; for (const b of u.buffs) if (b.k === 'op') v += b.amt; return v; }
+function OP(u) { let v = CARDS[u.cid].op + (u.ambushNow ? 1000 : 0); v += wSum(u, 'wop'); for (const a of u.attach) v += CARDS[a.cid].aop || 0; for (const b of u.buffs) if (b.k === 'op') v += b.amt; return v; }
 function DP(u) { let v = CARDS[u.cid].dp + u.dpBonus; v += wSum(u, 'wdp'); for (const b of u.buffs) if (b.k === 'dp') v += b.amt; return v; }
 const aop = a => (a.cid === 'fightSpirit' ? 500 : 0);
 CARDS.fightSpirit.aop = 500;
@@ -701,10 +701,10 @@ async function moonReset(u) {
   if (G.phase !== 'main' || u.owner !== G.active) return;
   const used = u.uses.moon || 0;
   if (used >= 2) { UI.toast('月光はゲーム中2回までです'); return; }
-  if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2以上必要です'); return; }
-  const a = await UI.ask(`月光：SCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - used}回）`, ['使う', 'キャンセル']);
+  if (u.spc < 2 || u.st.petrify != null) { UI.toast('SpCが2以上必要です'); return; }
+  const a = await UI.ask(`月光：SpCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - used}回）`, ['使う', 'キャンセル']);
   if (a !== '使う') return;
-  spendSC(u, 2); u.uses.moon = used + 1;
+  u.spc -= 2; u.uses.moon = used + 1;
   for (const q of G.players) { q.deck.push(...q.hand); q.hand = []; q.deck = shuffle(q.deck); draw(q, 3); }
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
 }
@@ -1120,8 +1120,8 @@ const ACT = {
     return true; } },
   holySmite: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
     const t = await pickUnit(foes(p), 'ホーリースマイトの対象を選択'); if (!t) return false;
-    if (!(await payCost(p, 2))) return false; await UI.cutIn('holySmite');
-    if (!(await resist(t, 2, p)) && !t.dead) { const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリースマイト：サイコロ ${d}${up ? '（ダメージ+500）' : ''}`); log(`ホーリースマイト：サイコロ ${d}、${lnm(t)}に${2000 + up}ダメージ`); damage(t, 2000 + up, { hit: true }); }
+    if (!(await payCost(p, 3))) return false; await UI.cutIn('holySmite');
+    if (!(await resist(t, 3, p)) && !t.dead) { const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリースマイト：サイコロ ${d}${up ? '（ダメージ+500）' : ''}`); log(`ホーリースマイト：サイコロ ${d}、${lnm(t)}に${2000 + up}ダメージ`); damage(t, 2000 + up, { hit: true }); }
     return true; } },
   holyProt: { can: p => (chars(p.i).length ? null : '対象にできる自分のキャラクターがいません'), async run(p) {
     const t = await pickUnit(chars(p.i), 'ホーリープロテクションの対象（自分のキャラクター）を選択'); if (!t) return false;
@@ -1312,3 +1312,83 @@ async function endTurn() {
   await startTurn(1 - p.i);
   return true;
 }
+
+/* ===== AI対戦：思考ルーチン（盤面の判断だけを行う。DOM・通信には触れない） ===== */
+const AI = {
+  sides: new Set(), failed: new Set(),
+  is: who => AI.sides.has(who),
+  key: ev => ev.t + ':' + (ev.cid || ev.k || ev.uid || '') + ':' + (ev.x == null ? '' : ev.x + ',' + ev.y),
+  /* 盤面選択（UI.pickBoard の代わり）。戻り値は [[x,y],…] か null（キャンセル） */
+  pick(o) {
+    const a = o.who == null ? G.active : o.who, cells = o.cells || [];
+    if (!cells.length) return null;
+    const us = cells.map(c => ({ c, u: at(c[0], c[1]) }));
+    if (o.multi) {
+      if (!o.validate) return o.cancellable ? null : cells.slice(0, 2);
+      const sel = [];
+      for (const e of us.slice().sort((x, y) => (x.u ? x.u.lp : 0) - (y.u ? y.u.lp : 0))) { sel.push(e.c); if (o.validate(sel)) return sel; }
+      return o.cancellable ? null : sel;
+    }
+    if (o.kind === 'pay') {
+      const best = us.slice().sort((x, y) => ((y.u ? spcUsable(y.u) : 0) - (x.u ? spcUsable(x.u) : 0)) || ((x.u && isAv(x.u) ? 1 : 0) - (y.u && isAv(y.u) ? 1 : 0)))[0];
+      return [best.c];
+    }
+    if (o.kind === 'place') return [cells[Math.floor(RNG() * cells.length)]];
+    if (o.kind === 'target') {
+      const foe = us.filter(e => e.u && e.u.owner !== a), mine = us.filter(e => e.u && e.u.owner === a);
+      if (foe.length) return [foe.sort((x, y) => x.u.lp - y.u.lp)[0].c];
+      if (mine.length) return [mine.sort((x, y) => y.u.lp - x.u.lp)[0].c];
+    }
+    return [cells[0]];
+  },
+  /* 選択肢への回答（UI.ask の代わり）。基本は先頭（使う／はい）。SC消費の警告は断る */
+  ask(msg, btns) {
+    if (/^⚠/.test(msg)) return btns.find(b => /いいえ|やめる|キャンセル/.test(b)) || btns[btns.length - 1];
+    return btns[0];
+  },
+  cards(title, prompt, cids, min, who, max) { const n = Math.min(max || min || 1, cids.length); return Array.from({ length: n }, (_, i) => i); },
+  sig() { return JSON.stringify([G.phase, G.active, G.players.map(q => [q.hand.length, q.coins, q.deck.length, q.grave.length]), U().map(u => [u.uid, u.x, u.y, u.lp, u.sc, u.spc, u.dead ? 1 : 0, u.hidden ? 1 : 0])]); },
+  /* 次の1手を決める。戻り値は execEv に渡すイベント */
+  choose() {
+    const a = G.active, p = G.players[a], F = AI.failed, okEv = ev => !F.has(AI.key(ev));
+    if (G.phase === 'main') {
+      const hand = p.hand.map((cid, i) => ({ cid, i, c: CARDS[cid] }));
+      const chars = hand.filter(e => e.c.kind === 'char' && okEv({ t: 'play', cid: e.cid })).sort((x, y) => (y.c.rank || 0) - (x.c.rank || 0));
+      if (chars.length) return { t: 'play', i: chars[0].i, cid: chars[0].cid };
+      const others = hand.filter(e => e.c.kind !== 'char' && e.cid !== 'shopTicket' && okEv({ t: 'play', cid: e.cid }));
+      if (others.length) { const e = others[Math.floor(RNG() * others.length)]; return { t: 'play', i: e.i, cid: e.cid }; }
+      if (typeof shopItems === 'function' && canBuyRight(p)) {
+        const its = shopItems().map((s, k) => ({ s, k })).filter(e => e.s && !e.s.sold && p.coins >= e.s.price && okEv({ t: 'buy', k: e.k }));
+        if (its.length) return { t: 'buy', k: its.sort((x, y) => y.s.price - x.s.price)[0].k };
+      }
+      return { t: 'toAction' };
+    }
+    if (G.phase === 'action') {
+      const forced = own(a).filter(mustMove);
+      const cand = [];
+      for (const u of (forced.length ? forced : own(a).filter(u => !isAv(u)))) {
+        for (const mv of movesFor(u)) {
+          const ev = { t: 'move', uid: u.uid, x: mv.x, y: mv.y }; if (!okEv(ev)) continue;
+          const prog = (mv.y - u.y) * fwd(a);
+          let s = prog * 2 + RNG() - (prog < 0 ? 3 : 0);
+          if (mv.type === 'attack') { const t = at(mv.x, mv.y); s += t ? (isAv(t) ? 8 : (u.lp > t.lp ? 4 : -4)) : 0; }
+          cand.push({ ev, s });
+        }
+      }
+      cand.sort((x, y) => y.s - x.s);
+      if (cand.length && (forced.length || cand[0].s > 0)) return cand[0].ev;
+    }
+    return { t: 'end' };
+  },
+  /* 自分（AI）の手番を終わりまで進める。exec(ev) はイベントを実行して完了を待つ関数 */
+  async runTurn(exec, maxSteps = 80) {
+    AI.failed.clear();
+    for (let n = 0; n < maxSteps; n++) {
+      if (!G || G.over || !AI.is(G.active)) return;
+      const me = G.active, ev = AI.choose(), s0 = AI.sig();
+      await exec(ev);
+      if (!G || G.over || G.active !== me) return;
+      if (AI.sig() === s0) { if (ev.t === 'end') return; AI.failed.add(AI.key(ev)); }
+    }
+  },
+};

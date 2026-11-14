@@ -17,7 +17,7 @@ const RACES = [...new Set(CARD_IDS.map(k => CARDS[k].race).filter(Boolean))];
 const KIND_ORDER = { char: 0, spell: 1, item: 2, tech: 3 };
 const F = { kind: 'all', rank: 'all', race: 'all', attr: 'all', q: '' };
 const B = { id: null, name: '新しいデッキ', list: {}, F: { kind: 'all', rank: 'all', race: 'all', attr: 'all', q: '' } };
-const PREP = { a: 'p_oudo', b: 'p_gob' };
+const PREP = { a: 'p_oudo', b: 'p_gob', me: 'p_oudo', ai: 'p_gob', seat: 0 };
 const STATUS_ICON = { burn: '🔥', chill: '❄', frost: '🧊', poison: '☠', venom: '☠☠', petrify: '🪨', paralyze: '⚡' };
 const STATUS_DESC = { paralyze: 'まひ：1ターンにSCを1つしか使えない（2回行動でも2回目の行動はできない）', burn: 'やけど：回復効果のLP増加が750減る', chill: 'しもやけ：回復効果のLP増加が500減る', frost: '凍傷：回復効果のLP増加が1000減り、LPが2000下がる（ターン終了時に回復しない）', poison: '毒：LP-500・SC-1（ターン終了時に回復しない）', venom: '猛毒：LP-1500・SC-2（ターン終了時に回復しない）', petrify: '石化：SC・SpCを消費する行動や効果を使えない' };
 
@@ -131,7 +131,11 @@ function renderPrep() {
   const opt = cur => allDecks().map(d => `<option value="${d.id}" ${d.id === cur ? 'selected' : ''}>${esc(d.name)}</option>`).join('');
   const info = id => { const d = allDecks().find(d => d.id === id); const v = validateDeck(d.list); return `<div class="note">${deckSize(d.list)}枚　R1:${v.r[0]} R2:${v.r[1]} R3:${v.r[2]}</div>${v.err.map(e => `<div class="err">✖ ${esc(e)}</div>`).join('')}${v.warn.map(e => `<div class="warn">⚠ ${esc(e)}</div>`).join('')}`; };
   const okA = !validateDeck(allDecks().find(d => d.id === PREP.a).list).err.length, okB = !validateDeck(allDecks().find(d => d.id === PREP.b).list).err.length;
-  $('#app').innerHTML = `<h2>対戦準備</h2><h3>同じ端末で対戦</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>先行</h3><select data-sel="prep.a">${opt(PREP.a)}</select>${info(PREP.a)}</div>
+  const okM = !validateDeck(allDecks().find(d => d.id === PREP.me).list).err.length, okI = !validateDeck(allDecks().find(d => d.id === PREP.ai).list).err.length;
+  const aiHTML = `<h3>AIと対戦（1人用）</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>あなたのデッキ</h3><select data-sel="prep.me">${opt(PREP.me)}</select>${info(PREP.me)}<div class="note" style="margin-top:6px">手番：<select data-sel="prep.seat"><option value="0" ${PREP.seat === 0 ? 'selected' : ''}>先行</option><option value="1" ${PREP.seat === 1 ? 'selected' : ''}>後攻</option></select></div></div>
+  <div class="panel" style="min-width:300px"><h3>AIのデッキ</h3><select data-sel="prep.ai">${opt(PREP.ai)}</select>${info(PREP.ai)}</div></div>
+  <button class="btn main" data-act="startAI" ${okM && okI ? '' : 'disabled'}>AIと対戦開始</button>${okM && okI ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}<p class="note">AIは盤面・手札を見て、キャラの配置・スペル／アイテムの使用・購入・移動・攻撃を自動で行う簡易的なものです（アビリティの起動や非公開の駆け引きは行いません）。</p><hr>`;
+  $('#app').innerHTML = `<h2>対戦準備</h2>${aiHTML}<h3>同じ端末で対戦</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>先行</h3><select data-sel="prep.a">${opt(PREP.a)}</select>${info(PREP.a)}</div>
   <div class="panel" style="min-width:300px"><h3>後攻</h3><select data-sel="prep.b">${opt(PREP.b)}</select>${info(PREP.b)}</div></div>
   <p class="note">同じデッキを両者が選ぶこともできます。この版は<b>1台の端末で交代して遊ぶ</b>形式です（ターン開始時に画面を渡す確認が出ます）。オンラインで遊ぶ場合は、下の「オンライン対戦」を使ってください。</p>
   <button class="btn main" data-act="start" ${okA && okB ? '' : 'disabled'}>対戦開始</button>${okA && okB ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}${lobbyHTML()}`;
@@ -285,11 +289,6 @@ function paintTh() {
   });
 }
 /* サンダーストーム：1列あたり約1秒のルーレット演出。選ばれた列は黄色く光る */
-UI.lap = function (name) {
-  try { let el = document.getElementById('lapbn'); if (!el) { el = document.createElement('div'); el.id = 'lapbn'; document.body.appendChild(el); }
-    el.innerHTML = `<div class="lapbox"><div class="lapt">⚠ 二周目突入！</div><div class="lapd">${esc(name)}の山札が尽きました</div><div class="lapd"><b>お互いの全てのキャラクターのOP +3000</b></div></div>`;
-    el.style.display = 'flex'; clearTimeout(UI._lapT); UI._lapT = setTimeout(() => { el.style.display = 'none'; }, 4200); el.onclick = () => { el.style.display = 'none'; }; if (typeof sfx === 'function') sfx('status'); } catch (e) { }
-};
 UI.thunderStep = async function (s) {
   if (!UI.th) { UI.th = { roll: null, hit: [] }; if (MOB()) try { window.scrollTo(0, 0); } catch (e) { } renderBattle(); }
   const ticks = 12;
@@ -469,7 +468,6 @@ function unitDetail(u) {
   const desc = statusList(u).map(k => `<div class="note">${STATUS_DESC[k]}</div>`).join('');
   const buffs = [];
   if (u.dpBonus) buffs.push(`生贄によるDP+${u.dpBonus}`);
-  if (G.lap && CARDS[u.cid].kind === 'char') buffs.push('二周目突入によるOP+3000');
   for (const b of u.buffs) buffs.push(`${b.k.toUpperCase()}+${b.amt}（一時）`);
   if (u.weapon) buffs.push(`装備：${wps(u).map(c => CARDS[c].name).join('・')}`);
   if (dualPen(u)) buffs.push('武器を2つ装備：移動のSC+1');
@@ -579,6 +577,7 @@ function onClick(e) {
     case 'saveDeck': if (deckLocked()) { UI.toast('対戦中はデッキの作成・保存・削除はできません'); break; } saveDeckAs(false); break;
     case 'saveAs': if (deckLocked()) { UI.toast('対戦中はデッキの作成・保存・削除はできません'); break; } saveDeckAs(true); break;
     case 'start': startBattle(); break;
+    case 'startAI': startAI(); break;
     case 'cell': onCell(+el.dataset.x, +el.dataset.y); break;
     case 'hand': if (UI.pk || UI.busy || G.phase === 'start') break; if (MOB()) { showHandSheet(+el.dataset.i); break; } { const i = +el.dataset.i; if (UI.selHand === i && G.phase === 'main' && (!ONL || G.active === ONL.me)) doAct({ t: 'play', i }); else { UI.selHand = i; UI.sel = null; renderBattle(); } } break;
     case 'reveal': doAct({ t: 'reveal', uid: +el.dataset.uid }); break;
@@ -853,6 +852,52 @@ async function startOnline() {
   runLoop();
 }
 
+/* ---------- AIと対戦（1人用） ----------
+   オンライン対戦の仕組み（イベントを1本のキューで処理する runLoop）をそのまま使い、
+   相手側のイベント・選択肢への回答だけをAI（game.js の AI）が出す。通信は行わない。 */
+(function () {
+  const wrap = (obj, k, fn) => { const o = obj[k]; obj[k] = function (...a) { return fn.call(this, o, ...a); }; };
+  const aiOn = who => !!ONL && !!ONL.ai && AI.is(who);
+  wrap(UI, 'ask', function (o, msg, btns, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.ask(msg, btns)) : o.call(this, msg, btns, who); });
+  wrap(UI, 'pickBoard', function (o, opt) { const who = opt.who == null ? G.active : opt.who; return aiOn(who) ? Promise.resolve(AI.pick(opt)) : o.call(this, opt); });
+  wrap(UI, 'pickCard', function (o, title, prompt, cids, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(cids[0]) : o.call(this, title, prompt, cids, who); });
+  wrap(UI, 'pickCards', function (o, title, prompt, cids, min, who, max) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.cards(title, prompt, cids, min, who, max)) : o.call(this, title, prompt, cids, min, who, max); });
+  wrap(UI, 'toast', function (o, m) { if (ONL && ONL.ai && ONL.aiBusy && !/^🎲/.test(m)) return; return o.call(this, m); }); // AIが試して失敗した操作のエラーは出さない
+  const _write = writeEv; writeEv = async function (ev) { if (ONL && ONL.ai) { pushEv(ev); return; } return _write.apply(this, arguments); };
+  const _exec = execEv; execEv = async function (ev) { try { return await _exec(ev); } finally { if (ONL && ONL.ai && ONL.done) { const d = ONL.done; ONL.done = null; d(); } } };
+  const _leave = leaveOnline; leaveOnline = function () { if (ONL && ONL.ai) { ONL.stop = true; ONL = null; AI.sides = new Set(); return; } return _leave.apply(this, arguments); };
+  const _start = startTurn; startTurn = async function (i) { await _start(i); if (ONL && ONL.ai && AI.is(i) && G && !G.over) setTimeout(aiTurnGo, 50); };
+
+  async function aiTurnGo() {
+    const o = ONL; if (!o || !o.ai || o.aiRun || !G || G.over || !AI.is(G.active)) return;
+    o.aiRun = true; o.aiBusy = true;
+    try {
+      while (ONL === o && (UI.busy || UI.pk)) await sleep(60); // 直前のイベント処理の終了待ち
+      await AI.runTurn(async ev => {
+        if (ONL !== o || o.stop) throw new Error('stop');
+        while (UI.pk) await sleep(100);
+        UI.wait = `${G.players[G.active].name}が考え中…`; if (screen === 'battle') renderBattle();
+        await sleep(450);
+        if (ONL !== o || o.stop) throw new Error('stop');
+        const d = new Promise(r => { o.done = r; }); pushEv(ev); await d; await sleep(150);
+      });
+    } catch (e) { if (e.message !== 'stop') console.error(e); }
+    finally { o.aiBusy = false; o.aiRun = false; if (ONL === o) { UI.wait = null; if (screen === 'battle' && G) renderBattle(); } }
+  }
+
+  window.startAI = function () {
+    const dm = allDecks().find(d => d.id === PREP.me), da = allDecks().find(d => d.id === PREP.ai), seat = PREP.seat;
+    if (!dm || !da) return;
+    const me = { ai: true, me: seat, queue: [], waiters: [], recv: 0, buf: {}, pending: false, stop: false, seed: 0, got: true };
+    ONL = me; AI.sides = new Set([1 - seat]);
+    UI.pk = null; UI.sel = null; UI.selHand = null; UI.busy = true; UI.wait = null; UI.overShown = false;
+    newGame(seat === 0 ? mk(dm.list) : mk(da.list), seat === 0 ? mk(da.list) : mk(dm.list));
+    G.players[1 - seat].name = 'AI';
+    screen = 'battle'; show();
+    UI.toast(`あなたは${seat === 0 ? '先行' : '後攻'}です（相手：AI）`);
+    startTurn(0).then(() => { UI.busy = false; runLoop(); });
+  };
+})();
 /* ---------- イベント ---------- */
 let lpTimer = null, lpFired = false;
 function showBoardFull() { // パソコン：盤をA〜G・1〜7の表示ごと画面いっぱいに表示
@@ -882,6 +927,9 @@ document.addEventListener('change', e => {
   if (s === 'loadDeck') { if (v) { loadDeck(v); renderBuilder(); } return; }
   if (s === 'prep.a') { PREP.a = v; renderPrep(); return; }
   if (s === 'prep.b') { PREP.b = v; renderPrep(); return; }
+  if (s === 'prep.me') { PREP.me = v; renderPrep(); return; }
+  if (s === 'prep.ai') { PREP.ai = v; renderPrep(); return; }
+  if (s === 'prep.seat') { PREP.seat = +v; renderPrep(); return; }
   if (s === 'lob.deck') { if (LOB) { LOB.deckId = v; renderPrep(); } return; }
   const [sc, k] = s.split('.');
   if (sc === 'F') { F[k] = v; renderCards(); } else { B.F[k] = v; renderBuilder(); }
