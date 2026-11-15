@@ -514,6 +514,7 @@ async function payTech(p, cands, prompt) {
 }
 async function goldenPrompt(side) {
   if (isAv(side) || side.dead) return false;
+  if (CARDS[side.cid].cat !== 'ヒューマノイド') return false; // ヒューマノイド以外（モンスター等）をもつキャラクターは対象にできない
   const p = G.players[side.owner];
   if (!p.hand.includes('goldenBody')) return false;
   if (!own(p.i).some(u => canPayAmt(u, 3) && !priestBlock(u, 'goldenBody'))) return false;
@@ -738,6 +739,15 @@ async function priestAct(u) {
   UI.toast(`${name[k]}：${nm(t)}`); afterAction();
 }
 /* エンジェルの効果：メインステップ中にSCを2つ消費し、デッキ外から指定のカードを手札に加える（ゲーム中1度だけ） */
+/* オーガ：メインステップ中にSpC2を消費して奥義「発狂」を1枚手札に加える（ゲーム中1度） */
+async function frenzyGetAct(u) {
+  if (G.phase !== 'main' || u.owner !== G.active || u.dead || u.hidden || !abU(u, 'frenzyGet')) return;
+  if (u.uses.frenzyGet || u.spc < 2 || u.st.petrify != null) return; // 使えない時は何もしない（タップは選択・移動範囲の確認にも使うため）
+  const a = await UI.ask(`${nm(u)}：SpCを2つ消費して、奥義「発狂」を1枚手札に加えますか？（ゲーム中1度だけ）`, ['使う', 'やめる']);
+  if (a !== '使う') return;
+  u.spc -= 2; u.uses.frenzyGet = 1; G.players[u.owner].hand.push('tkFrenzy');
+  log(`${lnm(u)}：SpCを2つ消費し、奥義「発狂」を手札に加えた`); UI.toast('発狂を手札に加えた'); afterAction();
+}
 async function angelFetchAct(u) {
   const p = G.players[u.owner], f = CARDS[u.cid].fetch;
   if (G.phase !== 'main' || u.owner !== G.active || u.dead || u.hidden || !f) return;

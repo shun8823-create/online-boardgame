@@ -134,11 +134,12 @@ function renderPrep() {
   const okM = !validateDeck(allDecks().find(d => d.id === PREP.me).list).err.length, okI = !validateDeck(allDecks().find(d => d.id === PREP.ai).list).err.length;
   const aiHTML = `<h3>AIと対戦（1人用）</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>あなたのデッキ</h3><select data-sel="prep.me">${opt(PREP.me)}</select>${info(PREP.me)}<div class="note" style="margin-top:6px">手番：<select data-sel="prep.seat"><option value="0" ${PREP.seat === 0 ? 'selected' : ''}>先行</option><option value="1" ${PREP.seat === 1 ? 'selected' : ''}>後攻</option></select></div></div>
   <div class="panel" style="min-width:300px"><h3>AIのデッキ</h3><select data-sel="prep.ai">${opt(PREP.ai)}</select>${info(PREP.ai)}</div></div>
-  <button class="btn main" data-act="startAI" ${okM && okI ? '' : 'disabled'}>AIと対戦開始</button>${okM && okI ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}<p class="note">AIは盤面・手札を見て、キャラの配置・スペル／アイテムの使用・購入・移動・攻撃を自動で行う簡易的なものです（アビリティの起動や非公開の駆け引きは行いません）。</p><hr>`;
-  $('#app').innerHTML = `<h2>対戦準備</h2>${aiHTML}<h3>同じ端末で対戦</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>先行</h3><select data-sel="prep.a">${opt(PREP.a)}</select>${info(PREP.a)}</div>
+  <button class="btn main" data-act="startAI" ${okM && okI && !deckLocked() ? '' : 'disabled'}>AIと対戦開始</button>${okM && okI ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}<p class="note">AIは盤面・手札を見て、キャラの配置・スペル／アイテムの使用・購入・移動・攻撃を自動で行う簡易的なものです（アビリティの起動や非公開の駆け引きは行いません）。</p><hr>`;
+  const lockHTML = deckLocked() ? `<div class="panel" style="border-color:#c0392b"><b>対戦中です。</b>決着がつくまで、他の対戦（AI・同じ端末・オンライン）は始められません。<button class="btn sm" data-act="nav" data-s="battle">対戦画面に戻る</button></div>` : '';
+  $('#app').innerHTML = `<h2>対戦準備</h2>${lockHTML}${aiHTML}<h3>同じ端末で対戦</h3><div class="mrow"><div class="panel" style="min-width:300px"><h3>先行</h3><select data-sel="prep.a">${opt(PREP.a)}</select>${info(PREP.a)}</div>
   <div class="panel" style="min-width:300px"><h3>後攻</h3><select data-sel="prep.b">${opt(PREP.b)}</select>${info(PREP.b)}</div></div>
   <p class="note">同じデッキを両者が選ぶこともできます。この版は<b>1台の端末で交代して遊ぶ</b>形式です（ターン開始時に画面を渡す確認が出ます）。オンラインで遊ぶ場合は、下の「オンライン対戦」を使ってください。</p>
-  <button class="btn main" data-act="start" ${okA && okB ? '' : 'disabled'}>対戦開始</button>${okA && okB ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}${lobbyHTML()}`;
+  <button class="btn main" data-act="start" ${okA && okB && !deckLocked() ? '' : 'disabled'}>対戦開始</button>${okA && okB ? '' : '<span class="err"> 構築ルール違反のデッキでは開始できません</span>'}${lobbyHTML()}`;
 }
 
 /* ---------- 画面4: 対戦 ---------- */
@@ -315,7 +316,7 @@ function unitHTML(u) {
 function hlMap() {
   const m = {};
   if (UI.pk) { for (const [x, y] of UI.pk.o.cells) m[x + ',' + y] = 'hl-' + (UI.pk.o.kind || 'target'); for (const [x, y] of UI.pk.sel) m[x + ',' + y] += ' picked'; }
-  else if (UI.sel && G.units[UI.sel]) { const u = G.units[UI.sel]; m[u.x + ',' + u.y] = 'hl-sel'; if (G.phase === 'action' && (!ONL || G.active === ONL.me)) for (const mv of movesFor(u)) m[mv.x + ',' + mv.y] = mv.type === 'attack' ? 'hl-attack' : 'hl-move'; }
+  else if (UI.sel && G.units[UI.sel]) { const u = G.units[UI.sel]; m[u.x + ',' + u.y] = 'hl-sel'; if ((G.phase === 'action' || G.phase === 'main') && (!ONL || G.active === ONL.me)) for (const mv of movesFor(u)) m[mv.x + ',' + mv.y] = (mv.type === 'attack' ? 'hl-attack' : 'hl-move') + (G.phase === 'main' ? ' prev' : ''); }
   return m;
 }
 function unitActions(u, can) {
@@ -536,6 +537,7 @@ function onCell(x, y) {
     if (G.phase === 'main' && abU(t, 'throw') && (!ONL || G.active === ONL.me)) doAct({ t: 'throw', uid: t.uid });
     if (G.phase === 'main' && abU(t, 'angelFetch') && (!ONL || G.active === ONL.me)) doAct({ t: 'angelFetch', uid: t.uid });
     if (G.phase === 'main' && abU(t, 'healA') && (!ONL || G.active === ONL.me)) doAct({ t: 'priest', uid: t.uid });
+    if (G.phase === 'main' && abU(t, 'frenzyGet') && (!ONL || G.active === ONL.me)) doAct({ t: 'frenzyGet', uid: t.uid });
     if (G.phase === 'main' && abU(t, 'moonReset') && (!ONL || G.active === ONL.me)) doAct({ t: 'moon', uid: t.uid });
   } else if (t && !t.hidden) { UI.sel = t.uid; UI.selHand = null; renderBattle(); }
   else { UI.sel = null; renderBattle(); }
@@ -559,6 +561,7 @@ function onClick(e) {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   const a = el.dataset.act;
+  if (['start', 'startAI', 'mkRoom', 'joinRoom'].includes(a) && deckLocked()) { UI.toast('対戦中です。決着がつくまで他の対戦は始められません（対戦画面で投了すると終了できます）'); return; }
   if (e.target.closest('[data-card]')) { /* カードに触れた音は上で鳴らし済み */ } else if (['hand', 'cell', 'sheetHand', 'grave'].includes(a)) SFX.play('select'); else if (['toAction', 'endTurn', 'play', 'pkok', 'buy', 'sell', 'sheetSell'].includes(a)) SFX.play('tick');
   switch (a) {
     case 'nav': screen = el.dataset.s; show(); break;
@@ -605,6 +608,7 @@ function onClick(e) {
   }
 }
 function startBattle() {
+  if (deckLocked()) return;
   const da = allDecks().find(d => d.id === PREP.a), db = allDecks().find(d => d.id === PREP.b);
   UI.pk = null; UI.sel = null; UI.selHand = null; UI.busy = false;
   newGame(mk(da.list), mk(db.list));
@@ -626,6 +630,7 @@ async function execEv(ev) {
     case 'move': { const u = G.units[ev.uid]; const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
     case 'throw': { const u = G.units[ev.uid]; if (u) await monkeyThrow(u); break; }
     case 'angelFetch': { const u = G.units[ev.uid]; if (u) await angelFetchAct(u); break; }
+    case 'frenzyGet': { const u = G.units[ev.uid]; if (u) await frenzyGetAct(u); break; }
     case 'priest': { const u = G.units[ev.uid]; if (u) await priestAct(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
     case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
@@ -886,6 +891,7 @@ async function startOnline() {
   }
 
   window.startAI = function () {
+    if (deckLocked()) return;
     const dm = allDecks().find(d => d.id === PREP.me), da = allDecks().find(d => d.id === PREP.ai), seat = PREP.seat;
     if (!dm || !da) return;
     const me = { ai: true, me: seat, queue: [], waiters: [], recv: 0, buf: {}, pending: false, stop: false, seed: 0, got: true };
