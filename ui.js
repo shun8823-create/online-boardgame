@@ -470,6 +470,7 @@ function unitDetail(u) {
   const desc = statusList(u).map(k => `<div class="note">${STATUS_DESC[k]}</div>`).join('');
   const buffs = [];
   if (u.dpBonus) buffs.push(`生贄によるDP+${u.dpBonus}`);
+  if (G.lap && CARDS[u.cid].kind === 'char') buffs.push('二周目突入：「狂乱」を得る・移動のSC-1');
   for (const b of u.buffs) buffs.push(`${b.k.toUpperCase()}+${b.amt}（一時）`);
   if (u.weapon) buffs.push(`装備：${wps(u).map(c => CARDS[c].name).join('・')}`);
   if (dualPen(u)) buffs.push('武器を2つ装備：移動のSC+1');
@@ -533,12 +534,16 @@ function onCell(x, y) {
     if (mv && (!ONL || G.active === ONL.me)) return doAct({ t: 'move', uid: u.uid, x, y });
   }
   if (t && t.owner === VW()) {
+    const ab = (!ONL || G.active === ONL.me) ? mainAbility(t) : null;
+    if (ab) { // 先に効果を発動するか質問し、キャンセルしたら移動先の表示を見られるようにする
+      UI.sel = null; UI.selHand = null; renderBattle();
+      localAsk(ab.q, ['発動する', 'キャンセル']).then(r => {
+        if (r === '発動する') doAct({ t: ab.t, uid: t.uid });
+        else if (G && !G.over) { UI.sel = t.uid; renderBattle(); }
+      });
+      return;
+    }
     UI.sel = t.uid; UI.selHand = null; renderBattle();
-    if (G.phase === 'main' && abU(t, 'throw') && (!ONL || G.active === ONL.me)) doAct({ t: 'throw', uid: t.uid });
-    if (G.phase === 'main' && abU(t, 'angelFetch') && (!ONL || G.active === ONL.me)) doAct({ t: 'angelFetch', uid: t.uid });
-    if (G.phase === 'main' && abU(t, 'healA') && (!ONL || G.active === ONL.me)) doAct({ t: 'priest', uid: t.uid });
-    if (G.phase === 'main' && abU(t, 'frenzyGet') && (!ONL || G.active === ONL.me)) doAct({ t: 'frenzyGet', uid: t.uid });
-    if (G.phase === 'main' && abU(t, 'moonReset') && (!ONL || G.active === ONL.me)) doAct({ t: 'moon', uid: t.uid });
   } else if (t && !t.hidden) { UI.sel = t.uid; UI.selHand = null; renderBattle(); }
   else { UI.sel = null; renderBattle(); }
 }
