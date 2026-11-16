@@ -405,11 +405,11 @@ async function heroRoll(u) {
   try { await battle(u, t); } finally { u.ambushNow = false; }
   checkAuras(); UI.render();
 }
-/* レッドドラゴン：メインステップ中にSpC1で、次の自分のターンのはじめまで「焼却」を得る（5回まで） */
+/* レッドドラゴン：メインステップ中にSpC1で、次の自分のターンのはじめまで「焼却」を得る（2回まで） */
 async function burnStart(u) {
   if (!u || u.dead || u.hidden || !abU(u, 'burnAct') || u.owner !== G.active || G.phase !== 'main' || u.st.petrify != null) return;
-  const n = u.uses.burnN || 0; if (n >= 5 || u.spc < 1 || (u.burn != null && G.turn === u.burn)) return;
-  u.spc -= 1; u.uses.burnN = n + 1; u.burn = G.turn; sfx('fire'); log(`${lnm(u)}：SpCを1つ消費し、次の自分のターンのはじめまで「焼却」を得た（${n + 1}/5回目）`);
+  const n = u.uses.burnN || 0; if (n >= 2 || u.spc < 1 || (u.burn != null && G.turn === u.burn)) return;
+  u.spc -= 1; u.uses.burnN = n + 1; u.burn = G.turn; sfx('fire'); log(`${lnm(u)}：SpCを1つ消費し、次の自分のターンのはじめまで「焼却」を得た（${n + 1}/2回目）`);
   checkAuras(); UI.render();
 }
 async function flameStart(u) {
@@ -765,7 +765,7 @@ function mainAbility(u) {
   const f = CARDS[u.cid].fetch;
   if (abU(u, 'angelFetch') && f && !p.angelUsed[u.cid] && scAvail(u) >= 2) return { t: 'angelFetch', q: `${nm(u)}：SCを2つ消費して、デッキ外から「${CARDS[f.cid].name}」を${f.n}枚手札に加えますか？（ゲーム中1度だけ）` };
   if (['heal', 'cure', 'mail'].some(k => priestCan(u, k))) return { t: 'priest', q: `${nm(u)}：ヒール／キュア・ディジーズ／ホーリーメールを使いますか？（SpC1を消費）` };
-  if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 5 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${5 - (u.uses.burnN || 0)}回）` };
+  if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 2 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${2 - (u.uses.burnN || 0)}回）` };
   if (abU(u, 'frenzyGet') && !u.uses.frenzyGet && u.spc >= 2) return { t: 'frenzyGet', q: `${nm(u)}：SpCを2つ消費して、奥義「発狂」を1枚手札に加えますか？（ゲーム中1度だけ）` };
   if (abU(u, 'moonReset') && (u.uses.moon || 0) < 2 && u.spc >= 2) return { t: 'moon', q: `月光：SpCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - (u.uses.moon || 0)}回）` };
   return null;
