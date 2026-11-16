@@ -1,5 +1,7 @@
 /* カードイラスト（画像ファイル）：id → images/ 内の相対パス */
 const ART_IMG_B64 = {
+  armorFine: 'img_armorFine.jpg',
+  chaosArmor: 'img_chaosArmor.jpg',
   limitBreak: 'img_limitBreak.jpg',
   angelLow: 'img_angelLow.jpg',
   angelMid: 'img_angelMid.jpg',

@@ -30,9 +30,13 @@ const sfx = n => { try { if (typeof UI !== 'undefined' && UI.sfx) UI.sfx(n); } c
 const wps = u => [u.weapon, u.weapon2].filter(Boolean);
 const hasW = (u, id) => u.weapon === id || u.weapon2 === id;
 const isShieldW = cid => !!cid && CARDS[cid].name.includes('盾');
+const isArmorW = cid => !!cid && CARDS[cid].name.includes('鎧');
+const wKind = cid => isShieldW(cid) ? 's' : isArmorW(cid) ? 'a' : 'o'; // 盾・鎧・その他：同じ種類は2つ装備できない
+const hasSA = u => wps(u).some(c => isShieldW(c) || isArmorW(c)); // 盾・鎧を装備している
+const armorDual = u => !!(u.weapon && u.weapon2 && wps(u).some(isArmorW)); // 鎧と他の武器の同時装備：ターン終了時のSC回復-1
 const wSum = (u, f) => wps(u).reduce((s, c) => s + (CARDS[c][f] || 0), 0);
 const isHeavyW = cid => !!cid && CARDS[cid].weapon && !!CARDS[cid].heavy; // 「重装備」の印をもつ武器（勇者の剣・勇竜剣・烈火剣）：LP4000以上のキャラのみ装備できる
-const dualPen = u => (u.weapon && u.weapon2 ? 1 + (wps(u).some(isHeavyW) ? 1 : 0) : 0); // 武器2つ：SC+1（LP4000以上が条件の武器を含むならさらに+1）
+const dualPen = u => (u.weapon && u.weapon2 && wps(u).some(isShieldW) ? 1 + (wps(u).some(isHeavyW) ? 1 : 0) : 0); // 武器2つ：SC+1（LP4000以上が条件の武器を含むならさらに+1）
 const scAvail = u => (u.st && u.st.paralyze ? (u.scT === G.turn ? 0 : Math.min(u.sc, 1)) : u.sc); // まひ：1ターンにSCを1つしか使えない
 const spendSC = (u, n) => { if (n <= 0) return; u.sc -= n; if (u.st && u.st.paralyze) u.scT = G.turn; };
 const holdsAttr = (u, scid) => { const a = scid && CARDS[scid].attr; return !!a && [...charAttrs(u.cid), ...wps(u).flatMap(c => CARDS[c].wattr || [])].some(x => a.split('・').includes(x)); };
@@ -90,13 +94,15 @@ const baseSC = u => CARDS[u.cid].sc - u.scPen;
 // 武器が与える耐性SpC。すでに「魔法耐性」を持つキャラ（自身の能力、または別の武器）には、与える耐性SpCが1に減る
 const wRSpC = u => wps(u).reduce((s, c, i, arr) => { const v = CARDS[c].wrspc || 0; if (!v) return s; const had = abC(u.cid, 'magicResist') || arr.some((d, j) => j !== i && (CARDS[d].wab || []).includes('magicResist')); return s + (had ? Math.min(v, 1) : v); }, 0);
 const baseRSpC = u => (CARDS[u.cid].rspc || 0) + wRSpC(u); // 魔法耐性用SpC（魔法耐性・超魔法耐性の支払い専用）
-const baseSpC = u => CARDS[u.cid].spc + wSum(u, 'wspc');
+const baseSpC = u => (hasSA(u) && CARDS[u.cid].spc >= 2 ? 1 : CARDS[u.cid].spc) + wSum(u, 'wspc'); // 盾・鎧：元のSpCが2以上なら1まで下がる
 function OP(u) { let v = CARDS[u.cid].op + (u.ambushNow ? 1000 : 0); v += wSum(u, 'wop'); for (const a of u.attach) v += CARDS[a.cid].aop || 0; for (const b of u.buffs) if (b.k === 'op') v += b.amt; return v; }
 function DP(u) { let v = CARDS[u.cid].dp + u.dpBonus; v += wSum(u, 'wdp'); for (const b of u.buffs) if (b.k === 'dp') v += b.amt; return v; }
 const aop = a => (a.cid === 'fightSpirit' ? 500 : 0);
 CARDS.fightSpirit.aop = 500;
 function breakArmor(u, n) { for (const k of ['tArmor', 'gArmor', 'fArmor', 'armor']) { const d = Math.min(u[k] || 0, n); u[k] = (u[k] || 0) - d; n -= d; if (n <= 0) break; } }
 const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
+const armorRoom = u => (hasW(u, 'armorFine') ? Math.max(0, CARDS.armorFine.armorCap - armorTotal(u)) : Infinity); // 上等な鎧：装備している間、装甲値は2000より増えない
+const addArmor = (u, k, n) => { u[k] = (u[k] || 0) + Math.min(n, armorRoom(u)); };
 const fArmorCheck = u => { if (u.extra && terr(u) !== 'home') { u.extra = 0; log(`${lnm(u)}の「獰猛なる覇者の加護」の効果がホームテリトリーを出たため消えた`); } };
 const baseActs = u => ((abU(u, 'twoActions') || (u.k2 && abU(u, 'knightCmd'))) && !assaultOn(u) ? 2 : 1);
 const avMax = u => (CARDS[u.cid].maxMove || 4) + (u.mvUp || 0); // アバターがゲーム中に動ける回数の上限（限界突破で増える）
@@ -462,7 +468,7 @@ async function battle(att, def) {
   for (const [a, b] of [[att, def], [def, att]]) {
     if (abU(a, 'slime') && b.weapon) {
       const d = rollD6(); UI.toast(`🎲 スライムのサイコロ：${d}`);
-      if (d >= 4) { G.players[b.owner].grave.push(b.weapon); b.weapon = b.weapon2 || null; b.weapon2 = null; if (!b.weapon) b.armor = 0; b.spc = Math.min(b.spc, baseSpC(b)); b.lp = Math.min(b.lp, baseLP(b)); b.rspc = Math.min(b.rspc || 0, baseRSpC(b)); log(`${lnm(b)}の武器が破壊された`); }
+      if (d >= 4) { const wd = b.weapon; G.players[b.owner].grave.push(wd); b.weapon = b.weapon2 || null; b.weapon2 = null; b.armor = Math.max(0, b.armor - (CARDS[wd].warm || 0)); b.spc = Math.min(b.spc, baseSpC(b)); b.lp = Math.min(b.lp, baseLP(b)); b.rspc = Math.min(b.rspc || 0, baseRSpC(b)); log(`${lnm(b)}の武器が破壊された`); }
     }
   }
   let forced = null;
@@ -471,7 +477,7 @@ async function battle(att, def) {
     const br = wSum(a, 'wbreak');
     if (br && holdsWater(a) && !a.dead && !b.dead && armorTotal(b) > 0) { breakArmor(b, br); log(`${lnm(a)}：バトル前に${lnm(b)}の装甲値を最大${br}減らした`); }
   }
-  const dpCut = wSum(att, 'wfoeDp'), DPd = Math.max(0, DP(def) - dpCut);
+  const dpCut = wSum(att, 'wfoeDp'), DPd = Math.max(Math.min(0, DP(def)), DP(def) - dpCut); // DPはマイナスになることがある（その分防御値が減る）
   const AV = att.lp + OP(att), DV = def.lp + DPd;
   let win = false;
   if (forced === 'att') win = true;
@@ -551,6 +557,8 @@ async function tryResist(t, cost, caster, opts = {}) {
   if (!hasResist(t) || t.hidden || t.dead) return false;
   if (!opts.wide && t.owner === caster.i) return false;
   const sup = abU(t, 'superResist');
+  const listed = G.curSpell ? spListed(G.curSpell) : 0; // 魔法耐性が参照するのは、実際に消費されたSpCではなく、カードに記載された消費SpC
+  if (listed) cost = listed;
   const need = sup ? cost : cost + 1;
   const rs = t.uses.sr && t.uses.sr.turn === G.turn ? t.uses.sr.n : 0;
   if (sup && rs >= 2) return false;
@@ -840,21 +848,40 @@ async function pickUnit(us, prompt) {
 }
 const ferTargets = p => mine(p).filter(u => CARDS[u.cid].cat.includes('モンスター') && CARDS[u.cid].race === 'ワイルド' && terr(u) === 'home' && scAvail(u) >= 1 && u.spc >= 1 && u.st.petrify == null);
 const canTechPay = u => u.acted === 0 && scAvail(u) >= 1 && u.st.petrify == null && !u.hidden && !u.dead;
-const canEquip = (u, cid) => !isAv(u) && CARDS[u.cid].weapon && (!u.weapon || (!u.weapon2 && isShieldW(cid) !== isShieldW(u.weapon))) && (!isHeavyW(cid) || u.lp >= 4000) && (!u.weapon || u.lp >= 4000) && (cid !== 'wandFine' || CARDS[u.cid].spc >= 1) && (!CARDS[cid].heroOnly || u.cid === 'hero') && (!CARDS[cid].humanoidOnly || String(CARDS[u.cid].cat).includes('ヒューマノイド'));
+/* 装備できない理由（装備できるならnull） */
+function whyNoEquip(u, cid) {
+  const c = CARDS[cid], me = CARDS[u.cid];
+  if (isAv(u)) return 'アバターは武器を装備できません';
+  if (!(me.weapon || (me.armorOnly && isArmorW(cid)))) return me.armorOnly ? `${me.name}は「鎧」と名のつく武器しか装備できません` : `${me.name}は武器を装備できません`;
+  if (u.weapon) {
+    if (u.weapon2) return '武器を2つ装備済みです';
+    if (wKind(cid) === wKind(u.weapon) && wKind(cid) !== 'o') return `すでに「${wKind(cid) === 's' ? '盾' : '鎧'}」と名のつく武器を装備しています`;
+    if (wKind(cid) === 'o' && wKind(u.weapon) === 'o') return '「盾」「鎧」以外の武器は、他の武器と同時に装備できません';
+    if ((isShieldW(cid) || isShieldW(u.weapon)) && u.lp < 4000) return '盾との同時装備にはLP4000以上が必要です';
+  }
+  if (isHeavyW(cid) && u.lp < 4000) return 'この武器はLP4000以上のキャラクターにしか装備できません';
+  if (cid === 'wandFine' && me.spc < 1) return '上等な魔杖はSpCの基礎値が1以上のキャラクターにしか使えません';
+  if (c.heroOnly && u.cid !== 'hero') return '「勇者」にしか装備できません';
+  if (c.humanoidOnly && !String(me.cat).includes('ヒューマノイド')) return 'ヒューマノイドにしか装備できません';
+  return null;
+}
+const canEquip = (u, cid) => whyNoEquip(u, cid) === null;
 async function equipWeapon(p, cid) {
   const cs = own(p.i).filter(u => !isAngel(u) && canEquip(u, cid));
   const u = await pickUnit(cs, cid === 'wandFine' ? '上等な魔杖を装備するキャラクター（SpC基礎値1以上）を選択' : '武器を装備するキャラクターを選択');
   if (!u) return false;
   await UI.cutIn(cid);
   const r0 = baseRSpC(u);
-  if (u.weapon) u.weapon2 = cid; else u.weapon = cid; if (cid === 'shieldFine') u.armor += 1500; if (CARDS[cid].wspc) u.spc += CARDS[cid].wspc;
-  { const w = CARDS[cid]; if (w.wlp) u.lp += w.wlp; if (w.warm) u.armor += w.warm; u.rspc = (u.rspc || 0) + (baseRSpC(u) - r0); }
+  const sp0 = baseSpC(u);
+  if (u.weapon) u.weapon2 = cid; else u.weapon = cid; if (CARDS[cid].wspc) u.spc += CARDS[cid].wspc;
+  if (baseSpC(u) < sp0) u.spc = Math.min(u.spc, baseSpC(u)); // 盾・鎧：元のSpCが1まで下がる（現在のSpCも基礎値まで）
+  { const w = CARDS[cid]; if (w.wlp) u.lp += w.wlp; if (w.warm) addArmor(u, 'armor', w.warm); u.rspc = (u.rspc || 0) + (baseRSpC(u) - r0); }
   log(`${lnm(u)}が${CARDS[cid].name}を装備`);
   return 'kept';
 }
 const cellsRow1 = p => { const o = []; for (let x = 0; x < 7; x++) { const c = cellOfRow(p.i, 1, x); if (!at(c.x, c.y) && !wallAt(c.x, c.y)) o.push([c.x, c.y]); } return o; };
 const EQUIP_HUM = p => own(p.i).some(u => canEquip(u, 'braveSword')) ? null : 'ヒューマノイドで武器を装備できるキャラクターがいません';
-const EQP = cid => p => (own(p.i).some(u => canEquip(u, cid)) ? null : '装備できるキャラクターがいません（ランク2の武器・盾との同時装備はLP4000以上が必要です）');
+const EQP = cid => p => { const us = own(p.i).filter(u => !isAv(u) && !isAngel(u)); if (us.some(u => canEquip(u, cid))) return null; if (!us.length) return '装備できるキャラクターがいません（盤上にキャラクターがいません）'; const rs = [...new Set(us.map(u => whyNoEquip(u, cid)))]; return '装備できるキャラクターがいません（' + rs.slice(0, 3).join('／') + '）'; };
 const EQUIPPABLE = p => own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon).length ? null : '装備できるキャラクターがいません';
 const EQUIP_WAND = p => own(p.i).filter(u => !isAv(u) && CARDS[u.cid].weapon && !u.weapon && CARDS[u.cid].spc >= 1).length ? null : 'SpCの基礎値が1以上で、武器を装備できるキャラクターがいません';
 const potion = (f) => async function (p, cid) {
@@ -920,7 +947,7 @@ const ACT = {
     u.spc -= a; spendSC(u, c);
     if (c > 0) { u.noSpc = G.turn; log(`${lnm(u)}はSCを消費してスペルを使ったため、このターン終了時にSC・SpCを回復しない`); }
     await UI.cutIn('magicGuard');
-    t.gArmor += 1000 * n; log(`魔法壁：${lnm(t)}に装甲${1000 * n}（SpC${a}${c ? '・SC' + c : ''}消費）`); return true; } },
+    addArmor(t, 'gArmor', 1000 * n); log(`魔法壁：${lnm(t)}に装甲${1000 * n}（SpC${a}${c ? '・SC' + c : ''}消費）`); return true; } },
   chaosHand: { can: p => (foes(p).length && mine(p).length ? null : '自分と相手のキャラクターが1体ずつ必要です'), async run(p) {
     const e = await pickUnit(foes(p), '混沌の手：LPを減らす相手キャラを選択'); if (!e) return false;
     const m = await pickUnit(mine(p), '混沌の手：LPを増やす自分のキャラを選択'); if (!m) return false;
@@ -975,7 +1002,7 @@ const ACT = {
     log('終焉のブリザード：相手キャラが「しもやけ」状態になりSC-3'); return true; } },
   thunderStorm: { async run(p) {
     if (!(await payCost(p, 4))) return false; await UI.cutIn('thunderStorm');
-    for (const u of chars(p.i).filter(u => terr(u) === 'home')) u.tArmor += 4000;
+    for (const u of chars(p.i).filter(u => terr(u) === 'home')) addArmor(u, 'tArmor', 4000);
     log('サンダーストーム：ホームテリトリーの自分のキャラに装甲値4000（このターン限り）');
     const flying = (type, i) => allChars().some(u => abU(u, 'flight') && (type === 'col' ? u.x : u.y) === i);
     const pick = (type, excl) => { const c = [0, 1, 2, 3, 4, 5, 6].filter(i => !excl.includes(i)); const w = c.map(i => (flying(type, i) ? 2 : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); for (let k = 0; k < c.length; k++) { r -= w[k]; if (r < 0) return c[k]; } return c[c.length - 1]; };
@@ -1056,6 +1083,8 @@ const ACT = {
     const u = at(r[0][0], r[0][1]);
     if (!(await payCost(p, 1))) return false; await UI.cutIn('windSlash');
     u.attach.push({ cid: 'windSlash', since: p.count, until: p.count + 2 }); log(`${lnm(u)}にウインドスラッシュ`); return 'kept'; } },
+  armorFine: { can: EQP('armorFine'), run: (p, c) => equipWeapon(p, c) },
+  chaosArmor: { can: EQP('chaosArmor'), run: (p, c) => equipWeapon(p, c) },
   swordFine: { can: EQP('swordFine'), run: (p, c) => equipWeapon(p, c) },
   heroSword: { can: p => {
     if (own(p.i).some(u => canEquip(u, 'heroSword'))) return null; // 盤に勇者がいるなら通常の武器として装備できる
@@ -1155,7 +1184,7 @@ const ACT = {
     const t = await pickUnit(chars(p.i), 'ホーリープロテクションの対象（自分のキャラクター）を選択'); if (!t) return false;
     if (!(await payCost(p, 3))) return false; await UI.cutIn('holyProt');
     if (await resist(t, 3, p)) return true; if (t.dead) return true;
-    const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリープロテクション：サイコロ ${d}${up ? '（装甲値+500）' : ''}`); t.gArmor += 1500 + up; log(`ホーリープロテクション：サイコロ ${d}、${lnm(t)}に装甲値${1500 + up}`); return true; } },
+    const d = rollD6(), up = d >= 6 ? 500 : 0; UI.toast(`🎲 ホーリープロテクション：サイコロ ${d}${up ? '（装甲値+500）' : ''}`); addArmor(t, 'gArmor', 1500 + up); log(`ホーリープロテクション：サイコロ ${d}、${lnm(t)}に装甲値${1500 + up}`); return true; } },
   resurrection: {
     can: p => (rezCands(p).length ? (rezCells(p).length ? (own(p.i).some(u => canPayAmt(u, spReduce(u, 4, 'resurrection')) && !priestBlock(u, 'resurrection')) ? null : 'SpC4を支払えるキャラクターがいません') : '1列目に空いているマスがありません') : '前の相手のターン中に破壊され、墓地にいる自分のキャラクターがいません'),
     async run(p) {
@@ -1330,7 +1359,7 @@ async function endTurn() {
     u.tArmor = 0;
     const b = baseLP(u); if (u.lp < b && !u.incPen) u.lp = b; // 焼却を受けている間はターン終了時にLPが回復しない
     const home = terr(u) !== 'enemy';
-    if (u.noSpc !== G.turn) u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + (home ? 2 : 1) + (u.sanct ? 1 : 0) + (abU(u, 'superRegen') ? 1 : 0))); // 超再生：ターン終了時のSC回復量+1
+    if (u.noSpc !== G.turn) u.sc = Math.max(u.sc, Math.min(baseSC(u), u.sc + Math.max(0, (home ? 2 : 1) + (u.sanct ? 1 : 0) + (abU(u, 'superRegen') ? 1 : 0) - (armorDual(u) ? 1 : 0)))); // 超再生：ターン終了時のSC回復量+1
     { const pts = u.noSpc === G.turn ? 0 : (home ? 1 : 0) + (u.sanct ? 1 : 0), gap = Math.max(0, baseSpC(u) - u.spc), use = Math.min(gap, pts);
       u.spc = Math.max(u.spc, Math.min(baseSpC(u), u.spc + use));
       // 通常のSpCが優先して回復し、通常のSpCが最大になっている場合のみ、余った分が魔法耐性用SpCの回復に回る

@@ -473,7 +473,9 @@ function unitDetail(u) {
   if (G.lap && CARDS[u.cid].kind === 'char') buffs.push('二周目突入：「狂乱」を得る・移動のSC-1');
   for (const b of u.buffs) buffs.push(`${b.k.toUpperCase()}+${b.amt}（一時）`);
   if (u.weapon) buffs.push(`装備：${wps(u).map(c => CARDS[c].name).join('・')}`);
-  if (dualPen(u)) buffs.push('武器を2つ装備：移動のSC+1');
+  if (dualPen(u)) buffs.push('盾と他の武器を同時装備：移動のSC+1');
+  if (armorDual(u)) buffs.push('鎧と他の武器を同時装備：ターン終了時のSC回復-1');
+  if (hasSA(u) && CARDS[u.cid].spc >= 2) buffs.push('盾・鎧の装備：元のSpCが1まで下がる');
   if (resistMax(u) > 1 && !abU(u, 'superResist')) buffs.push(`魔法耐性${resistMax(u)}（1ターンに${resistMax(u)}回）`);
   if (wps(u).length && abU(u, 'heroDiag') && !u.diagUsed) buffs.push('斜め移動可（ゲーム中1回）');
   if (u.tk) for (const [k, ns] of Object.entries(u.tk)) { const c0 = G.players[u.owner].count, now = ns.includes(c0), nxt = ns.includes(c0 + 1), later = ns.some(n => n > c0 + 1); const nm2 = { frenzy: '発狂：「狂乱」', ambush: '奇襲：「ふいうち」', chase: '追跡：「ハンティング」', mutate: '変異：斜め移動のみ' }[k]; if (nm2 && (now || nxt || later)) buffs.push(`${nm2}（${[now ? 'このターン' : '', nxt ? '次のターン' : '', later ? 'その先のターン' : ''].filter(Boolean).join('と')}）`); }
