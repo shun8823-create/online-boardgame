@@ -399,3 +399,25 @@ html{-webkit-text-size-adjust:100%}
 #turncut.go{animation:tcin 1.4s ease both}
 @keyframes tcin{0%{opacity:0;transform:scaleY(.2)}12%{opacity:1;transform:scaleY(1)}85%{opacity:1}100%{opacity:0}}
 @media(max-width:700px){#turncut .tcbig{font-size:38px}#turncut .tcsub{font-size:20px}}
+
+#modal{z-index:110}
+.askcard{cursor:pointer}
+
+/* スマホ：新しい演出の見た目（パソコンとは別） */
+@media(max-width:700px){
+  #aimbar{left:8px;right:8px;top:6px;transform:none;max-width:none;font-size:12.5px;padding:6px 10px;border-radius:8px}
+  #turncut{top:30%;height:120px}
+  #dlg.hascard{background:transparent;align-items:flex-end;justify-content:center;padding:0 8px 8px}
+  #dlg.hascard .dbox{width:100%;max-width:none;max-height:52vh;overflow:auto;box-shadow:0 -6px 24px #000,0 0 0 3px #0008}
+  #dlg.hascard .askcard{margin:2px 0 4px!important;gap:6px!important}
+  #dlg.hascard .askcard .card.sm{zoom:.62}
+  #dlg.hascard .askcard .note{font-size:11px}
+  #dlg.hascard .dbox p{font-size:13px;margin:4px 0}
+  #dlg.hascard .dbtn{flex-direction:row;gap:6px}#dlg.hascard .dbtn .btn{flex:1;min-height:44px}
+  .cell.tgtmark{outline-width:3px}
+}
+/* パソコン：カットインは大きめ、確認ダイアログは右側に固定して盤を隠さない */
+@media(min-width:1001px){
+  #turncut{height:170px}#turncut .tcbig{font-size:64px}#turncut .tcsub{font-size:30px}
+  #aimbar{font-size:15px;top:12px}
+}

@@ -575,7 +575,9 @@ async function tryResist(t, cost, caster, opts = {}) {
   const mrN = resistMax(t), mu = t.uses.mr && t.uses.mr.turn === G.turn ? t.uses.mr.n : 0;
   if (!sup && mu >= Math.max(1, mrN)) return false;
   if (t.spc + (t.rspc || 0) < need || t.st.petrify != null) return false;
+  UI.askCid = G.curSrc || G.curSpell || null; // 打ち消す前に、何のカードを使われているか詳細を見られるようにする
   const a = await UI.ask(`【${G.players[t.owner].name}に確認】${nm(t)}の${sup ? '超魔法耐性' : '魔法耐性'}：SpC${need}（耐性SpCを先に使用）を支払い、${opts.what || 'スペルの効果'}を打ち消しますか？${sup ? `（このターンあと${2 - rs}回）` : `（このターンあと${Math.max(1, mrN) - mu}回）`}`, ['打ち消す', '受ける'], t.owner);
+  UI.askCid = null;
   if (a === '打ち消す') { const fromR = Math.min(t.rspc || 0, need); t.rspc = (t.rspc || 0) - fromR; t.spc -= need - fromR; if (sup) t.uses.sr = { turn: G.turn, n: rs + 1 }; else t.uses.mr = { turn: G.turn, n: mu + 1 }; log(`${lnm(t)}は${sup ? '超魔法耐性' : '魔法耐性'}で${opts.what ? '光属性の効果' : 'スペル'}を打ち消した`); return true; }
   return false;
 }
