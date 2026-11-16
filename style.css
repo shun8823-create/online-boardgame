@@ -421,3 +421,26 @@ html{-webkit-text-size-adjust:100%}
   #turncut{height:170px}#turncut .tcbig{font-size:64px}#turncut .tcsub{font-size:30px}
   #aimbar{font-size:15px;top:12px}
 }
+
+/* バトル確認ダイアログ（黄金の体など）：誰と誰のバトルか */
+.askbt{display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0}
+.askbt .btside{flex:1;text-align:center;cursor:pointer;border-radius:10px;padding:4px;border:2px solid #888;background:#0003}
+.askbt .btside.o0{border-color:#e03c3c}.askbt .btside.o1{border-color:#3c82e0}
+.askbt .btlab{font-size:12px;font-weight:800}.askbt .btnm{font-size:13px;font-weight:700}.askbt .btst{font-size:12px;color:#ddd}
+.askbt .btvs{font-size:26px}.askbt .card.sm{margin:0 auto}
+@media(max-width:700px){#dlg .askbt .card.sm{zoom:.5!important}.askbt .btnm,.askbt .btst{font-size:11px}.askbt .btvs{font-size:20px}}
+@media(min-width:1001px){#dlg.dock .askbt .card.sm{zoom:.5!important}#dlg.dock .askbt .btnm,#dlg.dock .askbt .btst{font-size:11px}}
+
+/* 「〜の入力を待っています」「バトル開始までお待ちください」：画面がずれないよう、手前に固定表示 */
+#waitfloat{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:260;max-width:92vw;padding:10px 18px;border-radius:12px;background:#2a2108f2;color:#ffe9a8;border:2px solid #d4b04a;font-weight:700;font-size:15px;box-shadow:0 6px 22px #000b;pointer-events:none;text-align:center;animation:wf 1.4s ease-in-out infinite alternate}
+@keyframes wf{from{opacity:.75}to{opacity:1}}
+@media(max-width:700px){#waitfloat{bottom:10px;font-size:13px;padding:8px 12px;left:8px;right:8px;transform:none;max-width:none}}
+@media(min-width:1001px){#waitfloat{bottom:22px;font-size:17px}}
+/* 盤上のキャラクターの効果発動カットイン（ターンプレイヤーの色） */
+#abcut{display:none;position:fixed;left:0;right:0;top:40%;height:84px;z-index:255;align-items:center;justify-content:center;color:#fff;font-size:30px;font-weight:900;letter-spacing:.1em;background:linear-gradient(90deg,transparent,#000d 10%,#000d 90%,transparent);border-top:3px solid;border-bottom:3px solid;pointer-events:none}
+#abcut.o0{border-color:#e03c3c;text-shadow:0 0 12px #e03c3c}#abcut.o1{border-color:#3c82e0;text-shadow:0 0 12px #3c82e0}
+#abcut.go{animation:abin .5s ease both}@keyframes abin{0%{opacity:0;transform:scaleY(.3)}25%{opacity:1;transform:scaleY(1)}100%{opacity:1}}
+@media(max-width:700px){#abcut{font-size:19px;height:64px;top:36%}}
+@media(min-width:1001px){#abcut{font-size:38px;height:100px}}
+/* スマホ：投了ボタンは小さく控えめに（誤タップ防止）。確認ダイアログも出る */
+@media(max-width:700px){.btn[data-act="giveup"]{flex:0 0 auto!important;width:auto!important;min-height:34px!important;padding:4px 12px!important;font-size:12px!important;margin-left:auto}}

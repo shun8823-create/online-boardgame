@@ -369,7 +369,7 @@ async function onEntered(u, from) {
   await trapCheck(u);
   if (u.dead || G.over) return;
   await sanctuaryCheck(u);
-  if (!u.dead && !G.over && !u.hidden && hasW(u, 'braveSword') && abU(u, 'swordsman') && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'border') && terr(u) === 'border') await braveStrike(u);
+  if (!u.dead && !G.over && !u.hidden && hasW(u, 'braveSword') && abU(u, 'swordsman') && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'border') && terr(u) === 'border' && !u.uses.braveDone) { u.uses.braveDone = true; await braveStrike(u); } // 初めてボーダーゾーンに入った時のみ
   if (u.dead || G.over) return;
   if (!u.hidden && hasW(u, 'heroSword')) await heroRoll(u);
   if (u.dead || G.over) return;
@@ -456,7 +456,11 @@ function checkAuras() {
 }
 
 /* ===== バトル ===== */
-async function battle(att, def) {
+async function battle(att, def) { // 確認ダイアログ（黄金の体など）が「誰と誰のバトルか」を表示できるよう、バトル中は組を記録しておく
+  G.curBattle = { att, def };
+  try { if (UI.suspense) await UI.suspense(att, def); return await battle0(att, def); } finally { G.curBattle = null; }
+}
+async function battle0(att, def) {
   syncHB();
   sfx('clash');
   log(`バトル：${lnm(att)}（${coord(att.x, att.y)}）→ ${lnm(def)}（${coord(def.x, def.y)}）`);
@@ -532,8 +536,16 @@ async function payTech(p, cands, prompt) {
   spendSC(u, 1);
   return u;
 }
+/* バトルの結果予測（黄金の体を使えるかの判定用）。攻撃側の勝ち＝防御側が破壊される、防御側の勝ち＝防御側が受けるダメージ（攻撃値−DP）が0 */
+function battleForecast(att, def) {
+  const dpCut = wSum(att, 'wfoeDp'), DPd = Math.max(Math.min(0, DP(def)), DP(def) - dpCut);
+  const AV = att.lp + OP(att), dmg = Math.max(0, AV - DPd);
+  let arm = armorTotal(def); const br = wSum(att, 'wbreak'); if (br && holdsWater(att) && arm > 0) arm = Math.max(0, arm - br); // 深淵の三又槍による装甲減少（バトル前）
+  return { dmg, attWins: dmg >= def.lp + arm, defWins: dmg <= 0 };
+}
 async function goldenPrompt(side) {
   if (isAv(side) || side.dead) return false;
+  { const cb = G.curBattle; if (cb && (cb.att === side || cb.def === side)) { const f = battleForecast(cb.att, cb.def); if (side === cb.att ? f.attWins : f.defWins) return false; } } // すでにバトルに勝てるキャラクターには使えない
   if (CARDS[side.cid].cat !== 'ヒューマノイド') return false; // ヒューマノイド以外（モンスター等）をもつキャラクターは対象にできない
   const p = G.players[side.owner];
   if (!p.hand.includes('goldenBody')) return false;

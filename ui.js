@@ -143,7 +143,12 @@ function renderPrep() {
 }
 
 /* ---------- 画面4: 対戦 ---------- */
-function localAsk(msg, btns) { return new Promise(res => { const el = $('#dlg'); let big = ''; if (msg.startsWith('§')) { const i = msg.indexOf('\n'); big = `<div class="dbig">${esc(msg.slice(1, i))}</div>`; msg = msg.slice(i + 1); } const ac = UI.askCid && CARDS[UI.askCid] ? UI.askCid : null; UI.askCid = null; const acH = ac ? `<div class="askcard" data-card="${ac}" style="display:flex;gap:8px;align-items:center;margin:6px 0">${cardHTML(ac, { cls: 'sm' })}<div class="note">使われたカード：<b>${esc(CARDS[ac].name)}</b><br>タップで詳細（効果・消費SpC）を見られます</div></div>` : ''; el.classList.add('dock'); el.classList.toggle('hascard', !!ac); el.innerHTML = `<div class="dbox">${big}${acH}<p>${esc(msg).replace(/\n/g, '<br>')}</p><div class="dbtn">${btns.map((b, i) => `<button class="btn ${i === 0 ? 'main' : ''}" data-i="${i}">${esc(b)}</button>`).join('')}</div></div>`; el.style.display = 'flex'; el.onclick = e => { if (e.target.closest('.askcard')) { e.stopPropagation(); showDetail(ac); return; } const b = e.target.closest('button[data-i]'); if (!b) return; SFX.play('select'); el.style.display = 'none'; el.classList.remove('dock', 'hascard'); el.onclick = null; res(btns[+b.dataset.i]); }; }); }
+function localAsk(msg, btns) { return new Promise(res => { const el = $('#dlg'); let big = ''; if (msg.startsWith('§')) { const i = msg.indexOf('\n'); big = `<div class="dbig">${esc(msg.slice(1, i))}</div>`; msg = msg.slice(i + 1); } const ac = UI.askCid && CARDS[UI.askCid] ? UI.askCid : null; UI.askCid = null; const acH = ac ? `<div class="askcard" data-card="${ac}" style="display:flex;gap:8px;align-items:center;margin:6px 0">${cardHTML(ac, { cls: 'sm' })}<div class="note">使われたカード：<b>${esc(CARDS[ac].name)}</b><br>タップで詳細（効果・消費SpC）を見られます</div></div>` : ''; let btH = ''; const cb = typeof G !== 'undefined' && G && G.curBattle;
+    if (cb && cb.att && cb.def && !cb.att.dead && !cb.def.dead) {
+      const side = (u, lab) => `<div class="btside o${u.owner}" data-cid="${u.cid}" data-uid="${u.uid}"><div class="btlab">${lab}（${esc(G.players[u.owner].name)}）</div>${cardHTML(u.cid, { cls: 'sm' })}<div class="btnm">${esc(nm(u))}（${coord(u.x, u.y)}）</div><div class="btst">LP${u.lp} OP${OP(u)} DP${DP(u)}${armorTotal(u) > 0 ? ' 装甲' + armorTotal(u) : ''}</div></div>`;
+      btH = `<div class="askbt">${side(cb.att, '攻撃側')}<div class="btvs">⚔</div>${side(cb.def, '防御側')}</div><div class="note" style="text-align:center">カードをタップで詳細</div>`;
+    }
+    el.classList.add('dock'); el.classList.toggle('hascard', !!ac || !!btH); el.innerHTML = `<div class="dbox">${big}${btH}${acH}<p>${esc(msg).replace(/\n/g, '<br>')}</p><div class="dbtn">${btns.map((b, i) => `<button class="btn ${i === 0 ? 'main' : ''}" data-i="${i}">${esc(b)}</button>`).join('')}</div></div>`; el.style.display = 'flex'; el.onclick = e => { { const bs = e.target.closest('.btside'); if (bs) { e.stopPropagation(); showDetail(bs.dataset.cid, bs.dataset.uid); return; } } if (e.target.closest('.askcard')) { e.stopPropagation(); showDetail(ac); return; } const b = e.target.closest('button[data-i]'); if (!b) return; SFX.play('select'); el.style.display = 'none'; el.classList.remove('dock', 'hascard'); el.onclick = null; res(btns[+b.dataset.i]); }; }); }
 
 /* ---------- 効果音（Web Audio で合成。外部ファイル不要） ---------- */
 /* カード選択ダイアログ：手札と同じ見た目。タップで選択、ダブルタップ／確定ボタンで決定、長押しで詳細 */
@@ -362,7 +367,7 @@ function renderBattle() {
     const x = flip ? 6 - rx : rx, y = flip ? 6 - ry : ry;
     const t = at(x, y), w = wallAt(x, y), row = rowOf(VW(), y), hb = t && !t.hidden ? hiddenAt(x, y) : []; const ftr = (G.traps && G.traps[x + ',' + y] && G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? G.traps[x + ',' + y] : null;
     const acted = t && t.owner === VW() && actionsDone(t) ? ' acted' : '';
-    const inc = incin[x + ',' + y]; cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${UI.tgtMark && UI.tgtMark.cells.includes(x + ',' + y) ? ' tgtmark' : ''}${acted}${inc != null ? ' incin' : ''}${zSea(y) ? ' z-sea' : ''}${zIns(y) ? ' z-ins' : ''}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${inc != null ? `<span class="incfx ${inc === VW() ? '' : 'foe'}" title="焼却：このマスの相手キャラクターはLPを減らされ、設置カードは壊される">🔥</span>` : ''}${G.traps && G.traps[x + ',' + y] && !(G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? `<span class="sbadge trap ${G.traps[x + ',' + y].owner === VW() ? '' : 'foe'}" title="${G.traps[x + ',' + y].hidden ? '非公開カード' : '棘付きトラップ'}">${G.traps[x + ',' + y].hidden ? (G.traps[x + ',' + y].marked ? '👁' : '▲') : '⚠'}</span>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : (ftr ? `<div class="unit fh foe ${ftr.marked ? 'mk' : ''}">${ftr.marked ? '👁' : '?'}</div>` : '')}${t && !t.hidden && ftr ? `<span class="hbadge foe">${ftr.marked ? '👁' : '?'}</span>` : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
+    const inc = incin[x + ',' + y]; cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${UI.tgtMark && UI.tgtMark.cells.includes(x + ',' + y) && (u0 => u0 && !u0.dead)(at(x, y)) ? ' tgtmark' : ''}${acted}${inc != null ? ' incin' : ''}${zSea(y) ? ' z-sea' : ''}${zIns(y) ? ' z-ins' : ''}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${inc != null ? `<span class="incfx ${inc === VW() ? '' : 'foe'}" title="焼却：このマスの相手キャラクターはLPを減らされ、設置カードは壊される">🔥</span>` : ''}${G.traps && G.traps[x + ',' + y] && !(G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? `<span class="sbadge trap ${G.traps[x + ',' + y].owner === VW() ? '' : 'foe'}" title="${G.traps[x + ',' + y].hidden ? '非公開カード' : '棘付きトラップ'}">${G.traps[x + ',' + y].hidden ? (G.traps[x + ',' + y].marked ? '👁' : '▲') : '⚠'}</span>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : (ftr ? `<div class="unit fh foe ${ftr.marked ? 'mk' : ''}">${ftr.marked ? '👁' : '?'}</div>` : '')}${t && !t.hidden && ftr ? `<span class="hbadge foe">${ftr.marked ? '👁' : '?'}</span>` : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
   }
   const phaseName = { start: '—', draw: 'ドロー', main: 'メインステップ', action: 'アクションステップ' }[G.phase];
   const showHand = ONL ? true : G.phase !== 'start';
@@ -385,7 +390,7 @@ function renderBattle() {
   if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : (ONL.ai ? '【AIの番】' : '【相手の番】')) : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
   ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
-  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div class="panel warn">⏳ ${esc(UI.wait)}</div>` : ''}
+  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
   <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>　<b class="spcount">アバター${avMv(o.i)}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラ狂乱・移動SC-1</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>${zoneLeg ? `<div class="zlegs">${zoneLeg}</div>` : ''}
   <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b>　<b class="spcount">アバター${avMv(p.i)}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
@@ -644,6 +649,7 @@ function show() {
 async function execEv(ev) { try { await execEv0(ev); } finally { if (UI.aimEnd) UI.aimEnd(); } } // 対象の点滅は、この操作の処理が全て終わるまで続ける
 async function execEv0(ev) {
   if (!G || G.over) return;
+  if (G.phase === 'main' && ['throw', 'angelFetch', 'frenzyGet', 'priest', 'moon', 'burn', 'flame', 'archer', 'scout'].includes(ev.t) && UI.abilityCut) await UI.abilityCut(G.units[ev.uid]);
   switch (ev.t) {
     case 'play': await playHand(ev.i); break;
     case 'sell': sellCard(ev.i); break;
@@ -750,22 +756,47 @@ async function runLoop() {
 }
 
 /* --- 接続の管理 --- */
+let HB = null, LASTRX = 0;
+function stopHB() { if (HB) { clearInterval(HB); HB = null; } }
+/* 対戦中に通信が切れたら、通信が切れた側を強制的に敗北にする。
+   切れたのが自分か相手かは、自分の回線（ブラウザのオンライン状態・シグナリングサーバーとの接続）で判定する：
+   自分の回線が落ちていれば自分の負け、自分の回線が生きているのに相手との接続だけが切れたなら相手の負け */
+function declareDisconnect(why) {
+  if (!ONL || ONL.stop || !G || G.over) return;
+  const iAmOff = navigator.onLine === false || !!(PEER && PEER.disconnected);
+  const loser = iAmOff ? ONL.me : 1 - ONL.me;
+  G.over = 1 - loser; ONL.stop = true; stopHB();
+  log(`${G.players[loser].name}は通信が切れたため敗北した（${why}）`);
+  UI.toast(iAmOff ? '通信が切れたため、あなたの敗北となりました' : '相手との通信が切れたため、あなたの勝利となりました');
+  if (UI.gameOver) UI.gameOver(G.over);
+  if (screen === 'battle') renderBattle();
+}
 function setupConn(conn) {
   conn.on('data', onNet);
   conn.on('close', () => onNetClose(conn));
   conn.on('error', () => onNetClose(conn));
+  stopHB(); LASTRX = Date.now(); let lastTick = Date.now();
+  HB = setInterval(() => { // 3秒ごとに生存確認を送り、20秒間なにも届かなければ切断とみなす（自分の画面が止まっていた間は数えない）
+    const now = Date.now(), gap = now - lastTick; lastTick = now;
+    if (CONN !== conn) return stopHB();
+    netSend({ k: 'hb' });
+    if (gap > 8000) { LASTRX = now; return; }
+    if (ONL && !ONL.stop && G && !G.over && now - LASTRX > 20000) { const c = CONN; CONN = null; try { c && c.close(); } catch (e) { } declareDisconnect('応答なし'); }
+  }, 3000);
 }
 function onNetClose(conn) {
   if (CONN !== conn) return;
-  CONN = null;
+  CONN = null; stopHB();
   if (ONL && !ONL.stop) {
-    if (!G || !G.over) { UI.wait = '相手との接続が切れました。もう一度対戦するには「部屋を出る」から入り直してください。'; UI.toast('相手との接続が切れました'); if (screen === 'battle') renderBattle(); }
+    if (G && !G.over) { declareDisconnect('接続切断'); }
+    else if (!G || !G.over) { UI.wait = '相手との接続が切れました。もう一度対戦するには「部屋を出る」から入り直してください。'; UI.toast('相手との接続が切れました'); if (screen === 'battle') renderBattle(); }
   } else if (LOB && LOB.role === 'host' && LOB.room) {
     LOB.room.guest = false; LOB.room.guestReady = false; LOB.starting = false; if (screen === 'prep') renderPrep();
   } else if (LOB && LOB.role === 'guest') { lobErr('部屋の主との接続が切れました。'); LOB = null; renderPrep(); }
 }
 function onNet(m) {
   if (!m) return;
+  LASTRX = Date.now(); if (m.k === 'hb') return;
   if (m.k === 'ev') return netEv(m.n, m.ev);
   if (m.k === 'room' && LOB && LOB.role === 'guest') { LOB.room = m.room; onRoomChange(); return; }
   if (m.k === 'patch' && LOB && LOB.role === 'host') { LOB.room = Object.assign(LOB.room || {}, m.patch); netSend({ k: 'room', room: LOB.room }); onRoomChange(); return; }
@@ -905,7 +936,7 @@ async function startOnline() {
     return r;
   });
   let aimTimer = null;
-  UI.aimFlush = function () { // 待たない。点滅は aimEnd（処理の終了）まで続け、帯だけ約1.6秒で消す
+  UI.aimFlush = async function (ms) { // 待たない。点滅は aimEnd（処理の終了）まで続け、帯だけ約1.6秒で消す
     const a = UI.aimPend; UI.aimPend = null;
     if (!a || (ONL && ONL.queue && ONL.queue.length)) return Promise.resolve();
     try {
@@ -915,14 +946,30 @@ async function startOnline() {
       clearTimeout(aimTimer); aimTimer = setTimeout(() => { bar.style.display = 'none'; }, 1600);
       UI.render();
     } catch (e) { console.error(e); }
-    return Promise.resolve();
+    if (ms) await sleep(ms);
   };
   UI.aimEnd = function () {
     UI.aimPend = null; clearTimeout(aimTimer);
     const bar = document.getElementById('aimbar'); if (bar) bar.style.display = 'none';
     if (UI.tgtMark) { UI.tgtMark = null; try { UI.render(); } catch (e) { } }
   };
-  wrap(UI, 'cutIn', async function (o, cid) { await UI.aimFlush(); return o.call(this, cid); });
+  wrap(UI, 'cutIn', async function (o, cid) { const r = await o.call(this, cid); await UI.aimFlush(500); return r; }); // カードのカットイン後、対象を点滅させて0.5秒おいてから効果を処理する
+  /* バトル開始前の演出待ち（0.5〜2.5秒のランダム）：黄金の体などの有無を相手に悟らせない。見た目だけの待ちで、状態や乱数には影響しない */
+  UI.suspense = async function (att, def) {
+    if (!att || !def || (ONL && ONL.queue && ONL.queue.length)) return;
+    const ms = 500 + Math.random() * 2000, v = VW();
+    UI.wait = v === att.owner ? `${G.players[def.owner].name}の入力を待っています…` : 'バトル開始までお待ちください…';
+    try { UI.render(); } catch (e) { }
+    await sleep(ms);
+    UI.wait = null; try { UI.render(); } catch (e) { }
+  };
+  /* 盤上のキャラクターの効果発動カットイン（0.5秒・ターンプレイヤーの色） */
+  UI.abilityCut = async function (u) {
+    if (!u || (ONL && ONL.queue && ONL.queue.length)) return;
+    let el = document.getElementById('abcut'); if (!el) { el = document.createElement('div'); el.id = 'abcut'; document.body.appendChild(el); }
+    el.className = 'o' + G.active; el.textContent = `${nm(u)}の効果発動`; el.style.display = 'flex'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    await sleep(500); el.style.display = 'none';
+  };
   wrap(UI, 'pickCard', function (o, title, prompt, cids, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(cids[0]) : o.call(this, title, prompt, cids, who); });
   wrap(UI, 'pickCards', function (o, title, prompt, cids, min, who, max) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.cards(title, prompt, cids, min, who, max)) : o.call(this, title, prompt, cids, min, who, max); });
   wrap(UI, 'toast', function (o, m) { if (ONL && ONL.ai && ONL.aiBusy && !/^🎲/.test(m)) return; return o.call(this, m); }); // AIが試して失敗した操作のエラーは出さない
