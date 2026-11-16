@@ -380,3 +380,8 @@ html{-webkit-text-size-adjust:100%}
 
 .rankA{background:linear-gradient(160deg,#3a3f5c,#1a1c30);border:3px solid #e6e8ff;box-shadow:0 0 0 1px #8a90c8,0 0 16px #b8c0ffaa}
 .card.rankA .c-art{border-color:#e6e8ff;box-shadow:0 0 0 1px #5a5f9a,0 0 8px #c8d0ffaa,inset 0 0 0 1px #ffffffcc}
+
+/* 先行＝赤／後攻＝青（盤上のキャラクターの枠と、長押し詳細のカード枠） */
+.unit.o0{border-color:#e03c3c!important}.unit.o1{border-color:#3c82e0!important}
+.unit.o0{box-shadow:0 0 0 1px #e03c3c,0 0 5px #e03c3c99}.unit.o1{box-shadow:0 0 0 1px #3c82e0,0 0 5px #3c82e099}
+.card.own0{box-shadow:0 0 0 5px #e03c3c,0 0 16px #e03c3c99}.card.own1{box-shadow:0 0 0 5px #3c82e0,0 0 16px #3c82e099}
