@@ -42,7 +42,7 @@ const spendSC = (u, n) => { if (n <= 0) return; u.sc -= n; if (u.st && u.st.para
 const holdsAttr = (u, scid) => { const a = scid && CARDS[scid].attr; return !!a && [...charAttrs(u.cid), ...wps(u).flatMap(c => CARDS[c].wattr || [])].some(x => a.split('・').includes(x)); };
 // 奥義（発狂・奇襲・追跡・変異）の効果が有効なターンは、持ち主のターン番号の配列 u.tk[k] で持つ（重ねがけで何ターン分でも持てる）
 const tkOn = (u, k) => !!(u.tk && u.tk[k] && u.owner === G.active && u.tk[k].includes(G.players[u.owner].count));
-const abU = (u, k) => abC(u.cid, k) || (k === 'berserk' && (tkOn(u, 'frenzy') || (!!G.lap && CARDS[u.cid].kind === 'char'))) || (k === 'ambush' && tkOn(u, 'ambush')) || (k === 'counter' && !!u.counter) || (k === 'regen' && dangerLP(u) && holdsWater(u)) || (k === 'dwarf' && abC(u.cid, 'crabGuard') && !u.dead && terr(u) === 'home') || wps(u).some(c => (CARDS[c].wab || []).includes(k)) || (k === 'incinerate' && hasW(u, 'flameSword') && u.flame != null && (G.turn === u.flame || G.turn === u.flame + 1)) || (k === 'incinerate' && !!u.attach && u.attach.some(a => a.cid === 'redDragonBreath'));
+const abU = (u, k) => abC(u.cid, k) || (k === 'berserk' && (tkOn(u, 'frenzy') || (!!G.lap && CARDS[u.cid].kind === 'char'))) || (k === 'ambush' && tkOn(u, 'ambush')) || (k === 'counter' && !!u.counter) || (k === 'regen' && dangerLP(u) && holdsWater(u)) || (k === 'dwarf' && abC(u.cid, 'crabGuard') && !u.dead && terr(u) === 'home') || wps(u).some(c => (CARDS[c].wab || []).includes(k)) || (k === 'incinerate' && hasW(u, 'flameSword') && u.flame != null && (G.turn === u.flame || G.turn === u.flame + 1)) || (k === 'incinerate' && !!u.attach && u.attach.some(a => a.cid === 'redDragonBreath')) || (k === 'incinerate' && u.burn != null && (G.turn === u.burn || G.turn === u.burn + 1));
 const holdsWater = u => [...charAttrs(u.cid), ...wps(u).flatMap(c => CARDS[c].wattr || [])].includes('水');
 const dangerLP = u => !!G.players[u.owner].dangerSea && !isAv(u) && !u.dead && terr(u) !== 'enemy'; // 危険海流域：ホーム／ボーダーにいる自分のキャラ
 const aquaticOn = u => abC(u.cid, 'aquatic') && waterCount(G.players[1 - u.owner].deckList) < 15; // 水棲：相手のデッキに水属性が15枚以上あると無効
@@ -406,6 +406,13 @@ async function heroRoll(u) {
   try { await battle(u, t); } finally { u.ambushNow = false; }
   checkAuras(); UI.render();
 }
+/* レッドドラゴン：メインステップ中にSpC1で、次の自分のターンのはじめまで「焼却」を得る（5回まで） */
+async function burnStart(u) {
+  if (!u || u.dead || u.hidden || !abU(u, 'burnAct') || u.owner !== G.active || G.phase !== 'main' || u.st.petrify != null) return;
+  const n = u.uses.burnN || 0; if (n >= 5 || u.spc < 1 || (u.burn != null && G.turn === u.burn)) return;
+  u.spc -= 1; u.uses.burnN = n + 1; u.burn = G.turn; sfx('fire'); log(`${lnm(u)}：SpCを1つ消費し、次の自分のターンのはじめまで「焼却」を得た（${n + 1}/5回目）`);
+  checkAuras(); UI.render();
+}
 async function flameStart(u) {
   if (!u || u.dead || !hasW(u, 'flameSword') || u.flameUsed || u.owner !== G.active || G.phase !== 'main') return;
   u.flameUsed = true; u.flame = G.turn; sfx('fire'); log(`烈火剣：${lnm(u)}は1ターンの間「焼却」を得た（相手のターン終了時まで）`);
@@ -759,6 +766,7 @@ function mainAbility(u) {
   const f = CARDS[u.cid].fetch;
   if (abU(u, 'angelFetch') && f && !p.angelUsed[u.cid] && scAvail(u) >= 2) return { t: 'angelFetch', q: `${nm(u)}：SCを2つ消費して、デッキ外から「${CARDS[f.cid].name}」を${f.n}枚手札に加えますか？（ゲーム中1度だけ）` };
   if (['heal', 'cure', 'mail'].some(k => priestCan(u, k))) return { t: 'priest', q: `${nm(u)}：ヒール／キュア・ディジーズ／ホーリーメールを使いますか？（SpC1を消費）` };
+  if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 5 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${5 - (u.uses.burnN || 0)}回）` };
   if (abU(u, 'frenzyGet') && !u.uses.frenzyGet && u.spc >= 2) return { t: 'frenzyGet', q: `${nm(u)}：SpCを2つ消費して、奥義「発狂」を1枚手札に加えますか？（ゲーム中1度だけ）` };
   if (abU(u, 'moonReset') && (u.uses.moon || 0) < 2 && u.spc >= 2) return { t: 'moon', q: `月光：SpCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - (u.uses.moon || 0)}回）` };
   return null;

@@ -641,6 +641,7 @@ async function execEv(ev) {
     case 'priest': { const u = G.units[ev.uid]; if (u) await priestAct(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
     case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
+    case 'burn': { const u = G.units[ev.uid]; if (u) await burnStart(u); break; }
     case 'flame': { const u = G.units[ev.uid]; if (u) await flameStart(u); break; }
     case 'archer': { const u = G.units[ev.uid]; if (u) await archerShot(u); break; }
     case 'scout': { const u = G.units[ev.uid]; if (u) await scoutWatch(u); break; }
