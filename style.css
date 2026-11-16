@@ -385,3 +385,9 @@ html{-webkit-text-size-adjust:100%}
 .unit.o0{border-color:#e03c3c!important}.unit.o1{border-color:#3c82e0!important}
 .unit.o0{box-shadow:0 0 0 1px #e03c3c,0 0 5px #e03c3c99}.unit.o1{box-shadow:0 0 0 1px #3c82e0,0 0 5px #3c82e099}
 .card.own0{box-shadow:0 0 0 5px #e03c3c,0 0 16px #e03c3c99}.card.own1{box-shadow:0 0 0 5px #3c82e0,0 0 16px #3c82e099}
+
+/* 対象の表示（相手側にも見える） */
+.cell.tgtmark{outline:3px solid #ffe14a;outline-offset:-3px;z-index:6;animation:tgtp .5s ease-in-out infinite alternate}
+@keyframes tgtp{from{box-shadow:0 0 4px 1px #ffe14a99,inset 0 0 8px #ffe14a55}to{box-shadow:0 0 16px 5px #ffe14a,inset 0 0 18px #ffe14aaa}}
+#aimbar{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:300;max-width:92vw;padding:8px 14px;border-radius:10px;background:#1b1426f2;color:#fff;font-size:14px;font-weight:700;border:2px solid #ffe14a;box-shadow:0 4px 18px #000a;pointer-events:none;text-align:center}
+#aimbar.o0{border-color:#e03c3c}#aimbar.o1{border-color:#3c82e0}

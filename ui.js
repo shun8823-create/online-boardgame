@@ -353,7 +353,7 @@ function renderBattle() {
     const x = flip ? 6 - rx : rx, y = flip ? 6 - ry : ry;
     const t = at(x, y), w = wallAt(x, y), row = rowOf(VW(), y), hb = t && !t.hidden ? hiddenAt(x, y) : []; const ftr = (G.traps && G.traps[x + ',' + y] && G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? G.traps[x + ',' + y] : null;
     const acted = t && t.owner === VW() && actionsDone(t) ? ' acted' : '';
-    const inc = incin[x + ',' + y]; cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${acted}${inc != null ? ' incin' : ''}${zSea(y) ? ' z-sea' : ''}${zIns(y) ? ' z-ins' : ''}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${inc != null ? `<span class="incfx ${inc === VW() ? '' : 'foe'}" title="焼却：このマスの相手キャラクターはLPを減らされ、設置カードは壊される">🔥</span>` : ''}${G.traps && G.traps[x + ',' + y] && !(G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? `<span class="sbadge trap ${G.traps[x + ',' + y].owner === VW() ? '' : 'foe'}" title="${G.traps[x + ',' + y].hidden ? '非公開カード' : '棘付きトラップ'}">${G.traps[x + ',' + y].hidden ? (G.traps[x + ',' + y].marked ? '👁' : '▲') : '⚠'}</span>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : (ftr ? `<div class="unit fh foe ${ftr.marked ? 'mk' : ''}">${ftr.marked ? '👁' : '?'}</div>` : '')}${t && !t.hidden && ftr ? `<span class="hbadge foe">${ftr.marked ? '👁' : '?'}</span>` : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
+    const inc = incin[x + ',' + y]; cells += `<div class="cell t-${terrOfRow(row)} ${hl[x + ',' + y] || ''}${UI.tgtMark && UI.tgtMark.cells.includes(x + ',' + y) ? ' tgtmark' : ''}${acted}${inc != null ? ' incin' : ''}${zSea(y) ? ' z-sea' : ''}${zIns(y) ? ' z-ins' : ''}" data-act="cell" data-x="${x}" data-y="${y}" title="${coord(x, y)}">${w ? `<div class="wall">砂壁</div>` : ''}${inc != null ? `<span class="incfx ${inc === VW() ? '' : 'foe'}" title="焼却：このマスの相手キャラクターはLPを減らされ、設置カードは壊される">🔥</span>` : ''}${G.traps && G.traps[x + ',' + y] && !(G.traps[x + ',' + y].hidden && G.traps[x + ',' + y].owner !== VW()) ? `<span class="sbadge trap ${G.traps[x + ',' + y].owner === VW() ? '' : 'foe'}" title="${G.traps[x + ',' + y].hidden ? '非公開カード' : '棘付きトラップ'}">${G.traps[x + ',' + y].hidden ? (G.traps[x + ',' + y].marked ? '👁' : '▲') : '⚠'}</span>` : ''}${G.sanctuaries && G.sanctuaries[x + ',' + y] ? `<span class="sbadge ${G.sanctuaries[x + ',' + y].owner === VW() ? '' : 'foe'}" title="マジックサンクチュアリ">✦</span>` : ''}${t ? unitHTML(t) : (ftr ? `<div class="unit fh foe ${ftr.marked ? 'mk' : ''}">${ftr.marked ? '👁' : '?'}</div>` : '')}${t && !t.hidden && ftr ? `<span class="hbadge foe">${ftr.marked ? '👁' : '?'}</span>` : ''}${hb.map(h => `<span class="hbadge ${h.owner === VW() ? '' : 'foe'}">${h.marked ? '👁' : h.owner === VW() ? '潜' : '?'}</span>`).join('')}</div>`;
   }
   const phaseName = { start: '—', draw: 'ドロー', main: 'メインステップ', action: 'アクションステップ' }[G.phase];
   const showHand = ONL ? true : G.phase !== 'start';
@@ -596,9 +596,9 @@ function onClick(e) {
     case 'archer': doAct({ t: 'archer', uid: +el.dataset.uid }); break;
     case 'scout': doAct({ t: 'scout', uid: +el.dataset.uid }); break;
     case 'play': { const i = UI.selHand; if (i != null) doAct({ t: 'play', i }); } break;
-    case 'sell': { const i = UI.selHand; if (i != null) { UI.selHand = null; doAct({ t: 'sell', i }); } } break;
-    case 'sheetSell': $('#modal').style.display = 'none'; doAct({ t: 'sell', i: +el.dataset.i }); break;
-    case 'buy': doAct({ t: 'buy', k: +el.dataset.k }); break;
+    case 'sell': { const i = UI.selHand; if (i != null) { UI.selHand = null; confirmSell(i); } } break;
+    case 'sheetSell': $('#modal').style.display = 'none'; confirmSell(+el.dataset.i); break;
+    case 'buy': { const k = +el.dataset.k, s = shopItems()[k]; if (!s) break; localAsk(`「${CARDS[s.cid].name}」を💰${s.price}で購入します。よろしいですか？`, ['購入する', 'やめる']).then(y => { if (y === '購入する') doAct({ t: 'buy', k }); }); } break;
     case 'pkok': if (UI.pk && (!UI.pk.o.validate || UI.pk.o.validate(UI.pk.sel))) finishPick(UI.pk.sel); break;
     case 'pkcancel': finishPick(null); break;
     case 'toAction': UI.selHand = null; doAct({ t: 'toAction' }); break;
@@ -607,12 +607,16 @@ function onClick(e) {
     case 'zone': { const k = el.dataset.z, off = zOnNow(k); try { localStorage.setItem('bgZone_' + k, off ? '0' : '1'); } catch (e) { } UI['zoneOff_' + k] = off; UI.render(); break; }
     case 'hpage': UI.handPage = (UI.handPage || 0) + (+el.dataset.d); UI.render(); break;
     case 'togHand': UI.hideHand = !UI.hideHand; if (UI.hideHand) UI.selHand = null; UI.render(); break;
-    case 'giveup': localAsk(`${cur().name}が投了します。よろしいですか？`, ['投了する', 'やめる']).then(y => { if (y === '投了する') doAct({ t: 'giveup' }); }); break;
+    case 'giveup': localAsk(`${G.players[VW()].name}が投了します。よろしいですか？`, ['投了する', 'やめる']).then(y => { if (y === '投了する') doAct({ t: 'giveup' }); }); break;
     case 'mkRoom': createRoom(); break;
     case 'joinRoom': joinRoom(($('#roomcode') || {}).value || ''); break;
     case 'leaveRoom': leaveLobby(); break;
     case 'lobReady': lobReady(); break;
   }
+}
+function confirmSell(i) {
+  const p = G && G.players[VW()], cid = p && p.hand[i]; if (!cid) return;
+  localAsk(`「${CARDS[cid].name}」を売ります（+💰${sellOf(cid)}・ショップチケットを1枚受け取る）。よろしいですか？`, ['売る', 'やめる']).then(y => { if (y === '売る') doAct({ t: 'sell', i }); });
 }
 function startBattle() {
   if (deckLocked()) return;
@@ -874,6 +878,26 @@ async function startOnline() {
   const aiOn = who => !!ONL && !!ONL.ai && AI.is(who);
   wrap(UI, 'ask', function (o, msg, btns, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.ask(msg, btns)) : o.call(this, msg, btns, who); });
   wrap(UI, 'pickBoard', function (o, opt) { const who = opt.who == null ? G.active : opt.who; return aiOn(who) ? Promise.resolve(AI.pick(opt)) : o.call(this, opt); });
+  /* どのカードが何を対象にしたかを、双方の画面に出す（対象マスの強調＋上部の帯）。選び終わった直後に両側で同じ内容が走る */
+  wrap(UI, 'pickBoard', async function (o, opt) {
+    const r = await o.call(this, opt);
+    try {
+      if (r && r.length && (opt.kind === 'target' || opt.kind === 'attack') && !(ONL && ONL.queue && ONL.queue.length)) {
+        const who = opt.who == null ? G.active : opt.who, p = G.players[who];
+        const cur = G.curSrc && CARDS[G.curSrc] ? CARDS[G.curSrc].name : null;
+        const pr = String(opt.prompt || '').replace(/（.*?）/g, ''), i = pr.indexOf('：');
+        const src = cur || (i > 0 ? pr.slice(0, i) : pr.replace(/(の)?(対象|相手|自分).*$/, '').slice(0, 12)) || '効果';
+        const names = r.map(c => { const u = at(c[0], c[1]); return (u && !u.dead ? (u.hidden ? '非公開カード' : nm(u)) : '（マス）') + '（' + coord(c[0], c[1]) + '）'; });
+        UI.tgtMark = { cells: r.map(c => c[0] + ',' + c[1]), until: Date.now() + 1600, who };
+        let bar = document.getElementById('aimbar'); if (!bar) { bar = document.createElement('div'); bar.id = 'aimbar'; document.body.appendChild(bar); }
+        bar.className = 'o' + who; bar.textContent = `🎯 ${p.name}：【${src}】→ 対象：${names.join('、')}`; bar.style.display = 'block';
+        UI.render();
+        await new Promise(res => setTimeout(res, 1100));
+        setTimeout(() => { bar.style.display = 'none'; UI.tgtMark = null; UI.render(); }, 500);
+      }
+    } catch (e) { console.error(e); }
+    return r;
+  });
   wrap(UI, 'pickCard', function (o, title, prompt, cids, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(cids[0]) : o.call(this, title, prompt, cids, who); });
   wrap(UI, 'pickCards', function (o, title, prompt, cids, min, who, max) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.cards(title, prompt, cids, min, who, max)) : o.call(this, title, prompt, cids, min, who, max); });
   wrap(UI, 'toast', function (o, m) { if (ONL && ONL.ai && ONL.aiBusy && !/^🎲/.test(m)) return; return o.call(this, m); }); // AIが試して失敗した操作のエラーは出さない

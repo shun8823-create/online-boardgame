@@ -486,13 +486,16 @@ async function battle(att, def) {
   }
   const dpCut = wSum(att, 'wfoeDp'), DPd = Math.max(Math.min(0, DP(def)), DP(def) - dpCut); // DPはマイナスになることがある（その分防御値が減る）
   const AV = att.lp + OP(att), DV = def.lp + DPd;
-  let win = false;
+  let win = false, coinWin = false;
   if (forced === 'att') win = true;
   else if (forced === 'def') win = false;
-  else if (AV >= DV) win = true;
-  else { const dmg = Math.max(0, AV - DPd); log(`攻撃値${AV} < 防御値${DV}：${lnm(def)}に${dmg}ダメージ`); damage(def, dmg); }
+  else if (AV >= DV && armorTotal(def) <= 0) win = true;
+  else if (AV >= DV) { // 装甲がある相手：攻撃値からDPを引いた残りを装甲が先に受け、最後にLPが受ける。LPが0以下になれば破壊（攻撃側の勝ち）
+    const dmg = Math.max(0, AV - DPd); log(`攻撃値${AV} ≥ 防御値${DV}：攻撃値からDP${DPd}を引いた${dmg}を、装甲→LPの順に${lnm(def)}が受ける`); damage(def, dmg);
+    if (def.dead) { win = true; log(`攻撃値${AV}（防御値${DV}）：装甲を貫いて攻撃側の勝利`); coinWin = true; }
+  } else { const dmg = Math.max(0, AV - DPd); log(`攻撃値${AV} < 防御値${DV}：${lnm(def)}に${dmg}ダメージ`); damage(def, dmg); }
   if (!win && abU(def, 'counter') && !def.dead && !att.dead && def.owner !== G.active) { const cv = def.lp + OP(def); log(`カウンター：${lnm(def)}がバトルに勝ち、攻撃値${cv}のダメージを${lnm(att)}に与える`); damage(att, cv); }
-  if (win) { log(`攻撃値${AV}（防御値${DV}）：攻撃側の勝利`); killUnit(def); if (!isAv(def)) { const g = CARDS[def.cid].rank; G.players[att.owner].coins += g; log(`バトルに勝利：${G.players[att.owner].name}の貨幣ゲージ+${g}（${G.players[att.owner].coins}）`); } }
+  if (win) { if (!coinWin) log(`攻撃値${AV}（防御値${DV}）：攻撃側の勝利`); killUnit(def); if (!isAv(def)) { const g = CARDS[def.cid].rank; G.players[att.owner].coins += g; log(`バトルに勝利：${G.players[att.owner].name}の貨幣ゲージ+${g}（${G.players[att.owner].coins}）`); } }
   { const w = win ? att : def; if (!w.dead && abU(w, 'swordsman') && wps(w).some(c => CARDS[c].name.includes('剣')) && (win || w === def)) { w.lpBonus = (w.lpBonus || 0) + 500; w.lp += 500; log(`剣士：${lnm(w)}が「${CARDS[w.weapon].name}」を装備してバトルに勝ち、LP+500`); } }
   UI.render();
   return win;
@@ -1253,9 +1256,9 @@ async function playHand(idx) {
     if (why) { UI.toast(why); return; }
     p.hand.splice(idx, 1); syncHB();
     let r = false;
-    G.curSpell = c.kind === 'spell' ? cid : null;
+    G.curSpell = c.kind === 'spell' ? cid : null; G.curSrc = cid;
     try { r = await A.run(p, cid); } catch (e) { console.error(e); }
-    G.curSpell = null;
+    G.curSpell = null; G.curSrc = null;
     if (r === false) { p.hand.splice(Math.min(idx, p.hand.length), 0, cid); syncHB(); }
     else if (r !== 'kept') p.grave.push(cid);
     if (r !== false && c.kind === 'spell') await onSpellUsed(p, cid);
