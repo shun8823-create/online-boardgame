@@ -49,7 +49,7 @@ const aquaticOn = u => abC(u.cid, 'aquatic') && waterCount(G.players[1 - u.owner
 const nm = u => CARDS[u.cid].name;
 const HID_Q = '非公開で置きますか？（自分のホームテリトリーに置く）', HID_A = ['非公開で置く', '公開で置く'];
 const lnm = u => u.hidden ? '非公開カード' : CARDS[u.cid].name;
-const log = s => { G.log.unshift(s); if (G.log.length > 120) G.log.pop(); };
+const log = s => { if (typeof UI !== 'undefined' && UI.aimPend && UI.aimFlush) UI.aimFlush(); G.log.unshift(s); if (G.log.length > 120) G.log.pop(); };
 const terrOfRow = r => (r <= 3 ? 'home' : r === 4 ? 'border' : 'enemy');
 const terr = u => terrOfRow(rowOf(u.owner, u.y));
 
@@ -1258,7 +1258,7 @@ async function playHand(idx) {
     let r = false;
     G.curSpell = c.kind === 'spell' ? cid : null; G.curSrc = cid;
     try { r = await A.run(p, cid); } catch (e) { console.error(e); }
-    G.curSpell = null; G.curSrc = null;
+    G.curSpell = null; G.curSrc = null; UI.aimPend = null; // 発動しなかった（キャンセル等）対象表示は捨てる
     if (r === false) { p.hand.splice(Math.min(idx, p.hand.length), 0, cid); syncHB(); }
     else if (r !== 'kept') p.grave.push(cid);
     if (r !== false && c.kind === 'spell') await onSpellUsed(p, cid);

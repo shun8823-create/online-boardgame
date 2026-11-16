@@ -391,3 +391,11 @@ html{-webkit-text-size-adjust:100%}
 @keyframes tgtp{from{box-shadow:0 0 4px 1px #ffe14a99,inset 0 0 8px #ffe14a55}to{box-shadow:0 0 16px 5px #ffe14a,inset 0 0 18px #ffe14aaa}}
 #aimbar{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:300;max-width:92vw;padding:8px 14px;border-radius:10px;background:#1b1426f2;color:#fff;font-size:14px;font-weight:700;border:2px solid #ffe14a;box-shadow:0 4px 18px #000a;pointer-events:none;text-align:center}
 #aimbar.o0{border-color:#e03c3c}#aimbar.o1{border-color:#3c82e0}
+
+/* ターン開始カットイン */
+#turncut{display:none;position:fixed;left:0;right:0;top:34%;height:150px;z-index:250;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:#fff;cursor:pointer;background:linear-gradient(90deg,transparent,#000c 12%,#000c 88%,transparent);border-top:3px solid;border-bottom:3px solid}
+#turncut.o0{border-color:#e03c3c;text-shadow:0 0 14px #e03c3c}#turncut.o1{border-color:#3c82e0;text-shadow:0 0 14px #3c82e0}
+#turncut .tcbig{font-family:'Noto Serif JP',serif;font-size:54px;font-weight:900;letter-spacing:.2em}#turncut .tcsub{font-size:26px;font-weight:700;letter-spacing:.15em}
+#turncut.go{animation:tcin 1.4s ease both}
+@keyframes tcin{0%{opacity:0;transform:scaleY(.2)}12%{opacity:1;transform:scaleY(1)}85%{opacity:1}100%{opacity:0}}
+@media(max-width:700px){#turncut .tcbig{font-size:38px}#turncut .tcsub{font-size:20px}}

@@ -265,8 +265,17 @@ const UI = {
   ask(msg, btns, who) { who = who == null ? G.active : who; return ONL ? onlineInput('ans', who, () => localAsk(msg, btns)) : localAsk(msg, btns); },
   async confirm(msg, who) { return (await UI.ask(msg, ['はい', 'いいえ'], who)) === 'はい'; },
   cutIn(cid) { SFX.card(cid); if (ONL && ONL.queue.length) return Promise.resolve(); return new Promise(res => { const ms = { 1: 500, 2: 1000, 3: 1500 }[CARDS[cid].rank] || 500; const el = $('#cutin'); el.innerHTML = `<div class="cutcard">${cardHTML(cid, { cls: 'sm' })}</div>`; el.style.display = 'flex'; const done = () => { clearTimeout(t); el.style.display = 'none'; el.onclick = null; res(); }; const t = setTimeout(done, ms); el.onclick = done; }); },
-  turnOverlay(p) { SFX.play('turn'); if (ONL) { UI.toast(`${p.name}のターン`); return Promise.resolve(); } return localAsk(`${p.name}のターン${p.count + 1}です。画面を${p.name}のプレイヤーに渡し、相手に手札が見えないようにしてください。`, [`${p.name}：ターン開始`]); },
-  gameOver(w) {
+  turnOverlay(p) {
+    SFX.play('turn');
+    const fast = ONL && ONL.queue && ONL.queue.length; // 追いつき再生中は省略
+    const show = () => fast ? Promise.resolve() : new Promise(res => {
+      let el = document.getElementById('turncut'); if (!el) { el = document.createElement('div'); el.id = 'turncut'; document.body.appendChild(el); }
+      el.className = 'o' + p.i; el.innerHTML = `<div class="tcbig">${p.name}</div><div class="tcsub">${p.count}ターン目</div>`; el.style.display = 'flex'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+      const done = () => { clearTimeout(t); el.style.display = 'none'; el.onclick = null; res(); }; const t = setTimeout(done, 1400); el.onclick = done;
+    });
+    if (ONL) return show();
+    return show().then(() => localAsk(`${p.name}の${p.count}ターン目です。画面を${p.name}のプレイヤーに渡し、相手に手札が見えないようにしてください。`, [`${p.name}：ターン開始`]));
+  },  gameOver(w) {
     if (UI.overShown) return; UI.overShown = true;
     SFX.play(ONL && w !== ONL.me ? 'lose' : 'win');
     const wn = G.players[w].name, ln = G.players[1 - w].name;
@@ -632,7 +641,8 @@ function show() {
 }
 
 /* ---------- 操作の実行（ローカル／オンライン共通） ---------- */
-async function execEv(ev) {
+async function execEv(ev) { try { await execEv0(ev); } finally { if (UI.aimEnd) UI.aimEnd(); } } // 対象の点滅は、この操作の処理が全て終わるまで続ける
+async function execEv0(ev) {
   if (!G || G.over) return;
   switch (ev.t) {
     case 'play': await playHand(ev.i); break;
@@ -878,26 +888,41 @@ async function startOnline() {
   const aiOn = who => !!ONL && !!ONL.ai && AI.is(who);
   wrap(UI, 'ask', function (o, msg, btns, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.ask(msg, btns)) : o.call(this, msg, btns, who); });
   wrap(UI, 'pickBoard', function (o, opt) { const who = opt.who == null ? G.active : opt.who; return aiOn(who) ? Promise.resolve(AI.pick(opt)) : o.call(this, opt); });
-  /* どのカードが何を対象にしたかを、双方の画面に出す（対象マスの強調＋上部の帯）。選び終わった直後に両側で同じ内容が走る */
+  /* どのカードが何を対象にしたかを、双方の画面に出す（対象マスの強調＋上部の帯）。
+     対象を選んだ時点では「保留」にしておき、SpC等の支払いも済んで効果の発動が確定した時（カードのカットイン／最初のログ）に表示する */
   wrap(UI, 'pickBoard', async function (o, opt) {
     const r = await o.call(this, opt);
     try {
-      if (r && r.length && (opt.kind === 'target' || opt.kind === 'attack') && !(ONL && ONL.queue && ONL.queue.length)) {
-        const who = opt.who == null ? G.active : opt.who, p = G.players[who];
+      if (r && r.length && (opt.kind === 'target' || opt.kind === 'attack')) {
+        const who = opt.who == null ? G.active : opt.who;
         const cur = G.curSrc && CARDS[G.curSrc] ? CARDS[G.curSrc].name : null;
         const pr = String(opt.prompt || '').replace(/（.*?）/g, ''), i = pr.indexOf('：');
         const src = cur || (i > 0 ? pr.slice(0, i) : pr.replace(/(の)?(対象|相手|自分).*$/, '').slice(0, 12)) || '効果';
         const names = r.map(c => { const u = at(c[0], c[1]); return (u && !u.dead ? (u.hidden ? '非公開カード' : nm(u)) : '（マス）') + '（' + coord(c[0], c[1]) + '）'; });
-        UI.tgtMark = { cells: r.map(c => c[0] + ',' + c[1]), until: Date.now() + 1600, who };
-        let bar = document.getElementById('aimbar'); if (!bar) { bar = document.createElement('div'); bar.id = 'aimbar'; document.body.appendChild(bar); }
-        bar.className = 'o' + who; bar.textContent = `🎯 ${p.name}：【${src}】→ 対象：${names.join('、')}`; bar.style.display = 'block';
-        UI.render();
-        await new Promise(res => setTimeout(res, 1100));
-        setTimeout(() => { bar.style.display = 'none'; UI.tgtMark = null; UI.render(); }, 500);
+        UI.aimPend = { who, src, names, cells: r.map(c => c[0] + ',' + c[1]) };
       }
     } catch (e) { console.error(e); }
     return r;
   });
+  let aimTimer = null;
+  UI.aimFlush = function () { // 待たない。点滅は aimEnd（処理の終了）まで続け、帯だけ約1.6秒で消す
+    const a = UI.aimPend; UI.aimPend = null;
+    if (!a || (ONL && ONL.queue && ONL.queue.length)) return Promise.resolve();
+    try {
+      UI.tgtMark = { cells: a.cells, until: Infinity, who: a.who };
+      let bar = document.getElementById('aimbar'); if (!bar) { bar = document.createElement('div'); bar.id = 'aimbar'; document.body.appendChild(bar); }
+      bar.className = 'o' + a.who; bar.textContent = `🎯 ${G.players[a.who].name}：【${a.src}】→ 対象：${a.names.join('、')}`; bar.style.display = 'block';
+      clearTimeout(aimTimer); aimTimer = setTimeout(() => { bar.style.display = 'none'; }, 1600);
+      UI.render();
+    } catch (e) { console.error(e); }
+    return Promise.resolve();
+  };
+  UI.aimEnd = function () {
+    UI.aimPend = null; clearTimeout(aimTimer);
+    const bar = document.getElementById('aimbar'); if (bar) bar.style.display = 'none';
+    if (UI.tgtMark) { UI.tgtMark = null; try { UI.render(); } catch (e) { } }
+  };
+  wrap(UI, 'cutIn', async function (o, cid) { await UI.aimFlush(); return o.call(this, cid); });
   wrap(UI, 'pickCard', function (o, title, prompt, cids, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(cids[0]) : o.call(this, title, prompt, cids, who); });
   wrap(UI, 'pickCards', function (o, title, prompt, cids, min, who, max) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.cards(title, prompt, cids, min, who, max)) : o.call(this, title, prompt, cids, min, who, max); });
   wrap(UI, 'toast', function (o, m) { if (ONL && ONL.ai && ONL.aiBusy && !/^🎲/.test(m)) return; return o.call(this, m); }); // AIが試して失敗した操作のエラーは出さない
