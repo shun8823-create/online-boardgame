@@ -385,9 +385,8 @@ async function onEntered(u, from) {
 async function braveStrike(u) {
   const tg = chars(1 - u.owner).filter(t => rowOf(u.owner, t.y) >= 4);
   if (!tg.length) return;
-  const r = await UI.pickBoard({ prompt: '勇竜剣：バトルする相手キャラクターを選択（ボーダーゾーン／エネミーテリトリー）', cells: tg.map(t => [t.x, t.y]), kind: 'attack', cancellable: true, cancelLabel: 'バトルしない' });
-  if (!r) return;
-  const t = at(r[0][0], r[0][1]); if (!t || t.dead) return;
+  if ((await UI.ask(`勇竜剣：${nm(u)}がボーダーゾーンに入った。相手のキャラクターをランダムで1体選んでバトルしますか？`, ['バトルする', 'バトルしない'], u.owner)) !== 'バトルする') return;
+  const t = tg[rnd(tg.length)];
   log(`勇竜剣：${lnm(u)}が${lnm(t)}とバトルする`);
   try { await battle(u, t); } finally { u.ambushNow = false; }
   checkAuras(); UI.render();
@@ -830,6 +829,20 @@ async function scoutWatch(u) {
   if (!r) return;
   const here = hs.filter(v => v.x === r[0][0] && v.y === r[0][1]); if (!here.length) return;
   const t = here.find(v => v.unit) || here[0];
+  const mk = here.filter(v => v.ref.marked);
+  if (mk.length) { // すでに警戒の印がついている非公開カード：持ち主の手札に戻せる
+    const c = await UI.ask('警戒の印がついた非公開カードです。どうしますか？', ['持ち主の手札に戻す', '確認する', 'キャンセル']);
+    if (c === 'キャンセル' || !c) return;
+    if (c === '持ち主の手札に戻す') {
+      spendSC(u, 1); u.uses.scout = G.turn; const o = G.players[1 - u.owner];
+      for (const h of mk) {
+        if (h.unit) { const v = h.ref; for (const w of wps(v)) o.grave.push(w); dropAttach(v, o); if (!CARDS[v.cid].token) o.hand.push(v.cid); delete G.units[v.uid]; v.dead = true; }
+        else { delete G.traps[h.x + ',' + h.y]; o.hand.push(h.cid); }
+      }
+      log(`警戒：${coord(t.x, t.y)}の印のついた非公開カードを持ち主（${o.name}）の手札に戻した`);
+      if (typeof syncHB === 'function') syncHB(); checkAuras(); UI.render(); return;
+    }
+  }
   spendSC(u, 1); u.uses.scout = G.turn; for (const h of here) h.ref.marked = true;
   log(`警戒：${coord(t.x, t.y)}の非公開カードを確認した`);
   if (UI.peek) UI.peek(u.owner, t.cid, coord(t.x, t.y));
