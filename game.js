@@ -87,6 +87,7 @@ function draw(p, n = 1) {
 }
 
 /* ステータス */
+const isGobCard = cid => cid !== 'gobFlute' && CARDS[cid].name.includes('ゴブリン'); // 「ゴブリン」と名のつくカード（ゴブリンの笛を除く）
 const isGobName = u => CARDS[u.cid].kind === 'char' && CARDS[u.cid].name.includes('ゴブリン');
 const baseLP = u => (syncHBu(u), CARDS[u.cid].lp) + (isGobName(u) && G.players[u.owner].parade ? 1500 : 0) + (u.lpBonus || 0) + (u.hbA || 0) + wSum(u, 'wlp') - u.lpPen - (u.trapLoss || 0);
 const golemStep = u => (/^golem[123]$/.test(u.cid) ? +u.cid.slice(5) : 0);
@@ -1125,8 +1126,8 @@ const ACT = {
   gobFlute: { async run(p) {
     await UI.cutIn('gobFlute');
     const pool = [];
-    p.deck.forEach((c, i) => { if (CARDS[c].race === 'ゴブリン') pool.push(['deck', i]); });
-    p.grave.forEach((c, i) => { if (CARDS[c].race === 'ゴブリン') pool.push(['grave', i]); });
+    p.deck.forEach((c, i) => { if (isGobCard(c)) pool.push(['deck', i]); });
+    p.grave.forEach((c, i) => { if (isGobCard(c)) pool.push(['grave', i]); });
     const pick = shuffle(pool).slice(0, 2);
     const got = pick.map(([z, i]) => CARDS[p[z][i]].name);
     const rm = { deck: [], grave: [] }; pick.forEach(([z, i]) => rm[z].push(i));
