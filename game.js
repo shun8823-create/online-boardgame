@@ -105,7 +105,7 @@ const armorTotal = u => u.armor + u.gArmor + u.tArmor + (u.fArmor || 0);
 const armorRoom = u => (hasW(u, 'armorFine') ? Math.max(0, CARDS.armorFine.armorCap - armorTotal(u)) : Infinity); // 上等な鎧：装備している間、装甲値は2000より増えない
 const addArmor = (u, k, n) => { u[k] = (u[k] || 0) + Math.min(n, armorRoom(u)); };
 const fArmorCheck = u => { if (u.extra && terr(u) !== 'home') { u.extra = 0; log(`${lnm(u)}の「獰猛なる覇者の加護」の効果がホームテリトリーを出たため消えた`); } };
-const baseActs = u => ((abU(u, 'twoActions') || (u.k2 && abU(u, 'knightCmd'))) && !assaultOn(u) ? 2 : 1);
+const baseActs = u => (((abU(u, 'twoActions') && (u.uses.twoN || 0) < 3) || (u.k2 && abU(u, 'knightCmd'))) && !assaultOn(u) ? 2 : 1);
 const avMax = u => (CARDS[u.cid].maxMove || 4) + (u.mvUp || 0); // アバターがゲーム中に動ける回数の上限（限界突破で増える）
 const avLeft = u => Math.max(0, avMax(u) - (u.mvDone || 0));
 const actLimit = u => (u.extra === G.players[u.owner].count && !assaultOn(u) ? Math.min(2, baseActs(u) + 1) : baseActs(u));
@@ -266,7 +266,7 @@ function movesFor(u) {
     const canHit = t => !noBattle && !(assault && isAv(t)) && !(extraOnly(u) && isAv(t));
     const cells = [];
     for (let k = 1; k <= len; k++) cells.push([u.x + d[0] * k, u.y + d[1] * k]);
-    const cost = () => (assault ? 0 : Math.max(0, 1 + (bers ? 1 : 0) + dualPen(u) - breezeN(u) - (G.lap ? 1 : 0))); // SCは「1回の移動」につき消費（マス数ではない）
+    const cost = () => (assault ? 0 : Math.max(0, 1 + (bers ? 1 : 0) + dualPen(u) - breezeN(u) - (G.lap && !isAv(u) ? 1 : 0))); // SCは「1回の移動」につき消費（マス数ではない）
     const push = (type, c, steps, path) => { const cs = cost(); if (assault || scAvail(u) >= cs + pendingExtra(u, c[1])) out.push({ x: c[0], y: c[1], type, steps, cost: cs, path, back: backPure && type === 'attack' }); };
     if (len === 1) {
       const c = cells[0], r = evalCell(u, c[0], c[1]);
@@ -275,7 +275,7 @@ function movesFor(u) {
     } else {
       const a = cells[0], b = cells[1], ra = evalCell(u, a[0], a[1]);
       if (ra === 'enemy') { if (canHit(at(a[0], a[1]))) push('attack', a, 1, [a]); continue; }
-      if (ra === 'empty' || ra === 'ally') {
+      if (ra === 'empty' || (ra === 'ally' && assault)) { // 狂乱では自分のキャラは通り抜けられない（盤外・障害物と同じ）。突撃司令のみ通り抜けられる
         const rb = evalCell(u, b[0], b[1]);
         if (rb === 'empty') push('move', b, 2, [a, b]);
         else if (rb === 'enemy' && canHit(at(b[0], b[1]))) push('attack', b, 2, [a, b]);
@@ -297,7 +297,7 @@ function movesFor(u) {
 function huntTargets(u) {
   if (u.dead || u.st.petrify != null) return [];
   const dy = fwd(u.owner), bers = abU(u, 'berserk');
-  const cost = Math.max(0, 1 + (bers ? 1 : 0) + dualPen(u) - breezeN(u) - (G.lap ? 1 : 0));
+  const cost = Math.max(0, 1 + (bers ? 1 : 0) + dualPen(u) - breezeN(u) - (G.lap && !isAv(u) ? 1 : 0));
   if (scAvail(u) < cost) return [];
   const out = [];
   for (const d of dirsFor(u, false)) {
@@ -332,6 +332,7 @@ async function doMove(u, mv) {
   sfx('move');
   const from = { x: u.x, y: u.y };
   if (!assaultOn(u)) spendSC(u, mv.cost + ex);
+  if (u.acted === 1 && baseActs(u) === 2 && abC(u.cid, 'twoActions')) u.uses.twoN = (u.uses.twoN || 0) + 1; // 2回行動を実際に使った回数（ゲーム中3回まで）
   u.acted++; if (isAv(u)) u.mvDone = (u.mvDone || 0) + 1;
   if (u.mvTurn !== G.turn) { u.mvTurn = G.turn; u.mvN = 0; }
   u.mvN++;
@@ -385,8 +386,9 @@ async function onEntered(u, from) {
 async function braveStrike(u) {
   const tg = chars(1 - u.owner).filter(t => rowOf(u.owner, t.y) >= 4);
   if (!tg.length) return;
-  if ((await UI.ask(`勇竜剣：${nm(u)}がボーダーゾーンに入った。相手のキャラクターをランダムで1体選んでバトルしますか？`, ['バトルする', 'バトルしない'], u.owner)) !== 'バトルする') return;
-  const t = tg[rnd(tg.length)];
+  if ((await UI.ask(`勇竜剣：${nm(u)}がボーダーゾーンに入った。相手が選んだキャラクター1体とバトルしますか？`, ['バトルする', 'バトルしない'], u.owner)) !== 'バトルする') return;
+  const r = await UI.pickBoard({ who: 1 - u.owner, prompt: `勇竜剣：${nm(u)}とバトルする自分のキャラクターを選択`, cells: tg.map(t => [t.x, t.y]), kind: 'target', cancellable: false });
+  const t = (r && r[0] && at(r[0][0], r[0][1])) || tg[0]; if (!t || t.dead) return; // 相手が選ぶ（選べなかった場合のみ先頭）
   log(`勇竜剣：${lnm(u)}が${lnm(t)}とバトルする`);
   try { await battle(u, t); } finally { u.ambushNow = false; }
   checkAuras(); UI.render();
@@ -408,12 +410,14 @@ async function heroRoll(u) {
 /* レッドドラゴン：メインステップ中にSpC1で、次の自分のターンのはじめまで「焼却」を得る（2回まで） */
 async function burnStart(u) {
   if (!u || u.dead || u.hidden || !abU(u, 'burnAct') || u.owner !== G.active || G.phase !== 'main' || u.st.petrify != null) return;
-  const n = u.uses.burnN || 0; if (n >= 2 || u.spc < 1 || (u.burn != null && G.turn === u.burn)) return;
-  u.spc -= 1; u.uses.burnN = n + 1; u.burn = G.turn; sfx('fire'); log(`${lnm(u)}：SpCを1つ消費し、次の自分のターンのはじめまで「焼却」を得た（${n + 1}/2回目）`);
+  const n = u.uses.burnN || 0; if (n >= 3 || u.spc < 1 || (u.burn != null && G.turn === u.burn)) return;
+  if (UI.abilityCut) await UI.abilityCut(u); 
+  u.spc -= 1; u.uses.burnN = n + 1; u.burn = G.turn; sfx('fire'); log(`${lnm(u)}：SpCを1つ消費し、次の自分のターンのはじめまで「焼却」を得た（${n + 1}/3回目）`);
   checkAuras(); UI.render();
 }
 async function flameStart(u) {
   if (!u || u.dead || !hasW(u, 'flameSword') || u.flameUsed || u.owner !== G.active || G.phase !== 'main') return;
+  if (UI.abilityCut) await UI.abilityCut(u); 
   u.flameUsed = true; u.flame = G.turn; sfx('fire'); log(`烈火剣：${lnm(u)}は1ターンの間「焼却」を得た（相手のターン終了時まで）`);
   checkAuras(); UI.render();
 }
@@ -697,6 +701,14 @@ async function spellDraw(u, p, need) { // スペルドロー：サイコロがne
     else log(`${lnm(u)}：スペルドロー（出目${d}）：加えられるスペルがデッキになかった`);
   } else log(`${lnm(u)}：スペルドロー（出目${d}）：失敗`);
 }
+async function spellCollect(u, p, need) { // スペルコレクト：サイコロがneed以上ならランク2、そうでなければランク1のスペルをデッキからランダムに1枚手札に加える
+  const idx = r => p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && CARDS[p.deck[i]].rank === r);
+  const d = rollD6(); UI.toast(`🎲 ${nm(u)}のサイコロ：${d}（d${need}以上でランク2）`);
+  let pool = d >= need ? idx(2) : [];
+  if (!pool.length) pool = idx(1);
+  if (pool.length) { const i = pool[rnd(pool.length)]; const cc = p.deck.splice(i, 1)[0]; p.hand.push(cc); log(`${lnm(u)}：スペルコレクト（出目${d}）でデッキから「${CARDS[cc].name}」を手札に加えた`); }
+  else log(`${lnm(u)}：スペルコレクト（出目${d}）：加えられるスペルがデッキになかった`);
+}
 async function etb(u, p, stealth) {
   if (abU(u, 'kingEtb')) {
     const n = 1 + Math.floor((u.sacSum || 0) / 3000);
@@ -709,12 +721,7 @@ async function etb(u, p, stealth) {
     }
   }
   if (abU(u, 'witchEtb')) {
-    const idx = r => p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && CARDS[p.deck[i]].rank === r);
-    const d = rollD6(); UI.toast(`🎲 ${nm(u)}のサイコロ：${d}（d4以上でランク2）`);
-    let pool = d >= 4 ? idx(2) : [];
-    if (!pool.length) pool = idx(1);
-    if (pool.length) { const i = pool[rnd(pool.length)]; const cc = p.deck.splice(i, 1)[0]; p.hand.push(cc); log(`${lnm(u)}：スペルコレクト（出目${d}）でデッキから「${CARDS[cc].name}」を手札に加えた`); }
-    else log(`${lnm(u)}：スペルコレクト（出目${d}）：加えられるスペルがデッキになかった`);
+    await spellCollect(u, p, 4);
   }
   if (abU(u, 'elemWater') && waterCount(p.deckList) >= 15) { // エレメンタルコレクト：水（d6以上）
     const idx = r => p.deck.map((c, i) => i).filter(i => cardAttrs(p.deck[i]).includes('水') && CARDS[p.deck[i]].rank === r);
@@ -742,6 +749,7 @@ async function moonReset(u) {
   const used = u.uses.moon || 0;
   if (used >= 2) { UI.toast('月光はゲーム中2回までです'); return; }
   if (u.spc < 2 || u.st.petrify != null) { UI.toast('SpCが2以上必要です'); return; }
+  if (UI.abilityCut) await UI.abilityCut(u); 
   u.spc -= 2; u.uses.moon = used + 1;
   for (const q of G.players) { q.deck.push(...q.hand); q.hand = []; q.deck = shuffle(q.deck); draw(q, 3); }
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
@@ -756,7 +764,7 @@ async function priestAct(u) {
   const a = await UI.ask(`${nm(u)}：どの効果を使いますか？（SpC1を消費）`, [...ks.map(k => name[k]), 'キャンセル']);
   const k = ks.find(x => name[x] === a); if (!k) return;
   if (k === 'mail') { // ホーリーメール：SpC1を消費してサイコロを振り、6以上ならデッキから光属性のスペルをランダムに1枚手札に加える
-    const p = G.players[u.owner]; u.spc -= 1; u.uses.mail = G.turn;
+    const p = G.players[u.owner]; if (UI.abilityCut) await UI.abilityCut(u); u.spc -= 1; u.uses.mail = G.turn;
     const d = rollD6(); UI.toast(`🎲 ホーリーメール：サイコロ ${d}`);
     if (d >= 6) {
       const ids = p.deck.map((c, i) => i).filter(i => CARDS[p.deck[i]].kind === 'spell' && cardAttrs(p.deck[i]).includes('光'));
@@ -767,7 +775,7 @@ async function priestAct(u) {
   }
   const t = await pickUnit(chars(u.owner), `${name[k]}の対象（自分のキャラクター）を選択`); if (!t) return;
   if (k === 'cure' && !statusList(t).length) { UI.toast('対象に状態異常がありません'); return; }
-  u.spc -= 1; u.uses[k] = G.turn;
+  if (UI.abilityCut) await UI.abilityCut(u); u.spc -= 1; u.uses[k] = G.turn;
   if (k === 'heal') { const b = t.lp; heal(t, 2000); log(`ヒール：${lnm(u)}がSpC1を消費し、${lnm(t)}のLPを回復（${b}→${t.lp}）`); }
   else { const ss = statusList(t), s0 = ss[rnd(ss.length)]; cure(t, s0); log(`キュア・ディジーズ：${lnm(u)}がSpC1を消費し、${lnm(t)}の${STATUS_NAME[s0]}を治療`); }
   UI.toast(`${name[k]}：${nm(t)}`); afterAction();
@@ -782,7 +790,7 @@ function mainAbility(u) {
   const f = CARDS[u.cid].fetch;
   if (abU(u, 'angelFetch') && f && !p.angelUsed[u.cid] && scAvail(u) >= 2) return { t: 'angelFetch', q: `${nm(u)}：SCを2つ消費して、デッキ外から「${CARDS[f.cid].name}」を${f.n}枚手札に加えますか？（ゲーム中1度だけ）` };
   if (['heal', 'cure', 'mail'].some(k => priestCan(u, k))) return { t: 'priest', q: `${nm(u)}：ヒール／キュア・ディジーズ／ホーリーメールを使いますか？（SpC1を消費）` };
-  if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 2 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${2 - (u.uses.burnN || 0)}回）` };
+  if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 3 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${3 - (u.uses.burnN || 0)}回）` };
   if (abU(u, 'frenzyGet') && !u.uses.frenzyGet && u.spc >= 2) return { t: 'frenzyGet', q: `${nm(u)}：SpCを2つ消費して、奥義「発狂」を1枚手札に加えますか？（ゲーム中1度だけ）` };
   if (abU(u, 'moonReset') && (u.uses.moon || 0) < 2 && u.spc >= 2) return { t: 'moon', q: `月光：SpCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - (u.uses.moon || 0)}回）` };
   return null;
@@ -791,6 +799,7 @@ function mainAbility(u) {
 async function frenzyGetAct(u) {
   if (G.phase !== 'main' || u.owner !== G.active || u.dead || u.hidden || !abU(u, 'frenzyGet')) return;
   if (u.uses.frenzyGet || u.spc < 2 || u.st.petrify != null) return; // 使えない時は何もしない（タップは選択・移動範囲の確認にも使うため）
+  if (UI.abilityCut) await UI.abilityCut(u); 
   u.spc -= 2; u.uses.frenzyGet = 1; G.players[u.owner].hand.push('tkFrenzy');
   log(`${lnm(u)}：SpCを2つ消費し、奥義「発狂」を手札に加えた`); UI.toast('発狂を手札に加えた'); afterAction();
 }
@@ -799,6 +808,7 @@ async function angelFetchAct(u) {
   if (G.phase !== 'main' || u.owner !== G.active || u.dead || u.hidden || !f) return;
   if (p.angelUsed[u.cid]) { UI.toast('この効果はゲーム中1度だけ使えます'); return; }
   if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2つ必要です'); return; }
+  if (UI.abilityCut) await UI.abilityCut(u); 
   spendSC(u, 2); p.angelUsed[u.cid] = true;
   for (let i = 0; i < f.n; i++) p.hand.push(f.cid);
   log(`${lnm(u)}：SCを2つ消費し、デッキ外から「${CARDS[f.cid].name}」${f.n}枚を手札に加えた`); UI.toast(`${CARDS[f.cid].name}を${f.n}枚手札に加えた`); afterAction();
@@ -829,6 +839,7 @@ async function archerShot(u) {
   const a = await UI.ask(`弓使い：SCを1消費して、相手キャラ1体を狙いますか？（サイコロ${need}以上でLP-1000）`, ['使う', 'キャンセル']);
   if (a !== '使う') return;
   const t = await pickUnit(tg, '弓使い：狙う相手のキャラクターを選択'); if (!t) return;
+  if (UI.abilityCut) await UI.abilityCut(u); 
   spendSC(u, 1); u.uses.archer = G.turn;
   const d = rollD6(); UI.toast(`🎲 弓使いのサイコロ：${d}（${need}以上で命中）`);
   if (d >= need) { log(`弓使い：${lnm(u)}の矢が${lnm(t)}に命中（サイコロ${d}）。LP-1000`); damage(t, 1000); } else log(`弓使い：${lnm(u)}の矢は外れた（サイコロ${d}）`);
@@ -851,7 +862,7 @@ async function scoutWatch(u) {
     const c = await UI.ask('警戒の印がついた非公開カードです。どうしますか？', ['持ち主の手札に戻す', '確認する', 'キャンセル']);
     if (c === 'キャンセル' || !c) return;
     if (c === '持ち主の手札に戻す') {
-      spendSC(u, 1); u.uses.scout = G.turn; const o = G.players[1 - u.owner];
+      if (UI.abilityCut) await UI.abilityCut(u); spendSC(u, 1); u.uses.scout = G.turn; const o = G.players[1 - u.owner];
       for (const h of mk) {
         if (h.unit) { const v = h.ref; for (const w of wps(v)) o.grave.push(w); dropAttach(v, o); if (!CARDS[v.cid].token) o.hand.push(v.cid); delete G.units[v.uid]; v.dead = true; }
         else { delete G.traps[h.x + ',' + h.y]; o.hand.push(h.cid); }
@@ -860,7 +871,7 @@ async function scoutWatch(u) {
       if (typeof syncHB === 'function') syncHB(); checkAuras(); UI.render(); return;
     }
   }
-  spendSC(u, 1); u.uses.scout = G.turn; for (const h of here) h.ref.marked = true;
+  if (UI.abilityCut) await UI.abilityCut(u); spendSC(u, 1); u.uses.scout = G.turn; for (const h of here) h.ref.marked = true;
   log(`警戒：${coord(t.x, t.y)}の非公開カードを確認した`);
   if (UI.peek) UI.peek(u.owner, t.cid, coord(t.x, t.y));
   UI.render();
@@ -870,6 +881,7 @@ async function monkeyThrow(u) {
   const used = u.uses.throw || 0;
   if (used >= 2) { UI.toast('投擲はゲーム中2回までです'); return; }
   if (scAvail(u) < 2 || u.st.petrify != null) { UI.toast('SCが2以上必要です'); return; }
+  if (UI.abilityCut) await UI.abilityCut(u); 
   spendSC(u, 2); u.uses.throw = used + 1; G.players[u.owner].hand.push('stoneThrow'); log('投擲：手札に投石が出現'); UI.render();
 }
 
@@ -885,6 +897,7 @@ async function pickUnit(us, prompt) {
   const r = await UI.pickBoard({ prompt, cells: us.map(u => [u.x, u.y]), kind: 'target', cancellable: true });
   return r ? at(r[0][0], r[0][1]) : null;
 }
+const fairyTargets = p => mine(p).filter(u => CARDS[u.cid].txt.some(t => /スペル(ドロー|コレクト)/.test(t)) && !u.hidden && scAvail(u) >= 1 && u.spc >= 1 && u.st.petrify == null);
 const ferTargets = p => mine(p).filter(u => CARDS[u.cid].cat.includes('モンスター') && CARDS[u.cid].race === 'ワイルド' && terr(u) === 'home' && scAvail(u) >= 1 && u.spc >= 1 && u.st.petrify == null);
 const canTechPay = u => u.acted === 0 && scAvail(u) >= 1 && u.st.petrify == null && !u.hidden && !u.dead;
 /* 装備できない理由（装備できるならnull） */
@@ -946,7 +959,7 @@ const ACT = {
   spark: { can: p => (foes(p).length ? null : '対象にできる相手キャラクターがいません'), async run(p) {
     const t = await pickUnit(foes(p), 'スパークの対象を選択'); if (!t) return false;
     if (!(await payCost(p, 2))) return false; await UI.cutIn('spark');
-    if (!(await resist(t, 2, p))) { damage(t, 2000); log(`スパーク：${lnm(t)}に2000ダメージ`); if (!t.dead) addStatus(t, 'paralyze'); }
+    if (!(await resist(t, 2, p))) { if (armorTotal(t) > 0) { breakArmor(t, 1000); log(`スパーク：${lnm(t)}の装甲値を1000減らした`); } damage(t, 2000); log(`スパーク：${lnm(t)}に2000ダメージ`); if (!t.dead) addStatus(t, 'paralyze'); }
     return true; } },
   sandWall: { async run(p) {
     const cells = []; for (let x = 0; x < 7; x++) for (let y = 0; y < 7; y++) if (!at(x, y) && !wallAt(x, y)) cells.push([x, y]);
@@ -1009,7 +1022,7 @@ const ACT = {
   goldenBody: { can: () => '黄金の体はバトル時にのみ使用できます' },
   dangerSea: { can: p => (p.dangerSea ? '危険海流域の効果はすでに永続しています（重複しません）' : null), async run(p) {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('dangerSea');
-    p.dangerSea = true; syncHB(); log('危険海流域：効果が永続する（使用者のホーム／ボーダーの自分のキャラのLP+1000、水属性に再生。相手キャラが使用者のホーム／ボーダーへ移動する際はサイコロ）'); return true; } },
+    p.dangerSea = true; syncHB(); log('危険海流域：効果が永続する（使用者のホーム／ボーダーの自分のキャラのLP+500、水属性に再生。相手キャラが使用者のホーム／ボーダーへ移動する際はサイコロ）'); return true; } },
   breeze: { can: p => (mine(p).some(breezeOk) ? null : '装備できる自分のキャラクターがいません'), async run(p) {
     const cs = mine(p).filter(breezeOk);
     const r = await UI.pickBoard({ prompt: 'ブリーズを装備する自分のキャラクターを選択', cells: cs.map(u => [u.x, u.y]), kind: 'target', cancellable: true }); if (!r) return false;
@@ -1086,7 +1099,7 @@ const ACT = {
       if (mode === 'up') {
         const n = golemStep(target) + 1;
         target.cid = 'golem' + n; target.lp += 2000; target.rspc = (target.rspc || 0) + 1;
-        log(`クリエイトゴーレム：${coord(target.x, target.y)}のゴーレムがステップ${n}になった`); await spellDraw(target, p, 3);
+        log(`クリエイトゴーレム：${coord(target.x, target.y)}のゴーレムがステップ${n}になった`); if (n >= 3) await spellCollect(target, p, 5); else await spellDraw(target, p, 3);
       } else {
         const u = mkUnit(p.i, 'golem1', pos[0], pos[1]); u.armor = 2000;
         log(`クリエイトゴーレム：ゴーレム（ステップ1）を${coord(u.x, u.y)}に配置`); await spellDraw(u, p, 4);
@@ -1256,6 +1269,16 @@ const ACT = {
       draw(p, 1);
       spendSC(t, 1); t.spc -= 1; t.extra = p.count + 1; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
       log(`獰猛なる覇者の加護：${lnm(t)}の次の自分のターンの行動回数+1・LP+500（SC-1・SpC-1）`); return true; } },
+  fairyDance: {
+    can: p => (fairyTargets(p).length ? null : '自分の盤に、スペルドローまたはスペルコレクトをもち、SCとSpCが1以上のキャラクターが必要です'),
+    async run(p) {
+      const t = await pickUnit(fairyTargets(p), '妖精の舞：SC1とSpC1を消費するキャラクターを選択'); if (!t) return false;
+      await UI.cutIn('fairyDance');
+      spendSC(t, 1); t.spc -= 1;
+      const pool = []; p.grave.forEach((c, i) => { if (CARDS[c].kind === 'spell' && CARDS[c].rank === 1 && cardAttrs(c).length) pool.push(i); });
+      const n = Math.min(pool.length, 1 + rnd(2)), pick = shuffle(pool).slice(0, n);
+      const got = pick.map(i => p.grave[i]); pick.sort((a, b) => b - a).forEach(i => p.grave.splice(i, 1)); got.forEach(c => p.hand.push(c));
+      log(`妖精の舞：${lnm(t)}のSC1・SpC1を消費。墓地から${got.length ? got.map(c => `「${CARDS[c].name}」`).join('') : 'なし'}を手札に加えた`); return true; } },
   fightSpirit: { can: p => (mine(p).some(u => CARDS[u.cid].race === 'ワイルド' && u.spc >= 1) ? (mine(p).some(canTechPay) ? null : 'SCを消費できるキャラクターがいません') : '現在のSpCが1以上の種族ワイルドが必要です'), async run(p) {
     const u = await payTech(p, mine(p).filter(canTechPay), '闘争心をつけるキャラクターを選択（SCを1消費）'); if (!u) return false;
     await UI.cutIn('fightSpirit'); u.attach.push({ cid: 'fightSpirit', since: p.count + 1 }); log(`${lnm(u)}に闘争心`); return 'kept'; } },

@@ -101,4 +101,5 @@ const ART_IMG_B64 = {
   kraken: 'img_kraken.jpg',
   giantCrab: 'img_giantCrab.jpg',
   breeze: 'img_breeze.jpg',
+  fairyDance: 'img_fairyDance.jpg',
 };
