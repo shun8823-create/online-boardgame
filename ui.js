@@ -484,6 +484,7 @@ function unitDetail(u) {
   const desc = statusList(u).map(k => `<div class="note">${STATUS_DESC[k]}</div>`).join('');
   const buffs = [];
   if (u.dpBonus) buffs.push(`生贄によるDP+${u.dpBonus}`);
+  if (u.adapt && u.adapt.length) buffs.push(`適応で得た属性：${u.adapt.join('・')}`);
   if (G.lap && CARDS[u.cid].kind === 'char') buffs.push('二周目突入：「狂乱」を得る・移動のSC-1');
   for (const b of u.buffs) buffs.push(`${b.k.toUpperCase()}+${b.amt}（一時）`);
   if (u.weapon) buffs.push(`装備：${wps(u).map(c => CARDS[c].name).join('・')}`);
@@ -646,7 +647,7 @@ function show() {
 }
 
 /* ---------- 操作の実行（ローカル／オンライン共通） ---------- */
-async function execEv(ev) { try { await execEv0(ev); } finally { if (UI.aimEnd) UI.aimEnd(); } } // 対象の点滅は、この操作の処理が全て終わるまで続ける
+async function execEv(ev) { try { await execEv0(ev); if (G && !G.over && typeof sanctZeroScan === 'function') await sanctZeroScan(); } finally { if (UI.aimEnd) UI.aimEnd(); } } // 対象の点滅は、この操作の処理が全て終わるまで続ける
 async function execEv0(ev) {
   if (!G || G.over) return;
   switch (ev.t) {
@@ -658,6 +659,7 @@ async function execEv0(ev) {
     case 'angelFetch': { const u = G.units[ev.uid]; if (u) await angelFetchAct(u); break; }
     case 'frenzyGet': { const u = G.units[ev.uid]; if (u) await frenzyGetAct(u); break; }
     case 'priest': { const u = G.units[ev.uid]; if (u) await priestAct(u); break; }
+    case 'twoAct': { const u = G.units[ev.uid]; if (u) await twoActStart(u); break; }
     case 'moon': { const u = G.units[ev.uid]; if (u) await moonReset(u); break; }
     case 'reveal': { const u = G.units[ev.uid]; if (u) await revealUnit(u); break; }
     case 'burn': { const u = G.units[ev.uid]; if (u) await burnStart(u); break; }
