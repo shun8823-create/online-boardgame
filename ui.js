@@ -56,7 +56,7 @@ function showKeyword(ref) {
 const ST_WORDS = { 'やけど': 'burn', 'しもやけ': 'chill', '凍傷': 'frost', '猛毒': 'venom', '毒': 'poison', '石化': 'petrify', 'まひ': 'paralyze' };
 const stTxt = s => s.replace(/「(やけど|しもやけ|凍傷|猛毒|毒|石化|まひ)」/g, (m, w) => `<button type="button" class="kw stk" data-st="${ST_WORDS[w]}">「${w}」</button>`);
 const GLOSS_WORDS = ['超魔法耐性', '魔法耐性', '焼却', '剣士'];
-const inlKw = s => s.replace(/「(超魔法耐性|魔法耐性|焼却|剣士)」/g, (m, w) => `<button type="button" class="kw stk" data-kg="${w}">「${w}」</button>`).replace(/光属性/g, '<button type="button" class="kw stk" data-kg="光属性">光属性</button>');
+const inlKw = s => s.replace(/「([^」<]{1,12})」/g, (m, w) => (!(w in ST_WORDS) && (GLOSS_WORDS.includes(w) || (KEYWORDS.includes(w) && glossBody(w).length)) ? `<button type="button" class="kw stk" data-kg="${w}">「${w}」</button>` : m)).replace(/光属性/g, '<button type="button" class="kw stk" data-kg="光属性">光属性</button>');
 function glossBody(k) { // 説明が書いてある最初のカードから「k：…」の行を集める
   for (const id in CARDS) { const ls = CARDS[id].txt.filter(t => t.startsWith(k + '：') || t.startsWith(k + '（')).map(t => t.slice(t.indexOf('：') + 1)); if (ls.length) return ls; }
   return [];
@@ -918,7 +918,7 @@ async function startOnline() {
 (function () {
   const wrap = (obj, k, fn) => { const o = obj[k]; obj[k] = function (...a) { return fn.call(this, o, ...a); }; };
   const aiOn = who => !!ONL && !!ONL.ai && AI.is(who);
-  wrap(UI, 'ask', function (o, msg, btns, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.ask(msg, btns)) : o.call(this, msg, btns, who); });
+  wrap(UI, 'ask', function (o, msg, btns, who) { who = who == null ? G.active : who; return aiOn(who) ? Promise.resolve(AI.ask(msg, btns, who)) : o.call(this, msg, btns, who); });
   wrap(UI, 'pickBoard', function (o, opt) { const who = opt.who == null ? G.active : opt.who; return aiOn(who) ? Promise.resolve(AI.pick(opt)) : o.call(this, opt); });
   /* どのカードが何を対象にしたかを、双方の画面に出す（対象マスの強調＋上部の帯）。
      対象を選んだ時点では「保留」にしておき、SpC等の支払いも済んで効果の発動が確定した時（カードのカットイン／最初のログ）に表示する */
@@ -977,10 +977,10 @@ async function startOnline() {
   const _write = writeEv; writeEv = async function (ev) { if (ONL && ONL.ai) { pushEv(ev); return; } return _write.apply(this, arguments); };
   const _exec = execEv; execEv = async function (ev) { try { return await _exec(ev); } finally { if (ONL && ONL.ai && ONL.done) { const d = ONL.done; ONL.done = null; d(); } } };
   const _leave = leaveOnline; leaveOnline = function () { if (ONL && ONL.ai) { ONL.stop = true; ONL = null; AI.sides = new Set(); return; } return _leave.apply(this, arguments); };
-  const _start = startTurn; startTurn = async function (i) { await _start(i); if (ONL && ONL.ai && AI.is(i) && G && !G.over) setTimeout(aiTurnGo, 50); };
+  const _start = startTurn; startTurn = async function (i) { await _start(i); if (ONL && ONL.ai && AI.is(i) && G && !AI.over()) setTimeout(aiTurnGo, 50); };
 
   async function aiTurnGo() {
-    const o = ONL; if (!o || !o.ai || o.aiRun || !G || G.over || !AI.is(G.active)) return;
+    const o = ONL; if (!o || !o.ai || o.aiRun || !G || AI.over() || !AI.is(G.active)) return;
     o.aiRun = true; o.aiBusy = true;
     try {
       while (ONL === o && (UI.busy || UI.pk)) await sleep(60); // 直前のイベント処理の終了待ち

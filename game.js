@@ -1452,12 +1452,32 @@ async function endTurn() {
   return true;
 }
 
-/* ===== AI対戦：思考ルーチン（盤面の判断だけを行う。DOM・通信には触れない） ===== */
+/* ===== AI対戦：思考ルーチン =====
+   盤面の判断だけを行う（DOM・通信には触れない）。ゲームのルール・カード効果・ターン進行は変更しない。
+   考え方：
+   1. 候補手（カードの使用・能力・購入・売却・移動／攻撃）を列挙する。
+   2. 各候補を「盤面のコピー」の上で実際のエンジンで実行し（カード効果・戦闘・トラップなどが全て本物の処理になる）、
+      結果の盤面を評価関数で採点する。複数手先（カードの組み合わせ、削り→とどめ、など）はビーム探索で読む。
+   3. 評価関数は、戦力（LP・攻撃値・DP・装甲・能力・SC/SpC）、前進度、アバターの危険度（相手が次のターンに
+      アバターや味方を倒せるか）、こちらの攻撃機会、手札・貨幣ゲージ、設置物などを合計した「バランス型」。
+   読みに使うコピーでは、相手の手札・非公開の罠・山札の順番は見ない（人間と同じ条件にするため）。 */
 const AI = {
-  sides: new Set(), failed: new Set(),
+  sides: new Set(), failed: new Set(), dec: null,
+  cfg: { budget: 1200, depthMain: 3, depthAct: 4, width: [12, 6, 4, 3], variants: [7, 5], eps: 0.04 }, // budget＝1回の判断に使う最大時間（ミリ秒）
   is: who => AI.sides.has(who),
-  key: ev => ev.t + ':' + (ev.cid || ev.k || ev.uid || '') + ':' + (ev.x == null ? '' : ev.x + ',' + ev.y),
-  /* 盤面選択（UI.pickBoard の代わり）。戻り値は [[x,y],…] か null（キャンセル） */
+  key: ev => ev.t + ':' + (ev.cid || ev.k || ev.uid || '') + ':' + (ev.x == null ? '' : ev.x + ',' + ev.y) + (ev.i == null ? '' : '#' + ev.i),
+  now: () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+  over: () => !!G && (G.over === 0 || G.over === 1), // ※ G.over は勝者の席番号（先行が勝つと 0）なので、0 も「終了」として扱う
+
+  /* ---------- 選択（UI.pickBoard / UI.ask / UI.pickCards の代わり） ---------- */
+  /* 読みの最中は「何番目の選択肢を選ぶか」を探索側が指定する。実行時は、読みで選んだ手順をそのまま再現する */
+  decide(who, n) {
+    const d = AI.dec;
+    if (!d || d.me !== who || n <= 1) return 0;
+    const k = d.i++;
+    if (d.mode === 'sim') { d.rec.push(n); const w = d.choices[k]; return w != null && w < n ? w : 0; }
+    return d.counts && d.counts[k] === n && d.choices[k] != null && d.choices[k] < n ? d.choices[k] : 0;
+  },
   pick(o) {
     const a = o.who == null ? G.active : o.who, cells = o.cells || [];
     if (!cells.length) return null;
@@ -1465,69 +1485,402 @@ const AI = {
     if (o.multi) {
       if (!o.validate) return o.cancellable ? null : cells.slice(0, 2);
       const sel = [];
-      for (const e of us.slice().sort((x, y) => (x.u ? x.u.lp : 0) - (y.u ? y.u.lp : 0))) { sel.push(e.c); if (o.validate(sel)) return sel; }
+      for (const e of us.slice().sort((x, y) => (x.u ? aiUnitVal(x.u) : 0) - (y.u ? aiUnitVal(y.u) : 0))) { sel.push(e.c); if (o.validate(sel)) return sel; }
       return o.cancellable ? null : sel;
     }
-    if (o.kind === 'pay') {
-      const best = us.slice().sort((x, y) => ((y.u ? spcUsable(y.u) : 0) - (x.u ? spcUsable(x.u) : 0)) || ((x.u && isAv(x.u) ? 1 : 0) - (y.u && isAv(y.u) ? 1 : 0)))[0];
-      return [best.c];
-    }
-    if (o.kind === 'place') return [cells[Math.floor(RNG() * cells.length)]];
-    if (o.kind === 'target') {
-      const foe = us.filter(e => e.u && e.u.owner !== a), mine = us.filter(e => e.u && e.u.owner === a);
-      if (foe.length) return [foe.sort((x, y) => x.u.lp - y.u.lp)[0].c];
-      if (mine.length) return [mine.sort((x, y) => y.u.lp - x.u.lp)[0].c];
-    }
-    return [cells[0]];
+    const ranked = aiRankCells(o, a, us);
+    if (!ranked.length) return o.cancellable ? null : [cells[0]];
+    const r = ranked[AI.decide(a, ranked.length)];
+    return r ? [r] : null; // null＝キャンセル（ハンティングしない 等）
   },
-  /* 選択肢への回答（UI.ask の代わり）。基本は先頭（使う／はい）。SC消費の警告は断る */
-  ask(msg, btns) {
+  /* 選択肢への回答（UI.ask の代わり）。SC消費の警告は断る。魔法耐性は使う。それ以外は先頭（使う／はい）を基本に、探索で別案も試す */
+  ask(msg, btns, who) {
+    const a = who == null ? (G ? G.active : 0) : who;
     if (/^⚠/.test(msg)) return btns.find(b => /いいえ|やめる|キャンセル/.test(b)) || btns[btns.length - 1];
-    return btns[0];
+    if (/打ち消しますか/.test(msg)) return btns[0];
+    let order = btns.slice();
+    if (msg === HID_Q) order = [HID_A[1], HID_A[0]]; // 非公開は探索で別案として試す
+    return order[AI.decide(a, order.length)];
   },
   cards(title, prompt, cids, min, who, max) { const n = Math.min(max || min || 1, cids.length); return Array.from({ length: n }, (_, i) => i); },
-  sig() { return JSON.stringify([G.phase, G.active, G.players.map(q => [q.hand.length, q.coins, q.deck.length, q.grave.length]), U().map(u => [u.uid, u.x, u.y, u.lp, u.sc, u.spc, u.dead ? 1 : 0, u.hidden ? 1 : 0])]); },
-  /* 次の1手を決める。戻り値は execEv に渡すイベント */
-  choose() {
-    const a = G.active, p = G.players[a], F = AI.failed, okEv = ev => !F.has(AI.key(ev));
-    if (G.phase === 'main') {
-      const hand = p.hand.map((cid, i) => ({ cid, i, c: CARDS[cid] }));
-      const chars = hand.filter(e => e.c.kind === 'char' && okEv({ t: 'play', cid: e.cid })).sort((x, y) => (y.c.rank || 0) - (x.c.rank || 0));
-      if (chars.length) return { t: 'play', i: chars[0].i, cid: chars[0].cid };
-      const others = hand.filter(e => e.c.kind !== 'char' && e.cid !== 'shopTicket' && okEv({ t: 'play', cid: e.cid }));
-      if (others.length) { const e = others[Math.floor(RNG() * others.length)]; return { t: 'play', i: e.i, cid: e.cid }; }
-      if (typeof shopItems === 'function' && canBuyRight(p)) {
-        const its = shopItems().map((s, k) => ({ s, k })).filter(e => e.s && !e.s.sold && p.coins >= e.s.price && okEv({ t: 'buy', k: e.k }));
-        if (its.length) return { t: 'buy', k: its.sort((x, y) => y.s.price - x.s.price)[0].k };
-      }
-      return { t: 'toAction' };
-    }
-    if (G.phase === 'action') {
-      const forced = own(a).filter(mustMove);
-      const cand = [];
-      for (const u of (forced.length ? forced : own(a).filter(u => !isAv(u)))) {
-        for (const mv of movesFor(u)) {
-          const ev = { t: 'move', uid: u.uid, x: mv.x, y: mv.y }; if (!okEv(ev)) continue;
-          const prog = (mv.y - u.y) * fwd(a);
-          let s = prog * 2 + RNG() - (prog < 0 ? 3 : 0);
-          if (mv.type === 'attack') { const t = at(mv.x, mv.y); s += t ? (isAv(t) ? 8 : (u.lp > t.lp ? 4 : -4)) : 0; }
-          cand.push({ ev, s });
-        }
-      }
-      cand.sort((x, y) => y.s - x.s);
-      if (cand.length && (forced.length || cand[0].s > 0)) return cand[0].ev;
-    }
-    return { t: 'end' };
+  sig() { return JSON.stringify([G.phase, G.active, G.players.map(q => [q.hand.length, q.coins, q.deck.length, q.grave.length, q.freeBuy, q.sellUsed ? 1 : 0]), U().map(u => [u.uid, u.x, u.y, u.lp, u.sc, u.spc, u.rspc, u.acted, u.dead ? 1 : 0, u.hidden ? 1 : 0, u.weapon, u.armor, armorTotal(u)])]); },
+
+  /* ---------- 思考の入口 ---------- */
+  async choose() {
+    const me = G.active, F = AI.failed, t0 = AI.now(), deadline = t0 + AI.cfg.budget;
+    const stop = G.phase === 'main' ? { t: 'toAction' } : { t: 'end' };
+    const res = await aiSearch(me, deadline, F);
+    if (!res) return { ev: stop };
+    return res;
   },
   /* 自分（AI）の手番を終わりまで進める。exec(ev) はイベントを実行して完了を待つ関数 */
   async runTurn(exec, maxSteps = 80) {
     AI.failed.clear();
     for (let n = 0; n < maxSteps; n++) {
-      if (!G || G.over || !AI.is(G.active)) return;
-      const me = G.active, ev = AI.choose(), s0 = AI.sig();
-      await exec(ev);
-      if (!G || G.over || G.active !== me) return;
+      if (!G || AI.over() || !AI.is(G.active)) return;
+      const me = G.active; let d;
+      try { d = await AI.choose(); } catch (e) { console.error('AI思考エラー', e); d = { ev: G.phase === 'main' ? { t: 'toAction' } : { t: 'end' } }; }
+      const ev = d.ev, s0 = AI.sig();
+      AI.dec = d.choices ? { mode: 'real', me, choices: d.choices, counts: d.counts, i: 0, rec: [] } : null;
+      try { await exec(ev); } finally { AI.dec = null; }
+      if (!G || AI.over() || G.active !== me) return;
       if (AI.sig() === s0) { if (ev.t === 'end') return; AI.failed.add(AI.key(ev)); }
     }
   },
 };
+
+/* ===== 評価 ===== */
+const AIW_AB = { flight: 0.7, magicResist: 0.5, superResist: 0.9, regen: 0.5, superRegen: 0.9, haste: 0.6, twoActions: 0.5, assassin: 0.5, assassinate: 0.6, ambush: 0.4, counter: 0.5, petrify: 0.7, poisonTouch: 0.4, swordsman: 0.4, heroDiag: 0.3, omni: 0.3, knightCmd: 0.6, backBattle: 0.3, stealth: 0.3, berserk: -0.2, archer: 0.4, scout: 0.3, priest: 0.3, healA: 0.3, sacrifice: -0.2, wizDice: 0.3, witchEtb: 0.4, witchChill: 0.4, elemWater: 0.3, seaHand: 0.3, kingEtb: 0.3, burnAct: 0.5, moonReset: 0.4, crabGuard: 0.4, throw: 0.4, aquatic: 0.1 };
+const aiHandVal = cid => { const c = CARDS[cid]; if (!c) return 0.3; if (cid === 'shopTicket') return 0; if (c.kind === 'char') return 1 + (c.rank || 1) * 0.35; if (c.kind === 'item') return 0.9 + (c.sell || 0) * 0.08; if (c.kind === 'tech') return 0.6; return 0.8 + ((c.rank || 1) - 1) * 0.3; };
+const aiLp = u => Math.max(u.lp, baseLP(u)); // ターン終了時に回復するので、回復後のLPで強さを見る
+function aiUnitVal(u) {
+  const c = CARDS[u.cid]; if (isAv(u)) return 0;
+  let v = 1.2 + (c.rank || 1) * 0.5 + aiLp(u) / 1000 * 0.8 + Math.max(0, OP(u)) / 1000 * 1.5 + DP(u) / 1000 * 0.7 + armorTotal(u) / 1000 * 0.7;
+  for (const a of c.ab) v += AIW_AB[a] != null ? AIW_AB[a] : 0.1;
+  v += 0.12 * Math.min(u.sc + 2, baseSC(u)) + 0.2 * u.spc + 0.1 * (u.rspc || 0) + wps(u).length * 0.4;
+  for (const k in u.st) v -= u.st[k] != null && k === 'petrify' ? 2 : 0.5;
+  if (u.hidden) v += 0.3;
+  return Math.max(0.3, v);
+}
+const aiDist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+/* 片方のプレイヤーの「盤面・手札・資源」の得点 */
+function aiSideScore(s) {
+  const p = G.players[s], foeAv = own(1 - s).find(isAv); let v = 0;
+  for (const u of own(s)) {
+    if (u.dead || isAv(u)) continue;
+    const aggr = Math.min(1.3, (aiLp(u) + OP(u)) / 4000);
+    v += aiUnitVal(u) + 0.2 * (rowOf(s, u.y) - 1) * aggr;
+    if (foeAv && !u.hidden && aiLp(u) + OP(u) >= 2000) { const d = aiDist(u, foeAv) - 1; if (d < 5) v += (5 - Math.max(1, d)) * 0.35 * aggr; } // 相手アバターへの接近（圧力）
+  }
+  const av = own(s).find(isAv); if (av) v -= 0.8 * (rowOf(s, av.y) - 1) + 0.25 * (av.mvDone || 0) + 0.3 * Math.abs(av.x - 3); // アバターは奥にいる方が安全（動き回らない）
+  for (const k in G.walls) if (G.walls[k].owner === s) v += 0.5;
+  for (const k in G.traps) if (G.traps[k].owner === s) v += 1.2;
+  for (const k in G.sanctuaries) if (G.sanctuaries[k].owner === s) v += 0.4;
+  /* 手札：多すぎる手札は（出せる数に限りがあるので）価値が逓減する */
+  const hv = p.hand.filter(c => c !== 'shopTicket').map(aiHandVal).sort((a, b) => b - a);
+  hv.forEach((x, i) => { v += x * 0.55 * (i < 5 ? 1 : 0.5); });
+  /* 貨幣・購入権利：貨幣は使い道（購入）が限られるので、たまりすぎると価値が下がる。購入権利は「買いたい物が買える」時だけ価値がある */
+  const lapF = G.lap ? 0.5 : 1, rights = p.hand.filter(c => c === 'shopTicket').length + (p.freeBuy > 0 ? 1 : 0);
+  v += (0.3 * Math.min(p.coins, 8) + 0.05 * Math.max(0, p.coins - 8)) * lapF;
+  const buyable = p.coins >= 4 ? 1 : 0.35;
+  v += ((rights >= 1 ? 0.35 : 0) + (rights >= 2 ? 0.12 : 0) + (rights >= 3 ? 0.03 : 0)) * buyable * lapF;
+  /* 売却品が相手の手に渡る損失：自分が売って、まだショップに残っているカード（相手が安く買える） */
+  const opp = G.players[1 - s], oppCan = opp.freeBuy > 0 || opp.hand.includes('shopTicket');
+  for (const it of G.shopUsed || []) if (it.from === s && !it.sold && oppCan && opp.coins >= it.price) v -= 0.3 * aiHandVal(it.cid);
+  return v;
+}
+
+/* 相手が次のターンに（2回行動・ハンティングも含めて）攻撃できる先。盤面は一時的に書き換えて必ず戻す */
+function aiAttacks(e, fresh) {
+  const out = [], sv = { acted: e.acted, x: e.x, y: e.y, sc: e.sc, two: e.twoOn };
+  const add = (tgt, back, via) => { if (tgt && !tgt.dead && tgt.owner !== e.owner) out.push({ u: tgt, AV: e.lp + OP(e) + (back && abU(e, 'ambush') ? 1000 : 0), e, via }); };
+  try {
+    if (fresh) e.acted = 0;
+    if (fresh && abU(e, 'twoActions') && (e.uses.twoN || 0) < 3 && scAvail(e) >= 1 && !assaultOn(e)) e.twoOn = G.turn; // 2回行動（SC1）
+    const first = movesFor(e);
+    for (const mv of first) {
+      if (mv.type === 'attack') add(at(mv.x, mv.y), mv.back);
+      else if (actLimit(e) >= 2 || hasHunting(e)) {
+        e.x = mv.x; e.y = mv.y; e.acted = sv.acted + 1; e.sc = sv.sc - mv.cost;
+        if (actLimit(e) >= 2) for (const m2 of movesFor(e)) if (m2.type === 'attack') add(at(m2.x, m2.y), m2.back, 2);
+        if (hasHunting(e) && e.uses.hunt !== G.turn) for (const h of huntTargets(e)) add(at(h.x, h.y), h.back, 'h');
+        e.x = sv.x; e.y = sv.y; e.acted = sv.acted; e.sc = sv.sc;
+      }
+    }
+    if (hasHunting(e) && e.uses.hunt !== G.turn) for (const h of huntTargets(e)) add(at(h.x, h.y), h.back, 'h');
+  } finally { e.acted = sv.acted; e.x = sv.x; e.y = sv.y; e.sc = sv.sc; e.twoOn = sv.two; }
+  return out;
+}
+/* 攻撃値の列（弱い順に使う）で、そのキャラクターが破壊されるか。バトルの規則に合わせる：AV≥DVで勝ち（装甲があれば装甲→LPの順に受ける）、負けても AV−DP のダメージを受ける */
+function aiResolve(def, avs, cur) { // cur：現在のLPのまま（回復前）で判定する
+  let lp = cur ? def.lp : aiLp(def), arm = armorTotal(def); const dp = DP(def);
+  for (const AV of avs.slice().sort((a, b) => a - b)) {
+    const DPd = dp, DV = lp + DPd;
+    if (AV >= DV && arm <= 0) return true;
+    const dmg = Math.max(0, AV - DPd), a = Math.min(arm, dmg); arm -= a; lp -= dmg - a;
+    if (lp <= 0) return true;
+  }
+  return false;
+}
+/* 温存の判断：相手のキャラクターにダメージを与えるだけで倒しきれないカード・能力は使わない。
+   「倒しきれる」＝同じターンに、他のカード・能力のダメージや、味方のバトル（削り→とどめ）で破壊できる見込みがある場合 */
+const aiHp = u => u.lp + armorTotal(u);
+function aiChipInfo(st, rootHp) { // 相手の盤面が、元より減った（chip）／消えた（kill）か
+  return aiWith(st, () => { let chip = false, kill = false; for (const k in rootHp) { const u = G.units[k]; if (!u || u.dead) kill = true; else if (aiHp(u) < rootHp[k]) chip = true; } return { chip, kill }; });
+}
+function aiKillableNow(st, me, rootHp) { // ダメージを受けた相手を、今ある味方の攻撃で倒せるか（現在のLP・装甲のまま判定）
+  return aiWith(st, () => {
+    const by = {};
+    for (const u of own(me)) { if (u.dead || u.hidden || u.st.petrify != null) continue; for (const a of aiAttacks(u, false)) (by[a.u.uid] = by[a.u.uid] || []).push(a.AV); }
+    for (const k in by) { const tg = G.units[k]; if (tg && !tg.dead && tg.owner !== me && !isAv(tg) && rootHp[k] != null && aiHp(tg) < rootHp[k] && aiResolve(tg, by[k], true)) return true; }
+    return false;
+  });
+}
+/* 相手の次のターンの脅威（味方の損失・アバターの危険）を、点数（マイナス）にする */
+/* 山札が尽きている側は、次のドロー（ターン開始）で二周目に入る → 全キャラクターが「狂乱」（2マス移動）を得る */
+const aiLapNext = s => { const q = G.players[s]; return !G.lap && !q.deck.length && !q.reshuffled && q.grave.length > 0; };
+function aiDanger(me) {
+  const opp = 1 - me, sv = { active: G.active, turn: G.turn, lap: G.lap }, by = {}; let d = 0;
+  try {
+    G.active = opp; G.turn = sv.turn + 1;
+    if (aiLapNext(opp)) G.lap = 'x'; // 相手の次のドローで二周目に入る（先読み）
+    for (const e of own(opp)) { if (e.dead || e.hidden || e.st.petrify != null) continue; for (const a of aiAttacks(e, true)) (by[a.u.uid] = by[a.u.uid] || []).push(a.AV); }
+    /* アバターへの「2〜3ターン先」の脅威：次に動いて隣接→その次に攻撃、という接近を早めに止める */
+    const av = own(me).find(isAv);
+    if (av && !by[av.uid]) {
+      const mine = own(me).filter(u => !u.dead && !u.hidden && !isAv(u) && u.st.petrify == null);
+      for (const e of own(opp)) {
+        if (e.dead || e.hidden || isAv(e) || e.st.petrify != null) continue;
+        if (!aiResolve(av, [e.lp + OP(e)])) continue; // アバターを倒せる強さがない
+        const r = (abU(e, 'berserk') || (abU(e, 'twoActions') && scAvail(e) >= 1)) ? 2 : 1, dd = aiDist(e, av), k = Math.ceil(dd / r);
+        if (k < 2 || k > 3) continue;
+        const avs = []; for (const u of mine) { const ru = abU(u, 'berserk') ? 2 : 1; if (aiDist(u, e) <= ru + 1) avs.push(u.lp + OP(u)); }
+        const covered = avs.length && aiResolve(e, avs);
+        d -= k === 2 ? (covered ? 4 : 25) : (covered ? 1 : 6);
+      }
+      /* アバターの隣のマスが空いていると、そこへ敵が入り込める。自分のキャラクターや砂壁で埋めておくと時間を稼げる */
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = av.x + dx, ny = av.y + dy; if (nx < 0 || ny < 0 || nx > 6 || ny > 6 || at(nx, ny) || G.walls[sKey(nx, ny)]) continue;
+        let n = 0; for (const e of own(opp)) if (!e.dead && !isAv(e) && e.st.petrify == null && e.lp + OP(e) >= 2000 && Math.abs(e.x - nx) + Math.abs(e.y - ny) <= 3) n++;
+        d -= 0.35 * Math.min(2, n);
+      }
+    }
+  } finally { G.active = sv.active; G.turn = sv.turn; G.lap = sv.lap; }
+  for (const m of own(me)) {
+    const l = by[m.uid]; if (!l) continue;
+    const kill = aiResolve(m, l);
+    if (isAv(m)) d -= kill ? 500 : 3;
+    else if (kill) d -= aiUnitVal(m) * 0.75;
+    else d -= 0.15 * l.length;
+  }
+  return d;
+}
+/* こちらがこのターンにまだ使える攻撃の機会（倒せる相手がいるか）。実際に倒せば得点が確定するので、見込みは割り引く */
+function aiTactics(me) {
+  if (G.active !== me) return 0;
+  const by = {}; let t = 0;
+  for (const u of own(me)) { if (u.dead || u.hidden || u.st.petrify != null) continue; for (const a of aiAttacks(u, false)) (by[a.u.uid] = by[a.u.uid] || []).push(a.AV); }
+  for (const k in by) { const tg = G.units[k]; if (!tg || tg.dead || tg.owner === me) continue; if (aiResolve(tg, by[k])) t += isAv(tg) ? 300 : aiUnitVal(tg) * 0.5; }
+  return t;
+}
+/* 次の自分のターンに攻撃できる見込み（今ターンもう行動し終えたキャラクターの、動いた後の位置から）。敵アバターに届く配置・自分の二周目突入の直前の配置を評価する */
+function aiPotential(me) {
+  const foeAv = own(1 - me).find(isAv); if (!foeAv) return 0;
+  const sv = { active: G.active, turn: G.turn, lap: G.lap }, by = {}; let t = 0;
+  try {
+    G.active = me; G.turn = sv.turn + (sv.active === me ? 2 : 1);
+    if (aiLapNext(me)) G.lap = 'x'; // 自分の次のドローで二周目：狂乱で2マス動ける
+    for (const u of own(me)) {
+      if (u.dead || u.hidden || u.st.petrify != null || isAv(u)) continue;
+      if (sv.active === me && !(u.acted > 0)) continue; // まだ動いていないキャラは、今ターンの攻撃機会（aiTactics）として数える
+      if (aiDist(u, foeAv) > 4) continue;
+      for (const a of aiAttacks(u, true)) (by[a.u.uid] = by[a.u.uid] || []).push(a.AV);
+    }
+  } finally { G.active = sv.active; G.turn = sv.turn; G.lap = sv.lap; }
+  for (const k in by) { const tg = G.units[k]; if (!tg || tg.dead || tg.owner === me) continue; if (aiResolve(tg, by[k])) t += isAv(tg) ? 40 : aiUnitVal(tg) * 0.2; }
+  return t;
+}
+function aiEval(me) {
+  if (G.over === 0 || G.over === 1) return G.over === me ? 1e6 : -1e6;
+  return aiSideScore(me) - 1.12 * aiSideScore(1 - me) + aiDanger(me) + aiTactics(me) + aiPotential(me);
+}
+
+/* ===== 選択肢の並べ替え（先頭が既定の選択） ===== */
+function aiRankCells(o, who, us) {
+  const foe = us.filter(e => e.u && e.u.owner !== who), mine = us.filter(e => e.u && e.u.owner === who), empty = us.filter(e => !e.u);
+  const byVal = (l, dir) => l.slice().sort((x, y) => dir * (aiUnitVal(y.u) - aiUnitVal(x.u)));
+  let r;
+  if (o.kind === 'pay') {
+    const need = +((/SpC(\d+)/.exec(o.prompt || '') || [])[1]) || 1;
+    r = us.slice().sort((x, y) => { const sx = x.u ? (x.u.spc >= need ? 0 : 10) + (isAv(x.u) ? -2 : 0) + aiUnitVal(x.u) * 0.2 - x.u.spc * 0.3 : 99, sy = y.u ? (y.u.spc >= need ? 0 : 10) + (isAv(y.u) ? -2 : 0) + aiUnitVal(y.u) * 0.2 - y.u.spc * 0.3 : 99; return sx - sy; });
+  } else if (o.kind === 'place') {
+    r = us.slice().sort((x, y) => (Math.abs(x.c[0] - 3) + Math.abs(rowOf(who, x.c[1]) - 1) * 0.6) - (Math.abs(y.c[0] - 3) + Math.abs(rowOf(who, y.c[1]) - 1) * 0.6));
+  } else if (o.kind === 'attack') {
+    r = us.slice().sort((x, y) => (y.u ? aiUnitVal(y.u) : 0) - (x.u ? aiUnitVal(x.u) : 0));
+  } else {
+    const harm = ['petrifyRay', 'spark', 'fireball', 'freezeWind', 'holySmite', 'seaRoar', 'blizzard', 'redDragonBreath', 'stoneThrow', 'chaosHand', 'windSlash'].includes(G.curSrc) || /ダメージ|相手/.test(o.prompt || '') && !/自分/.test(o.prompt || '');
+    const fl = byVal(foe, 1), ml = byVal(mine, 1), first = harm ? fl : ml, second = harm ? ml : fl;
+    r = []; for (let i = 0; i < Math.max(first.length, second.length); i++) { if (first[i]) r.push(first[i]); if (second[i] && i < 2) r.push(second[i]); }
+    r = r.concat(second.slice(2), empty);
+  }
+  const out = r.map(e => e.c);
+  if (o.cancellable && o.kind === 'attack') out.push(null);
+  return out;
+}
+
+/* ===== 盤面のコピーと、コピーの上での実行（本物のエンジンをそのまま使う） ===== */
+function aiClone(g, me) {
+  const c = JSON.parse(JSON.stringify(g, (k, v) => (k === 'log' ? [] : v)));
+  for (const p of c.players) p.deck = shuffle(p.deck);
+  const op = c.players[1 - me]; op.hand = op.hand.map(() => 'shopTicket'); // 相手の手札は見ない（枚数だけ）
+  for (const k of Object.keys(c.traps || {})) if (c.traps[k].owner !== me && c.traps[k].hidden) delete c.traps[k]; // 相手の非公開の罠は見えない
+  return c;
+}
+async function aiRun(state, me, ev, choices, fn) {
+  const sv = { G, RNG, UIDC, ui: {} };
+  const dec = { mode: 'sim', me, choices: choices || [], i: 0, rec: [] };
+  let sd = 1234567 + ((state.turn || 0) * 977);
+  RNG = () => { sd = (sd + 0x6D2B79F5) | 0; let t = Math.imul(sd ^ (sd >>> 15), 1 | sd); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  for (const k of Object.keys(UI)) if (typeof UI[k] === 'function') { sv.ui[k] = UI[k]; UI[k] = async () => { }; }
+  const savedDec = AI.dec; AI.dec = dec;
+  UI.ask = async (msg, btns, who) => { who = who == null ? G.active : who; return who === me ? AI.ask(msg, btns, who) : (/打ち消しますか/.test(msg) ? btns[0] : btns[0]); };
+  UI.confirm = async (msg, who) => (await UI.ask(msg, ['はい', 'いいえ'], who)) === 'はい';
+  UI.pickBoard = async o => { const who = o.who == null ? G.active : o.who; return AI.pick(o.who == null ? Object.assign({}, o, { who }) : o); };
+  UI.pickCard = async (t, p, cids) => cids[0];
+  UI.pickCards = async (...a) => AI.cards(...a);
+  G = state;
+  try { return await fn(dec); }
+  finally { G = sv.G; RNG = sv.RNG; UIDC = sv.UIDC; for (const k in sv.ui) UI[k] = sv.ui[k]; AI.dec = savedDec; }
+}
+async function aiExec(ev) {
+  const u = ev.uid != null ? G.units[ev.uid] : null;
+  switch (ev.t) {
+    case 'play': await playHand(ev.i); break;
+    case 'sell': sellCard(ev.i); break;
+    case 'buy': buyShop(ev.k); break;
+    case 'move': { const mv = u && movesFor(u).find(m => m.x === ev.x && m.y === ev.y); if (mv) await doMove(u, mv); break; }
+    case 'throw': if (u) await monkeyThrow(u); break;
+    case 'angelFetch': if (u) await angelFetchAct(u); break;
+    case 'frenzyGet': if (u) await frenzyGetAct(u); break;
+    case 'priest': if (u) await priestAct(u); break;
+    case 'twoAct': if (u) await twoActStart(u); break;
+    case 'moon': if (u) await moonReset(u); break;
+    case 'reveal': if (u) await revealUnit(u); break;
+    case 'burn': if (u) await burnStart(u); break;
+    case 'flame': if (u) await flameStart(u); break;
+    case 'archer': if (u) await archerShot(u); break;
+    case 'scout': if (u) await scoutWatch(u); break;
+    case 'toAction': if (G.phase === 'main') G.phase = 'action'; break;
+  }
+  if (typeof flushBreeze === 'function') await flushBreeze();
+  if (!AI.over()) await sanctZeroScan();
+}
+/* state の上で ev を実行し、{state, counts, changed} を返す（state 自体は壊さず、コピーに対して実行する） */
+async function aiSim(state, me, ev, choices) {
+  const copy = JSON.parse(JSON.stringify(state)), sig0 = aiSigOf(copy);
+  return aiRun(copy, me, ev, choices, async dec => {
+    try { await aiExec(ev); } catch (e) { return { state: copy, counts: dec.rec, changed: false, err: e }; }
+    return { state: copy, counts: dec.rec, changed: aiSigOf(G) !== sig0 };
+  });
+}
+function aiSigOf(g) { const sv = G; G = g; try { return AI.sig(); } finally { G = sv; } }
+function aiWith(state, fn) { const sv = G; G = state; try { return fn(); } finally { G = sv; } }
+/* 評価（盤面を差し替えて計算する） */
+const aiScore = (state, me) => aiWith(state, () => aiEval(me));
+
+/* ===== 候補手の列挙 ===== */
+function aiGen(state, me, F, deep) {
+  return aiWith(state, () => {
+    const p = G.players[me], out = [], okEv = ev => !F.has(AI.key(ev));
+    if (G.phase === 'main') {
+      const seen = new Set();
+      p.hand.forEach((cid, i) => {
+        if (cid === 'shopTicket' || seen.has('p' + cid)) return;
+        const c = CARDS[cid];
+        if (c.kind !== 'char') { const A = ACT[cid]; if (!A || (A.can && A.can(p))) return; }
+        seen.add('p' + cid); const ev = { t: 'play', i, cid }; if (okEv(ev)) out.push(ev);
+      });
+      if (canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
+      if (!p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid)) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
+      for (const u of own(me)) {
+        if (u.dead || isAv(u)) continue;
+        const ma = mainAbility(u); if (ma && !(ma.t === 'twoAct')) { const ev = { t: ma.t, uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        if (u.hidden && !u.sanct) { const ev = { t: 'reveal', uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        if (hasW(u, 'flameSword') && !u.flameUsed) { const ev = { t: 'flame', uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        if (abU(u, 'archer') && !u.hidden) { const ev = { t: 'archer', uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        if (abU(u, 'scout') && !u.hidden) { const ev = { t: 'scout', uid: u.uid }; if (okEv(ev)) out.push(ev); }
+      }
+      return { evs: out, forced: false };
+    }
+    const forced = own(me).filter(mustMove), pool = forced.length ? forced : own(me), mv = [];
+    for (const u of pool) { if (u.dead) continue; for (const m of movesFor(u)) { const ev = { t: 'move', uid: u.uid, x: m.x, y: m.y }; if (okEv(ev)) mv.push({ ev, atk: m.type === 'attack', prog: (m.y - u.y) * fwd(me), av: isAv(u) }); } }
+    if (deep && mv.length > 10) { // 深い読みでは、攻撃と前進の有望な手に絞る
+      const atk = mv.filter(m => m.atk), rest = mv.filter(m => !m.atk).sort((a, b) => b.prog - a.prog).slice(0, 6);
+      return { evs: atk.concat(rest).map(m => m.ev), forced: forced.length > 0 };
+    }
+    return { evs: mv.map(m => m.ev), forced: forced.length > 0 };
+  });
+}
+
+/* ===== 探索 ===== */
+/* メインステップの終わりの評価：その後のアクションステップで1手動かした場合の最良の評価値（突撃司令・闘争心など、動きを助けるカードの価値を測る） */
+async function aiQuiet(state, me, F, deadline) {
+  const r = await aiSim(state, me, { t: 'toAction' }, []); if (r.err) return -Infinity;
+  let best = aiScore(r.state, me); const g = aiGen(r.state, me, F, true);
+  for (const ev of g.evs) { if (AI.now() > deadline) break; const m = await aiSim(r.state, me, ev, []); if (m.err || !m.changed) continue; best = Math.max(best, aiScore(m.state, me)); }
+  return best;
+}
+const aiYield = () => new Promise(r => setTimeout(r, 0));
+async function aiSearch(me, deadline, F) {
+  const cfg = AI.cfg, root = aiClone(G, me), isMain = G.phase === 'main';
+  const v0 = aiScore(root, me), top = aiGen(root, me, F, false);
+  if (!top.evs.length) return null;
+  let lastYield = AI.now();
+  const tick = async () => { if (AI.now() - lastYield > 40) { await aiYield(); lastYield = AI.now(); } };
+  const nodes = [], rootHp = aiWith(root, () => { const m = {}; for (const e of own(1 - me)) if (!e.dead && !isAv(e)) m[e.uid] = aiHp(e); return m; });
+  const okSt = st => { const c = aiChipInfo(st, rootHp); return c.kill || (c.chip && aiKillableNow(st, me, rootHp)); };
+  const mkNode = (ev, choices, r) => { const c = isMain ? aiChipInfo(r.state, rootHp) : { chip: false, kill: false }; return { ev, choices, counts: r.counts, state: r.state, v: aiScore(r.state, me), gate: c.chip && !c.kill, ok: false }; };
+  /* 第1手：既定の選択に加えて、最初の2つの選択（対象・配置・SpCの支払い・非公開にするか等）の別案も試す */
+  for (const ev of top.evs) {
+    if (AI.now() > deadline && nodes.length) break;
+    await tick();
+    const r0 = await aiSim(root, me, ev, []);
+    if (r0.err) { F.add(AI.key(ev)); continue; }
+    if (!r0.changed) { F.add(AI.key(ev)); continue; }
+    nodes.push(mkNode(ev, [], r0));
+    const n0 = r0.counts[0] || 0, n1 = r0.counts[1] || 0;
+    for (let a = 1; a < Math.min(n0, cfg.variants[0]); a++) {
+      if (AI.now() > deadline) break;
+      const r = await aiSim(root, me, ev, [a]); if (r.err || !r.changed) continue;
+      nodes.push(mkNode(ev, [a], r));
+    }
+    for (let b = 1; b < Math.min(n1, cfg.variants[1]); b++) {
+      if (AI.now() > deadline) break;
+      const r = await aiSim(root, me, ev, [0, b]); if (r.err || !r.changed) continue;
+      nodes.push(mkNode(ev, [0, b], r));
+    }
+  }
+  if (!nodes.length) return null;
+  nodes.sort((a, b) => b.v - a.v);
+  /* 第2手以降：上位の手の先を読み、「その手を含む最良の手順」の価値を求める（削り→とどめ、カードの組み合わせ） */
+  const maxDepth = isMain ? cfg.depthMain : cfg.depthAct;
+  const deepen = async (node, depth, root0) => {
+    let best = node.v; root0 = root0 || node;
+    if (depth >= maxDepth || AI.now() > deadline || AI.over() === true) return best;
+    const g = aiGen(node.state, me, F, true);
+    const kids = [];
+    for (const ev of g.evs) {
+      if (AI.now() > deadline) break;
+      await tick();
+      const r = await aiSim(node.state, me, ev, []); if (r.err || !r.changed) continue;
+      kids.push({ state: r.state, v: aiScore(r.state, me) });
+      if (root0.gate && !root0.ok && okSt(r.state)) root0.ok = true; // この手のダメージで、同じターンに倒しきれる手順が見つかった
+    }
+    kids.sort((a, b) => b.v - a.v);
+    for (const k of kids.slice(0, cfg.width[Math.min(depth, cfg.width.length - 1)] >> 1 || 1)) {
+      const sub = await deepen(k, depth + 1, root0);
+      best = Math.max(best, sub);
+    }
+    if (kids.length) best = Math.max(best, kids[0].v);
+    return best;
+  };
+  const W = Math.min(nodes.length, cfg.width[0]);
+  for (const n of nodes) if (n.gate && okSt(n.state)) n.ok = true;
+  for (let i = 0; i < W; i++) { nodes[i].seq = await deepen(nodes[i], 1); }
+  for (let i = W; i < nodes.length; i++) nodes[i].seq = nodes[i].v;
+  /* メインステップ：上位の手は、その後の動き（アクションステップの1手）まで含めて評価する。何もしない場合も同じ基準で比べる */
+  let vBase = v0;
+  if (isMain) {
+    const qd = deadline + 250;
+    vBase = Math.max(v0, await aiQuiet(root, me, F, qd));
+    nodes.sort((a, b) => Math.max(b.seq, b.v) - Math.max(a.seq, a.v));
+    for (const n of nodes.slice(0, 5)) { if (n.gate && !n.ok) continue; const q = await aiQuiet(n.state, me, F, qd); n.seq = Math.max(n.seq, q); }
+  }
+  for (const n of nodes) if (n.gate && !n.ok) { n.seq = -1e9; n.v = -1e9; } // 倒しきれないダメージだけの手は使わず、温存する
+  const score = n => Math.max(n.seq, n.v), tb = n => score(n) + 0.01 * n.v;
+  nodes.sort((a, b) => tb(b) - tb(a));
+  const forced = top.forced, best = nodes[0];
+  if (AI.debug) AI.debug({ v0, nodes: nodes.slice(0, 6).map(n => ({ ev: n.ev, ch: n.choices, v: n.v, seq: n.seq })), forced });
+  if (!forced && score(best) <= vBase + cfg.eps) return null; // 何もしない方が良い（フェーズを進める／ターンを終える）
+  return { ev: best.ev, choices: best.choices, counts: best.counts };
+}
