@@ -466,3 +466,15 @@ html{-webkit-text-size-adjust:100%}
 .turnbar .badge{white-space:nowrap}
 .turnbar .phasebadge{display:inline-block;min-width:9.5em;text-align:center;box-sizing:border-box}
 .turnbar{min-height:44px}
+
+/* 相手のR2カードボタンは専用の1行に置く（他の表示の折り返しを変えない＝画面が動かない） */
+.foer2row{display:flex;justify-content:flex-end;margin:2px 0}
+
+/* ターン終了ボタンは青 */
+.btn.endturn{background:linear-gradient(#4f8fe0,#2a5fae);color:#fff;border-color:#8fbdf5;font-weight:700}
+.btn.endturn:disabled{background:linear-gradient(#4f8fe0,#2a5fae)}
+
+/* 簡略カードは縦幅をそろえる（--smh は fitSmallCards が全カードの最大値から設定）。余った高さは下側に回す */
+.smmeasure .card.sm{zoom:1!important;height:auto!important;min-height:0!important}
+.card.sm{min-height:var(--smh,0px);box-sizing:border-box}
+.card.sm .c-stats{margin-top:auto}

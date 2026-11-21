@@ -1799,7 +1799,11 @@ function aiGen(state, me, F, deep) {
         }
         const ev = { t: 'play', i, cid }; if (okEv(ev)) out.push(ev);
       });
-      if (coachAI() && p.deck.length > 3) { const k = out.find(e => e.t === 'play' && e.cid === 'signpost'); if (k) return { evs: [k], forced: false }; } // ドロー効果のカードは先に使う
+      if (coachAI() && p.deck.length > 3) { // ドロー効果のカード（道標・ゴブリンの笛）は先に使う
+    const gobAvail = p.deck.concat(p.grave).some(isGobCard); // 笛は、デッキか墓地に回収できるゴブリン系カードがある時だけ
+    const k = out.find(e => e.t === 'play' && e.cid === 'signpost') || (gobAvail && out.find(e => e.t === 'play' && e.cid === 'gobFlute'));
+    if (k) return { evs: [k], forced: false };
+  }
       if (!noShop() && canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
       if (!noShop() && !p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid) && !coachAI()) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
       for (const u of own(me)) {

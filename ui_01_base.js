@@ -102,3 +102,17 @@ function filterBar(f, scope) {
   return `<div class="bar">${sel('kind', [['all', 'すべての種類'], ['char', 'キャラクター'], ['spell', 'スペル'], ['item', 'アイテム'], ['tech', 'テクニック']])}${sel('rank', [['all', 'すべてのランク'], ['1', 'ランク1'], ['2', 'ランク2'], ['3', 'ランク3']])}${sel('race', [['all', 'すべての種族'], ...RACES.map(r => [r, r])])}${sel('attr', [['all', 'すべての属性'], ...ATTRS.map(a => [a, a + '属性'])])}<input type="search" placeholder="名前・能力で検索" value="${esc(f.q)}" data-in="${scope}.q"></div>`;
 }
 
+
+/* 簡略表示（手札・デッキ構築・一覧など）のカードの縦幅を、全カードのうち最も縦に長いものに揃える。横幅（190px）は共通 */
+function fitSmallCards() {
+  try {
+    const box = document.createElement('div'); box.className = 'smmeasure';
+    box.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+    box.innerHTML = Object.keys(CARDS).map(cid => cardHTML(cid, { cls: 'sm' })).join('');
+    document.body.appendChild(box);
+    let mx = 0; box.querySelectorAll('.card.sm').forEach(n => { mx = Math.max(mx, n.offsetHeight); });
+    box.remove();
+    if (mx > 0) document.documentElement.style.setProperty('--smh', mx + 'px');
+  } catch (e) { }
+}
+window.addEventListener('load', () => { fitSmallCards(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSmallCards); });

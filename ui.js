@@ -102,6 +102,20 @@ function filterBar(f, scope) {
   return `<div class="bar">${sel('kind', [['all', 'すべての種類'], ['char', 'キャラクター'], ['spell', 'スペル'], ['item', 'アイテム'], ['tech', 'テクニック']])}${sel('rank', [['all', 'すべてのランク'], ['1', 'ランク1'], ['2', 'ランク2'], ['3', 'ランク3']])}${sel('race', [['all', 'すべての種族'], ...RACES.map(r => [r, r])])}${sel('attr', [['all', 'すべての属性'], ...ATTRS.map(a => [a, a + '属性'])])}<input type="search" placeholder="名前・能力で検索" value="${esc(f.q)}" data-in="${scope}.q"></div>`;
 }
 
+
+/* 簡略表示（手札・デッキ構築・一覧など）のカードの縦幅を、全カードのうち最も縦に長いものに揃える。横幅（190px）は共通 */
+function fitSmallCards() {
+  try {
+    const box = document.createElement('div'); box.className = 'smmeasure';
+    box.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none';
+    box.innerHTML = Object.keys(CARDS).map(cid => cardHTML(cid, { cls: 'sm' })).join('');
+    document.body.appendChild(box);
+    let mx = 0; box.querySelectorAll('.card.sm').forEach(n => { mx = Math.max(mx, n.offsetHeight); });
+    box.remove();
+    if (mx > 0) document.documentElement.style.setProperty('--smh', mx + 'px');
+  } catch (e) { }
+}
+window.addEventListener('load', () => { fitSmallCards(); if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSmallCards); });
 /* ---------- 画面1: カード一覧 ---------- */
 function renderCards() {
   $('#app').innerHTML = `<h2>カード一覧</h2><p class="note">カードをクリックで詳細。長押し（右クリック）でも全体を表示できます。能力・ステータスは各カードに記載。「」つきの効果はタップで詳しい解説が見られます。</p>${filterBar(F, 'F')}<div class="grid" id="grid"></div>`;
@@ -404,9 +418,9 @@ function renderBattle() {
   } else if (UI.sel && G.units[UI.sel] && !UI.pk) { const su = G.units[UI.sel], sc = CARDS[su.cid]; selp = MOB() ? `<div class="panel strip"><b class="serif">${esc(sc.name.replace(/（.*）/, ''))}</b><span class="badge">${coord(su.x, su.y)}</span><span class="st-LP">LP${su.lp}</span><span class="st-OP">OP${OP(su)}</span><span class="st-DP">DP${DP(su)}</span><span class="st-SC">SC${su.sc}</span><span class="st-SpC">SpC${su.spc}</span>${statusList(su).map(k => STATUS_ICON[k]).join('')}${su.acted ? '<span class="note">行動済</span>' : ''}<button class="btn sm" data-act="udetail" data-uid="${su.uid}">詳細</button></div>` : `<div class="panel selinfo">${unitDetail(su)}</div>`; }
   if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : (ONL.ai ? '【AIの番】' : '【相手の番】')) : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge phasebadge">${phaseName}</span>
-  <button class="btn main" data-act="toAction" ${G.phase === 'main' && mineTurn ? '' : 'disabled'}>アクションステップへ</button><button class="btn" data-act="endTurn" ${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '' : 'disabled'}>ターン終了</button>
-  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="foeR2">相手のR2カード</button><button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button><button class="btn danger" data-act="giveup" ${mineTurn ? '' : 'disabled'}>投了</button></div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
-  <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>　<b class="spcount">アバター${avMv(o.i)}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラ狂乱・移動SC-1（アバター除く）</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
+  <button class="btn main" data-act="toAction" ${G.phase === 'main' && mineTurn ? '' : 'disabled'}>アクションステップへ</button><button class="btn endturn" data-act="endTurn" ${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '' : 'disabled'}>ターン終了</button>
+  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button><button class="btn danger" data-act="giveup" ${mineTurn ? '' : 'disabled'}>投了</button></div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
+  <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>　<b class="spcount">アバター${avMv(o.i)}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラ狂乱・移動SC-1（アバター除く）</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div><div class="foer2row"><button class="btn sm" data-act="foeR2">🔍 相手のR2カード</button></div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>${zoneLeg ? `<div class="zlegs">${zoneLeg}</div>` : ''}
   <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b>　<b class="spcount">アバター${avMv(p.i)}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
   <div class="bside"><div id="hovp"></div>${pkp}${selp}<div class="panel desk-only logp"><b class="serif">戦況ログ</b><div class="log">${G.log.slice(0, 60).map(l => `<div>${esc(l)}</div>`).join('')}</div></div>${pcv ? handPC : ''}</div>
