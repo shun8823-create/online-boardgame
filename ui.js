@@ -405,7 +405,7 @@ function renderBattle() {
   if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
   $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : (ONL.ai ? '【AIの番】' : '【相手の番】')) : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge phasebadge">${phaseName}</span>
   <button class="btn main" data-act="toAction" ${G.phase === 'main' && mineTurn ? '' : 'disabled'}>アクションステップへ</button><button class="btn" data-act="endTurn" ${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '' : 'disabled'}>ターン終了</button>
-  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button><button class="btn danger" data-act="giveup" ${mineTurn ? '' : 'disabled'}>投了</button></div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
+  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="foeR2">相手のR2カード</button><button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button><button class="btn danger" data-act="giveup" ${mineTurn ? '' : 'disabled'}>投了</button></div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
   <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>　<b class="spcount">アバター${avMv(o.i)}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラ狂乱・移動SC-1（アバター除く）</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>${zoneLeg ? `<div class="zlegs">${zoneLeg}</div>` : ''}
   <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b>　<b class="spcount">アバター${avMv(p.i)}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
@@ -539,6 +539,12 @@ function showHandSheet(i) {
   el.innerHTML = `<div class="mbox"><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="sheetPlay" data-i="${i}" ${can ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sheetSell" data-i="${i}" ${can && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<button class="btn" data-act="closeModal">閉じる</button></div>${can ? '' : `<div class="note" style="text-align:center">${!mineTurn ? '相手のターンです' : 'メインステップのみ使用できます'}</div>`}</div>`;
   el.style.display = 'flex';
 }
+function showFoeR2() { // 相手デッキのランク2のカード（キャラ以外）。手札にあるかどうかは分からない
+  const o = G.players[1 - VW()], cnt = {}; o.deckList.forEach(c => { if (CARDS[c].kind !== 'char' && CARDS[c].rank === 2) cnt[c] = (cnt[c] || 0) + 1; });
+  const ids = Object.keys(cnt), el = $('#modal');
+  el.innerHTML = `<div class="mbox"><h3>${esc(o.name)}のデッキのランク2カード（キャラ以外）</h3><p class="note">デッキに入っているカードの一覧です。いま手札にあるか、山札・墓地のどこにあるかは分かりません。</p><div class="grid">${ids.map(c => `<div style="position:relative">${cardHTML(c, { cls: 'sm' })}<b class="badge" style="position:absolute;right:2px;top:2px">×${cnt[c]}</b></div>`).join('') || '<p class="note">キャラ以外のランク2カードは入っていません</p>'}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+}
 function showGrave(i) {
   const g = G.players[i].grave, el = $('#modal');
   el.innerHTML = `<div class="mbox"><h3>${G.players[i].name}の墓地（${g.length}枚）</h3><div class="grid">${g.map(c => cardHTML(c, { cls: 'sm' })).join('') || '<p class="note">墓地は空です</p>'}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
@@ -638,6 +644,7 @@ function onClick(e) {
     case 'toAction': UI.selHand = null; doAct({ t: 'toAction' }); break;
     case 'endTurn': { const f = own(VW()).filter(mustMove); if (f.length) { UI.toast('必ず移動しなければならないキャラクターがいます：' + f.map(nm).join('、')); break; } doAct({ t: 'end' }); } break;
     case 'grave': showGrave(+el.dataset.i); break;
+    case 'foeR2': showFoeR2(); break;
     case 'zone': { const k = el.dataset.z, off = zOnNow(k); Store.set('bgZone_' + k, off ? '0' : '1'); UI['zoneOff_' + k] = off; UI.render(); break; }
     case 'hpage': UI.handPage = (UI.handPage || 0) + (+el.dataset.d); UI.render(); break;
     case 'togHand': UI.hideHand = !UI.hideHand; if (UI.hideHand) UI.selHand = null; UI.render(); break;

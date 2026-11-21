@@ -1690,11 +1690,19 @@ function aiEval(me) {
   return aiSideScore(me) - 1.12 * aiSideScore(1 - me) + aiDanger(me) + aiTactics(me) + aiPotential(me);
 }
 
+/* 形質変化は「自分のキャラ／アバターの進む向きを変える」カード。前が壁や味方で塞がれていて、斜め前に空きがある時だけ有効（AIはそれ以外では使わない） */
+const shiftUseful = u => {
+  if (!u || u.dead || isAngel(u) || u.attach.some(a => a.cid === 'shiftForm') || abC(u.cid, 'noEquipSp')) return false;
+  const dy = fwd(u.owner), free = (x, y) => inB(x, y) && !at(x, y) && !wallAt(x, y), fr = at(u.x, u.y + dy);
+  const blocked = !inB(u.x, u.y + dy) || !!wallAt(u.x, u.y + dy) || (fr && fr.owner === u.owner);
+  return !!blocked && (free(u.x - 1, u.y + dy) || free(u.x + 1, u.y + dy));
+};
 /* ===== 選択肢の並べ替え（先頭が既定の選択） ===== */
 function aiRankCells(o, who, us) {
   const foe = us.filter(e => e.u && e.u.owner !== who), mine = us.filter(e => e.u && e.u.owner === who), empty = us.filter(e => !e.u);
   const byVal = (l, dir) => l.slice().sort((x, y) => dir * (aiUnitVal(y.u) - aiUnitVal(x.u)));
   let r;
+  if (G.curSrc === 'shiftForm') { const ok = mine.filter(e => shiftUseful(e.u)); return byVal(ok, 1).map(e => e.c); } // 形質変化：自分の、進路が塞がれているキャラだけ
   if (o.kind === 'pay') {
     const need = +((/SpC(\d+)/.exec(o.prompt || '') || [])[1]) || 1;
     r = us.slice().sort((x, y) => { const sx = x.u ? (x.u.spc >= need ? 0 : 10) + (isAv(x.u) ? -2 : 0) + aiUnitVal(x.u) * 0.2 - x.u.spc * 0.3 : 99, sy = y.u ? (y.u.spc >= need ? 0 : 10) + (isAv(y.u) ? -2 : 0) + aiUnitVal(y.u) * 0.2 - y.u.spc * 0.3 : 99; return sx - sy; });
@@ -1784,6 +1792,7 @@ function aiGen(state, me, F, deep) {
         const c = CARDS[cid];
         if (c.kind !== 'char') { const A = ACT[cid]; if (!A || (A.can && A.can(p))) return; }
         seen.add('p' + cid);
+        if (cid === 'shiftForm' && !own(me).some(shiftUseful)) return;
         if (coachAI() && cid === 'sandWall') { // 砂壁：敵が自分のアバターの近く（3マス以内）に来てから。早く置くと崩れて意味がない
           const av = own(me).find(isAv), near = av && G.units && Object.values(G.units).some(e => !e.dead && !e.hidden && e.owner !== me && !isAv(e) && !abU(e, 'flight') && Math.max(Math.abs(e.x - av.x), Math.abs(e.y - av.y)) <= 3);
           if (!near) return;

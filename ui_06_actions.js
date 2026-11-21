@@ -91,6 +91,7 @@ function onClick(e) {
     case 'toAction': UI.selHand = null; doAct({ t: 'toAction' }); break;
     case 'endTurn': { const f = own(VW()).filter(mustMove); if (f.length) { UI.toast('必ず移動しなければならないキャラクターがいます：' + f.map(nm).join('、')); break; } doAct({ t: 'end' }); } break;
     case 'grave': showGrave(+el.dataset.i); break;
+    case 'foeR2': showFoeR2(); break;
     case 'zone': { const k = el.dataset.z, off = zOnNow(k); Store.set('bgZone_' + k, off ? '0' : '1'); UI['zoneOff_' + k] = off; UI.render(); break; }
     case 'hpage': UI.handPage = (UI.handPage || 0) + (+el.dataset.d); UI.render(); break;
     case 'togHand': UI.hideHand = !UI.hideHand; if (UI.hideHand) UI.selHand = null; UI.render(); break;

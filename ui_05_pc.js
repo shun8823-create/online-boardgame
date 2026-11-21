@@ -119,6 +119,12 @@ function showHandSheet(i) {
   el.innerHTML = `<div class="mbox"><div style="display:flex;justify-content:center">${cardHTML(cid, { cls: 'full lg' })}</div><div class="bar" style="justify-content:center"><button class="btn main" data-act="sheetPlay" data-i="${i}" ${can ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sheetSell" data-i="${i}" ${can && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<button class="btn" data-act="closeModal">閉じる</button></div>${can ? '' : `<div class="note" style="text-align:center">${!mineTurn ? '相手のターンです' : 'メインステップのみ使用できます'}</div>`}</div>`;
   el.style.display = 'flex';
 }
+function showFoeR2() { // 相手デッキのランク2のカード（キャラ以外）。手札にあるかどうかは分からない
+  const o = G.players[1 - VW()], cnt = {}; o.deckList.forEach(c => { if (CARDS[c].kind !== 'char' && CARDS[c].rank === 2) cnt[c] = (cnt[c] || 0) + 1; });
+  const ids = Object.keys(cnt), el = $('#modal');
+  el.innerHTML = `<div class="mbox"><h3>${esc(o.name)}のデッキのランク2カード（キャラ以外）</h3><p class="note">デッキに入っているカードの一覧です。いま手札にあるか、山札・墓地のどこにあるかは分かりません。</p><div class="grid">${ids.map(c => `<div style="position:relative">${cardHTML(c, { cls: 'sm' })}<b class="badge" style="position:absolute;right:2px;top:2px">×${cnt[c]}</b></div>`).join('') || '<p class="note">キャラ以外のランク2カードは入っていません</p>'}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
+  el.style.display = 'flex';
+}
 function showGrave(i) {
   const g = G.players[i].grave, el = $('#modal');
   el.innerHTML = `<div class="mbox"><h3>${G.players[i].name}の墓地（${g.length}枚）</h3><div class="grid">${g.map(c => cardHTML(c, { cls: 'sm' })).join('') || '<p class="note">墓地は空です</p>'}</div><div class="bar" style="justify-content:flex-end"><button class="btn main" data-act="closeModal">閉じる</button></div></div>`;
