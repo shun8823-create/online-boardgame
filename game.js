@@ -960,7 +960,9 @@ const potion = (f) => async function (p, cid) {
   f(t);
   return true;
 };
-const tkAct = (cid, key, label, name) => ({ can: () => (allChars().length ? null : '対象にできるキャラクターがいません'), async run(p) {
+const TK_KEY = {}; // 奥義カードID → 付与される効果のキー（発狂→frenzy など）
+const tkHas = (u, k) => !!(u.tk && u.tk[k] && u.tk[k].includes(G.players[u.owner].count + 1)); // すでに「次の持ち主のターン」に有効
+const tkAct = (cid, key, label, name) => (TK_KEY[cid] = key, { can: () => (allChars().length ? null : '対象にできるキャラクターがいません'), async run(p) {
   const t = await pickUnit(allChars(), `${name}の対象を選択（次の${'そのキャラクターの持ち主の'}ターンの間「${label}」）`); if (!t) return false;
   await UI.cutIn(cid); { t.tk = t.tk || {}; const nx = G.players[t.owner].count + 1; t.tk[key] = (t.tk[key] || []).filter(n => n !== nx).concat(nx); } log(`${name}：${lnm(t)}は次の${G.players[t.owner].name}のターンの間「${label}」`); return 'kept'; } });
 const rezCands = p => [...new Set((G.deadLog || []).filter(d => d.owner === p.i && d.turn === G.turn - 1 && p.grave.includes(d.cid) && !CARDS[d.cid].token && !(p.ban || []).some(b => b.cid === d.cid && b.turn === G.turn)).map(d => d.cid))]; // 前の相手のターン中に破壊され、墓地にいるキャラクター
@@ -1699,6 +1701,7 @@ const shiftUseful = u => {
 };
 /* ===== 選択肢の並べ替え（先頭が既定の選択） ===== */
 function aiRankCells(o, who, us) {
+  if (TK_KEY[G.curSrc]) us = us.filter(e => !e.u || !tkHas(e.u, TK_KEY[G.curSrc])); // 発狂など：すでに同じ効果を持つキャラには重ねがけしない（効果は重複しない）
   const foe = us.filter(e => e.u && e.u.owner !== who), mine = us.filter(e => e.u && e.u.owner === who), empty = us.filter(e => !e.u);
   const byVal = (l, dir) => l.slice().sort((x, y) => dir * (aiUnitVal(y.u) - aiUnitVal(x.u)));
   let r;
@@ -1793,6 +1796,7 @@ function aiGen(state, me, F, deep) {
         if (c.kind !== 'char') { const A = ACT[cid]; if (!A || (A.can && A.can(p))) return; }
         seen.add('p' + cid);
         if (cid === 'shiftForm' && !own(me).some(shiftUseful)) return;
+        if (TK_KEY[cid] && !allChars().some(u => !tkHas(u, TK_KEY[cid]))) return; // 対象になるキャラが全員すでに同じ効果を持っているなら使わない
         if (coachAI() && cid === 'sandWall') { // 砂壁：敵が自分のアバターの近く（3マス以内）に来てから。早く置くと崩れて意味がない
           const av = own(me).find(isAv), near = av && G.units && Object.values(G.units).some(e => !e.dead && !e.hidden && e.owner !== me && !isAv(e) && !abU(e, 'flight') && Math.max(Math.abs(e.x - av.x), Math.abs(e.y - av.y)) <= 3);
           if (!near) return;
@@ -1806,14 +1810,21 @@ function aiGen(state, me, F, deep) {
   }
       if (!noShop() && canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
       if (!noShop() && !p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid) && !coachAI()) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
+      const prioAb = []; // メインステップ中に発動するキャラの効果（優先して使う）
       for (const u of own(me)) {
         if (u.dead || isAv(u)) continue;
-        const ma = mainAbility(u); if (ma && !(ma.t === 'twoAct')) { const ev = { t: ma.t, uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        let ma = mainAbility(u);
+        if (ma && ma.t === 'moon' && !(p.hand.length <= 2 || G.players[1 - me].hand.length >= 8)) ma = null; // 月光：自分の手札が2枚以下、または相手の手札が8枚以上の時だけ
+        if (ma && ma.t === 'burn') { // レッドドラゴンの「焼却」は、目の前のマスに相手のキャラクターがいる時だけ（今いる場合、または移動した結果そうなった場合）
+          const fe = at(u.x, u.y + fwd(u.owner)); if (!(fe && fe.owner !== u.owner && !fe.dead && !fe.hidden)) ma = null;
+        }
+        if (ma && !(ma.t === 'twoAct')) { const ev = { t: ma.t, uid: u.uid }; if (okEv(ev)) { out.push(ev); if (['burn', 'angelFetch', 'frenzyGet'].includes(ma.t)) prioAb.push(ev); } }
         if (u.hidden && !u.sanct) { const ev = { t: 'reveal', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (hasW(u, 'flameSword') && !u.flameUsed) { const ev = { t: 'flame', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (abU(u, 'archer') && !u.hidden) { const ev = { t: 'archer', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (abU(u, 'scout') && !u.hidden) { const ev = { t: 'scout', uid: u.uid }; if (okEv(ev)) out.push(ev); }
       }
+      if (prioAb.length) return { evs: [prioAb[0]], forced: false };
       return { evs: out, forced: false };
     }
     const forced = own(me).filter(mustMove), pool = forced.length ? forced : own(me), mv = [];
