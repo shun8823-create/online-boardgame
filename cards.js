@@ -268,7 +268,7 @@ const ART = {
   thornTrap: ['#7a6a5a', '#1c1610'], magicSanctuary: ['#4a6aa8', '#0e1830'], petrifyRay: ['#8a8a6a', '#1c1c14'], elixir: ['#4aa07a', '#0c241c'], ferocious: ['#8a5a1a', '#241406'], gobParade: ['#4a6a2a', '#121c08'], assault: ['#8a2a2a', '#240808'], fightSpirit: ['#7a2a1a', '#200a06'],
 };
 /* 画像イラスト：CSSの背景画像として1回だけ登録して使い回す（blobやimgを使わず、再描画でも安定） */
-(function () { try { if (typeof ART_IMG_B64 === 'undefined' || typeof document === 'undefined') return; const s = document.createElement('style'); s.textContent = Object.keys(ART_IMG_B64).map(k => `.ai-${k}{background-image:url(${ART_IMG_B64[k]})}`).join('\n'); document.head.appendChild(s); } catch (e) { } })();
+(function () { try { if (typeof ART_IMG_B64 === 'undefined' || typeof document === 'undefined') return; const s = document.createElement('style'); s.textContent = Object.keys(ART_IMG_B64).map(k => `.ai-${k}{background-image:url(data:image/jpeg;base64,${ART_IMG_B64[k]})}`).join('\n'); document.head.appendChild(s); } catch (e) { } })();
 /* 画像の表示位置（縦, %）。既定22。大きいほど絵の下側が見える */
 for (const id in CARDS) { const k = CARDS[id]; if (k.kind === 'char' && String(k.cat).includes('ヒューマノイド') && String(k.cat).includes('モンスター')) k.weapon = true; if (k.kind === 'char' && k.race === 'ヒューム') k.weapon = true; } // 両方の特性をもつキャラクター・種族ヒュームのキャラクターは、記載がなくても武器を装備できる
 const ART_POS = { fairyDance: 40, blackWolf: 40, vampire: 10, petrifyRay: 40, magicGuard: 40, redDragonBreath: 16, normalGob: 34, greatMonkey: 18, shieldFine: 58, golem3: 26, thornTrap: 62, troll: 21, shiftForm: 26, magicSanctuary: 37, assault: 40, gobParade: 35, blizzard: 33, darkAssassin: 24, avatar: 22, magicPotion: 45, bowFine: 40 };

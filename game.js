@@ -162,7 +162,7 @@ function killUnit(u) {
   if (u.dead) return;
   u.dead = true; sfx('kill');
   const p = G.players[u.owner];
-  if (isAv(u)) { if (!G.over) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
+  if (isAv(u)) { if (G.over == null) { G.over = 1 - u.owner; log(`${p.name}のアバターが倒された`); if (UI.gameOver) UI.gameOver(G.over); } }
   else if (CARDS[u.cid].token) log(`${lnm(u)}が破壊された（デッキ外へ）`); // スペルの効果で出たキャラクターは墓地に行かずデッキ外へ
   else { p.grave.push(u.cid); (G.deadLog = G.deadLog || []).push({ cid: u.cid, owner: u.owner, turn: G.turn }); log(`${lnm(u)}が破壊された`); }
   for (const w of wps(u)) p.grave.push(w);
@@ -217,7 +217,7 @@ function actionsDone(u) {
   return true;
 }
 function canActNow(u) {
-  if (u.dead || u.hidden || G.over) return false;
+  if (u.dead || u.hidden || G.over != null) return false;
   if (u.owner !== G.active) return false;
   if (u.st.petrify != null) return false;
   if (u.acted >= actLimit(u)) return false;
@@ -319,7 +319,7 @@ const mustMove = u => (u.owner === G.active && (assaultOn(u) || (abU(u, 'berserk
 async function slashTrigger(u) {
   const n = u.attach.filter(a => a.cid === 'windSlash').length;
   for (let k = 0; k < n; k++) {
-    if (u.dead || G.over) return;
+    if (u.dead || G.over != null) return;
     const tg = chars(1 - u.owner);
     if (!tg.length) return;
     const r = await UI.pickBoard({ prompt: `ウインドスラッシュ${n > 1 ? `（${k + 1}/${n}）` : ''}：1000ダメージを与える相手キャラを選択`, cells: tg.map(t => [t.x, t.y]), kind: 'target', cancellable: false });
@@ -349,19 +349,19 @@ async function doMove(u, mv) {
     const last = i === mv.path.length - 1;
     if (mv.type === 'attack' && last) {
       await slashTrigger(u);
-      if (u.dead || G.over) return;
+      if (u.dead || G.over != null) return;
       const d = enemyAt(x, y, o);
       if (!d) { u.x = x; u.y = y; }
       else {
         if (mv.back && abU(u, 'ambush')) u.ambushNow = true;
         let won; try { won = await battle(u, d); } finally { u.ambushNow = false; }
-        if (G.over || u.dead) return;
+        if (G.over != null || u.dead) return;
         if (won) { u.x = x; u.y = y; } else { u.x = from.x; u.y = from.y; return; }
       }
     } else {
       u.x = x; u.y = y;
       await slashTrigger(u);
-      if (u.dead || G.over) return;
+      if (u.dead || G.over != null) return;
     }
   }
   log(`${lnm(u)}が${coord(from.x, from.y)}から${coord(u.x, u.y)}へ移動`);
@@ -373,18 +373,18 @@ async function onEntered(u, from) {
   fArmorCheck(u);
   if (abU(u, 'knightCmd') && wps(u).length && terr(u) === 'border' && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'border') && !u.k2 && !(u.mvTurn === G.turn && u.mvN >= 2)) { u.k2 = true; log(`${lnm(u)}がボーダーゾーンに入り、行動回数が2回になった`); }
   await trapCheck(u);
-  if (u.dead || G.over) return;
+  if (u.dead || G.over != null) return;
   await sanctuaryCheck(u);
-  if (!u.dead && !G.over && !u.hidden && hasW(u, 'braveSword') && abU(u, 'swordsman') && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'border') && terr(u) === 'border' && !u.uses.braveDone) { u.uses.braveDone = true; await braveStrike(u); } // 初めてボーダーゾーンに入った時のみ
-  if (u.dead || G.over) return;
+  if (!u.dead && G.over == null && !u.hidden && hasW(u, 'braveSword') && abU(u, 'swordsman') && !(from && terrOfRow(rowOf(u.owner, from.y)) === 'border') && terr(u) === 'border' && !u.uses.braveDone) { u.uses.braveDone = true; await braveStrike(u); } // 初めてボーダーゾーンに入った時のみ
+  if (u.dead || G.over != null) return;
   if (!u.hidden && hasW(u, 'heroSword')) await heroRoll(u);
-  if (u.dead || G.over) return;
+  if (u.dead || G.over != null) return;
   if (instinctActive(p) && !u.instinctGot && (terr(u) === 'enemy' || terr(u) === 'border') && !(from && terrOfRow(rowOf(u.owner, from.y)) === terr(u))) { u.instinctGot = true; u.lpBonus = (u.lpBonus || 0) + 1000; u.lp += 1000; log(`本能解放：${lnm(u)}のLP+1000（ステータス上昇）`); } // 1体につき1度だけ。上昇したLPはその後も残る
   for (const c of U()) {
     if (c.owner !== u.owner && !c.hidden && abU(c, 'petrify') && !isAv(u) && c.x === u.x && c.y + fwd(c.owner) === u.y) addStatus(u, 'petrify');
   }
   checkAuras();
-  if (u.dead || G.over) return;
+  if (u.dead || G.over != null) return;
   UI.render();
   if (hasHunting(u) && !assaultOn(u) && u.uses.hunt !== G.turn) await huntLoop(u);
 }
@@ -435,12 +435,12 @@ async function huntLoop(u) {
   spendSC(u, m.cost); u.uses.hunt = G.turn;
   const from = { x: u.x, y: u.y };
   await slashTrigger(u);
-  if (u.dead || G.over) return;
+  if (u.dead || G.over != null) return;
   const d = enemyAt(m.x, m.y, u.owner);
   if (!d) return;
   if (m.back && abU(u, 'ambush')) u.ambushNow = true;
   let won; try { won = await battle(u, d); } finally { u.ambushNow = false; }
-  if (u.dead || G.over || !won) return;
+  if (u.dead || G.over != null || !won) return;
   u.x = m.x; u.y = m.y;
   await onEntered(u, from);
 }
@@ -484,7 +484,7 @@ async function battle0(att, def) {
   for (const [a, b] of [[att, def], [def, att]]) if (!a.dead && holdsLight(a)) await lightUndead(b, `光属性の${nm(a)}とバトルするため、`);
   if (att.dead) return false;
   if (def.dead) return true;
-  if (G.over) return false;
+  if (G.over != null) return false;
   for (const [a, b] of [[att, def], [def, att]]) {
     if (abU(a, 'slime') && b.weapon) {
       const d = rollD6(); UI.toast(`🎲 スライムのサイコロ：${d}`);
@@ -1072,7 +1072,7 @@ const ACT = {
     const pick = (type, excl) => { const c = [0, 1, 2, 3, 4, 5, 6].filter(i => !excl.includes(i)); const w = c.map(i => (flying(type, i) ? 2 : 1)); let r = RNG() * w.reduce((a, b) => a + b, 0); for (let k = 0; k < c.length; k++) { r -= w[k]; if (r < 0) return c[k]; } return c[c.length - 1]; };
     const rounds = ['col', 'row', 'col'];
     for (const type of rounds) {
-      if (G.over) break;
+      if (G.over != null) break;
       const chosen = [];
       if (UI.thunderRound) UI.thunderRound();
       for (let k = 0; k < 3; k++) {
@@ -1297,7 +1297,7 @@ const ACT = {
 };
 async function playHand(idx) {
   const p = cur();
-  if (G.phase !== 'main' || G.over) return;
+  if (G.phase !== 'main' || G.over != null) return;
   const cid = p.hand[idx], c = CARDS[cid];
   if (c.kind === 'char') await summon(p, idx);
   else {
@@ -1321,7 +1321,7 @@ function sanctForce() {
     if (foe) { log(`同じマスに${lnm(foe)}がいたため、即座にバトル`); battle(u, foe); }
   }
 }
-function afterAction() { sanctForce(); checkAuras(); UI.render(); if (G.over) UI.gameOver(G.over); }
+function afterAction() { sanctForce(); checkAuras(); UI.render(); if (G.over != null) UI.gameOver(G.over); }
 
 /* ===== マジックサンクチュアリ ===== */
 const sKey = (x, y) => x + ',' + y;
@@ -1361,6 +1361,9 @@ async function sanctuaryCheck(u) {
 /* ===== 貨幣ゲージ・アイテムショップ ===== */
 const soldPrice = cid => (sellOf(cid) === 0 ? 1 : sellOf(cid) * 2); // 売値0のカードは、売っても貨幣ゲージは増えず、ショップの買値は1になる
 const sellOf = cid => (CARDS[cid].kind === 'item' && CARDS[cid].sell != null && !CARDS[cid].noSell ? CARDS[cid].sell : null);
+const noShop = () => !!(G && G.opt && G.opt.noShop); // 入門対戦の「ショップなし」ステージ用（AIにも適用）。通常対戦では G.opt が無く常に false
+/* 入門で教えている定石（道標先使い・砂壁のタイミング・アイテムは売らない）をAIにも守らせる */
+const coachAI = () => true; // 入門対戦だけでなく、通常のAI対戦でも守らせる（AIが手を選ぶ時だけ使われるので、人間同士のオンライン対戦には影響しない）
 const canBuyRight = p => p.freeBuy > 0 || p.hand.includes('shopTicket');
 function refreshShop() {
   const pool = r => Object.keys(CARDS).filter(id => CARDS[id].kind === 'item' && CARDS[id].sell > 0 && CARDS[id].rank === r);
@@ -1387,7 +1390,8 @@ function refreshShop() {
 }
 const shopItems = () => [...G.shop, ...(G.shopUsed || [])];
 function sellCard(i) {
-  const p = cur(); if (G.phase !== 'main' || G.over) return;
+  const p = cur(); if (G.phase !== 'main' || G.over != null) return;
+  if (noShop()) { UI.toast('このステージではショップは使えません'); return; }
   const cid = p.hand[i]; if (!cid || sellOf(cid) == null) return;
   if (p.sellUsed) { UI.toast('カードを売れるのは1ターンに1回までです'); return; }
   sfx('coin'); p.sellUsed = true; p.hand.splice(i, 1); p.hand.push('shopTicket'); syncHB(); p.coins += sellOf(cid);
@@ -1395,8 +1399,9 @@ function sellCard(i) {
   log(`${p.name}：${CARDS[cid].name}を売って貨幣ゲージ+${sellOf(cid)}（${p.coins}）。ショップに買値${soldPrice(cid)}で並んだ。ショップチケットを1枚入手`); afterAction();
 }
 function buyShop(k) {
+  const p = cur(); if (G.phase !== 'main' || G.over != null) return;
+  if (noShop()) { UI.toast('このステージではショップは使えません'); return; }
   sfx('coin');
-  const p = cur(); if (G.phase !== 'main' || G.over) return;
   const s = shopItems()[k]; if (!s || s.sold) { UI.toast('すでに売り切れです'); return; }
   if (p.coins < s.price) { UI.toast(`貨幣ゲージが足りません（必要${s.price}／所持${p.coins}）`); return; }
   if (!canBuyRight(p)) { UI.toast('購入権利がありません（無料の購入権は使用済み。ショップチケットが必要です）'); return; }
@@ -1422,7 +1427,7 @@ async function startTurn(i) {
 }
 async function endTurn() {
   const p = cur();
-  if (G.over) return false;
+  if (G.over != null) return false;
   const forced = own(p.i).filter(mustMove);
   if (forced.length) { UI.toast(`必ず移動しなければならないキャラクターがいます：${forced.map(nm).join('、')}`); return false; }
   const c = p.count;
@@ -1778,10 +1783,16 @@ function aiGen(state, me, F, deep) {
         if (cid === 'shopTicket' || seen.has('p' + cid)) return;
         const c = CARDS[cid];
         if (c.kind !== 'char') { const A = ACT[cid]; if (!A || (A.can && A.can(p))) return; }
-        seen.add('p' + cid); const ev = { t: 'play', i, cid }; if (okEv(ev)) out.push(ev);
+        seen.add('p' + cid);
+        if (coachAI() && cid === 'sandWall') { // 砂壁：敵が自分のアバターの近く（3マス以内）に来てから。早く置くと崩れて意味がない
+          const av = own(me).find(isAv), near = av && G.units && Object.values(G.units).some(e => !e.dead && !e.hidden && e.owner !== me && !isAv(e) && !abU(e, 'flight') && Math.max(Math.abs(e.x - av.x), Math.abs(e.y - av.y)) <= 3);
+          if (!near) return;
+        }
+        const ev = { t: 'play', i, cid }; if (okEv(ev)) out.push(ev);
       });
-      if (canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
-      if (!p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid)) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
+      if (coachAI() && p.deck.length > 3) { const k = out.find(e => e.t === 'play' && e.cid === 'signpost'); if (k) return { evs: [k], forced: false }; } // ドロー効果のカードは先に使う
+      if (!noShop() && canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
+      if (!noShop() && !p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid) && !coachAI()) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
       for (const u of own(me)) {
         if (u.dead || isAv(u)) continue;
         const ma = mainAbility(u); if (ma && !(ma.t === 'twoAct')) { const ev = { t: ma.t, uid: u.uid }; if (okEv(ev)) out.push(ev); }
