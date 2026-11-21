@@ -273,7 +273,7 @@ const SFX = (() => {
     card(cid) { this.play(forCard(cid)); },
   };
 })();
-function localPick(o) { return new Promise(res => { UI.pk = { o, sel: [], res }; UI.sel = null; UI.selHand = null; renderBattle(); if (MOB()) try { window.scrollTo(0, 0); } catch (e) { } }); }
+function localPick(o) { return new Promise(res => { UI.pk = { o, sel: [], res }; UI.sel = null; UI.selHand = null; renderBattle(); }); } // スマホでも画面位置は動かさない（操作しづらいため）
 const UI = {
   hideHand: false, handPage: 0, pk: null, sel: null, selHand: null, busy: false, wait: null, overShown: false,
   render() { if (screen === 'battle') renderBattle(); },
@@ -320,7 +320,7 @@ function paintTh() {
 }
 /* サンダーストーム：1列あたり約1秒のルーレット演出。選ばれた列は黄色く光る */
 UI.thunderStep = async function (s) {
-  if (!UI.th) { UI.th = { roll: null, hit: [] }; if (MOB()) try { window.scrollTo(0, 0); } catch (e) { } renderBattle(); }
+  if (!UI.th) { UI.th = { roll: null, hit: [] }; renderBattle(); }
   const ticks = 12;
   for (let i = 0; i < ticks; i++) { UI.th.roll = { type: s.type, idx: (((s.idx - (ticks - 1 - i)) % 7) + 7) % 7 }; paintTh(); await sleep(50 + i * 7); }
   UI.th.roll = null; UI.th.hit.push(s); paintTh(); await sleep(350);
@@ -400,12 +400,12 @@ function renderBattle() {
   let selp = '';
   if (UI.selHand != null && p.hand[UI.selHand] && !UI.pk && !pcv) {
     const cid = p.hand[UI.selHand];
-    selp = `<div class="panel selinfo">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${G.phase === 'main' && !UI.busy && mineTurn && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）${p.sellUsed ? '※今ターン売却済み' : ''}</button>` : ''}<span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
+    selp = `<div class="panel selinfo">${cardHTML(cid, { cls: 'full' })}<div class="bar"><button class="btn main" data-act="play" ${G.phase === 'main' && !UI.busy && mineTurn ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${G.phase === 'main' && !UI.busy && mineTurn && !p.sellUsed && !(G.opt && G.opt.noShop) ? '' : 'disabled'}>売る（+${sellOf(cid)}）${p.sellUsed ? '※今ターン売却済み' : ''}</button>` : ''}<span class="note">${!mineTurn ? '相手のターンです' : G.phase === 'main' ? '' : 'メインステップのみ使用可'}</span></div></div>`;
   } else if (UI.sel && G.units[UI.sel] && !UI.pk) { const su = G.units[UI.sel], sc = CARDS[su.cid]; selp = MOB() ? `<div class="panel strip"><b class="serif">${esc(sc.name.replace(/（.*）/, ''))}</b><span class="badge">${coord(su.x, su.y)}</span><span class="st-LP">LP${su.lp}</span><span class="st-OP">OP${OP(su)}</span><span class="st-DP">DP${DP(su)}</span><span class="st-SC">SC${su.sc}</span><span class="st-SpC">SpC${su.spc}</span>${statusList(su).map(k => STATUS_ICON[k]).join('')}${su.acted ? '<span class="note">行動済</span>' : ''}<button class="btn sm" data-act="udetail" data-uid="${su.uid}">詳細</button></div>` : `<div class="panel selinfo">${unitDetail(su)}</div>`; }
   if (UI.sel && G.units[UI.sel] && !UI.pk && !UI.selHand) { const su = G.units[UI.sel]; if (su.owner === VW()) selp += unitActions(su, G.phase === 'main' && !UI.busy && mineTurn); }
-  $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : (ONL.ai ? '【AIの番】' : '【相手の番】')) : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge">${phaseName}</span>
-  ${G.phase === 'main' && mineTurn ? '<button class="btn main" data-act="toAction">アクションステップへ</button>' : ''}${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '<button class="btn" data-act="endTurn">ターン終了</button>' : ''}
-  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button>${mineTurn ? '<button class="btn danger" data-act="giveup">投了</button>' : ''}</div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
+  $('#app').innerHTML = `<div class="turnbar"><span class="badge serif">ターン${G.turn}　${ap.name}（${ap.count}ターン目）${ONL ? (mineTurn ? '【あなたの番】' : (ONL.ai ? '【AIの番】' : '【相手の番】')) : ''}</span>${ONL ? `<span class="badge">あなたは${p.name}</span>` : ''}<span class="badge phasebadge">${phaseName}</span>
+  <button class="btn main" data-act="toAction" ${G.phase === 'main' && mineTurn ? '' : 'disabled'}>アクションステップへ</button><button class="btn" data-act="endTurn" ${(G.phase === 'main' || G.phase === 'action') && mineTurn ? '' : 'disabled'}>ターン終了</button>
+  ${pcv ? '' : `<button class="btn ${UI.hideHand ? 'on' : ''}" data-act="togHand">${UI.hideHand ? '🃏手札を表示' : '🃏手札を隠す'}</button>`}<button class="btn" data-act="grave" data-i="0">先行墓地(${G.players[0].grave.length})</button><button class="btn" data-act="grave" data-i="1">後攻墓地(${G.players[1].grave.length})</button><button class="btn danger" data-act="giveup" ${mineTurn ? '' : 'disabled'}>投了</button></div>${UI.wait ? `<div id="waitfloat">⏳ ${esc(UI.wait)}</div>` : ''}
   <div class="battle ${hh ? 'nohand' : ''}"><div class="bmain">${pkf}<div class="note" style="margin-bottom:4px">相手（${o.name}）：手札${o.hand.length}枚　山札${o.deck.length}枚　墓地${o.grave.length}枚　<b class="coin">💰${o.coins}</b>　<b class="spcount">スペル使用${o.spellsUsed}回</b>　<b class="spcount">AP${o.ap}</b>　<b class="spcount">アバター${avMv(o.i)}回</b>${G.lap ? '<b class="lapb">🔥二周目：全キャラ狂乱・移動SC-1（アバター除く）</b>' : ''}${G.assault && G.assault.turn === G.turn ? `　<b class="warn">突撃司令：種族「${G.assault.race}」は必ず前進</b>` : ''}</div>
   <div class="boardwrap"><div class="rowlabels">${[0, 1, 2, 3, 4, 5, 6].map(ry => `<span>${String.fromCharCode(65 + (flip ? 6 - ry : ry))}</span>`).join('')}</div><div class="board${flip ? ' flip' : ''}">${cells}</div><div></div><div class="collabels">${[0, 1, 2, 3, 4, 5, 6].map(rx => `<span>${(flip ? 6 - rx : rx) + 1}</span>`).join('')}</div></div>${zoneLeg ? `<div class="zlegs">${zoneLeg}</div>` : ''}
   <div class="note desk-only" style="margin-top:4px">${VW() === 0 ? 'ホーム＝G〜E列／ボーダー＝D列／エネミー＝C〜A列' : 'ホーム＝A〜C列／ボーダー＝D列／エネミー＝E〜G列'}（先行はG列側、後攻はA列側。自分の陣地は画面の下側）。 山札${p.deck.length}枚・墓地${p.grave.length}枚　<b class="coin">💰${p.coins}</b>　<b class="spcount">スペル使用${p.spellsUsed}回</b>　<b class="spcount">AP${p.ap}</b>　<b class="spcount">アバター${avMv(p.i)}回</b>　配置：通常${p.summons}/1${p.extra ? `＋増援${p.extra}` : ''}${p.goblinSlots ? `＋ゴブリン${p.goblinSlots}` : ''}</div></div>
@@ -415,6 +415,9 @@ function renderBattle() {
   <details class="panel mob-only"><summary class="serif">ログ・山札 ${p.deck.length}枚・墓地 ${p.grave.length}枚・スペル使用 自${p.spellsUsed}／相${o.spellsUsed}・AP 自${p.ap}／相${o.ap}・アバター移動 自${avMv(p.i).slice(2)}／相${avMv(o.i).slice(2)}</summary><div class="log">${G.log.slice(0, 40).map(l => `<div>${esc(l)}</div>`).join('')}</div></details>`;
   paintTh(); pcEnhance();
 }
+
+/* 再描画（ターン切り替え時など）で、スマホの手札の横スクロール位置が左端に戻らないようにする */
+{ const _renderBattle = renderBattle; renderBattle = function () { const h = document.querySelector('.battle .hand'), x = h ? h.scrollLeft : 0, y = window.scrollY; const r = _renderBattle.apply(this, arguments); if (x) { const h2 = document.querySelector('.battle .hand'); if (h2) h2.scrollLeft = x; } if (Math.abs(window.scrollY - y) > 1) window.scrollTo(0, y); return r; }; }
 /* ---------- パソコン専用：操作を減らす補助 ---------- */
 function fitBoard() { // パソコン：盤が画面に収まるようマスの大きさを自動調整（スクロール不要に）
   if (!PCV() || screen !== 'battle') return;
@@ -439,7 +442,7 @@ function pcEnhance() {
   const p = G.players[VW()], cid = p.hand[UI.selHand], sel = document.querySelector('.hcard.sel'); if (!cid || !sel) return;
   const mt = !ONL || G.active === ONL.me, okm = G.phase === 'main' && !UI.busy && mt;
   const d = document.createElement('div'); d.className = 'hpop';
-  d.innerHTML = `<button class="btn main" data-act="play" ${okm ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${okm && !p.sellUsed ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<span class="note">${!mt ? '相手のターンです' : G.phase === 'main' ? 'ダブルクリックでも使用' : 'メインステップのみ使用可'}</span>`;
+  d.innerHTML = `<button class="btn main" data-act="play" ${okm ? '' : 'disabled'}>使用 / 配置</button>${sellOf(cid) != null ? `<button class="btn" data-act="sell" ${okm && !p.sellUsed && !(G.opt && G.opt.noShop) ? '' : 'disabled'}>売る（+${sellOf(cid)}）</button>` : ''}<span class="note">${!mt ? '相手のターンです' : G.phase === 'main' ? 'ダブルクリックでも使用' : 'メインステップのみ使用可'}</span>`;
   document.body.appendChild(d);
   const r = sel.getBoundingClientRect(); d.style.left = Math.max(8, Math.min(r.left, window.innerWidth - d.offsetWidth - 8)) + 'px'; const hpn = document.querySelector('.handp'); d.style.bottom = (window.innerHeight - (hpn ? hpn.getBoundingClientRect().top : r.top) + 6) + 'px';
 }
@@ -522,6 +525,7 @@ function showDetail(cid, uid, backUid) {
   el.style.display = 'flex';
 }
 function shopHTML(p, can) {
+  if (G.opt && G.opt.noShop) return '<div class="panel shop"><b class="serif">🏪 アイテムショップ</b><div class="note warn">このステージではショップは使えません（売る・買うはできません）</div></div>';
   const items = shopItems();
   if (!items.length) return '';
   const row = (s, k) => `<div class="shoprow${s.sold ? ' sold' : ''}"><span class="n" data-card="${s.cid}">${esc(CARDS[s.cid].name)}<small>（R${CARDS[s.cid].rank}）</small></span><b>💰${s.price}</b><button class="btn sm" data-act="buy" data-k="${k}" ${!can || s.sold || p.coins < s.price || !canBuyRight(p) ? 'disabled' : ''}>${s.sold ? '売切' : '購入'}</button></div>`;
@@ -1032,7 +1036,8 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
   let prog = BEGC.loadProg(), BUI = { restore: null, code: '', msg: '', sel: {} };
   const saveP = () => { if (!BEGC.saveProg(prog)) UI.toast('⚠ 進行状況を保存できませんでした'); };
   const wrap = (o, k, fn) => { const f = o[k]; o[k] = function (...a) { return fn.call(this, f, ...a); }; };
-  const deckName = id => { const d = allDecks().find(d => d.id === id); return d ? d.name : id; };
+  const findDeck = id => BEG_DECKS[id] || allDecks().find(d => d.id === id);
+  const deckName = id => { const d = findDeck(id); return d ? d.name : id; };
   const fmtT = t => { try { const d = new Date(t); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; } catch (e) { return ''; } };
   const stable = () => !!G && !!ONL && ONL.ai && G.over == null && !UI.busy && !UI.pk && !ONL.pending && !ONL.aiBusy && !(ONL.queue && ONL.queue.length) && G.active === ONL.me;
 
@@ -1090,8 +1095,8 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
   const refresh = () => { if (screen === 'beg') { const y = window.scrollY; renderBeg(); window.scrollTo(0, y); } };
   const readAny = text => { const res = BEGC.parseBackup(text); if (!res.ok) { BUI.restore = null; BUI.msg = '✖ ' + res.err; } else { BUI.restore = { res, step: 1 }; BUI.msg = ''; } refresh(); };
   function afterRestore(r) {
-    if (!r.ok) { BUI.msg = '✖ 保存に失敗しました'; BUI.restore = null; return refresh(); }
-    userDecks.length = 0; r.decks.forEach(d => userDecks.push(d)); prog = BEGC.loadProg(); BUI.restore = null; BUI.msg = '復元しました（「直前の復元を取り消す」で戻せます）'; try { SFX.set(Store.get('bg_sfx') !== '0'); const sb = document.getElementById('sfxbtn'); if (sb) sb.textContent = SFX.on ? '🔊' : '🔇'; } catch (e) { } refresh();
+    if (!r.ok) { BUI.msg = '✖ ' + (r.err || '保存に失敗しました'); BUI.restore = null; return refresh(); }
+    userDecks.length = 0; r.decks.forEach(d => userDecks.push(d)); prog = BEGC.loadProg(); BUI.restore = null; BUI.msg = '復元しました' + (r.skipped ? `（ルールに合わないデッキ${r.skipped}件は除外）` : '') + '（「直前の復元を取り消す」で戻せます）'; try { SFX.set(Store.get('bg_sfx') !== '0'); const sb = document.getElementById('sfxbtn'); if (sb) sb.textContent = SFX.on ? '🔊' : '🔇'; } catch (e) { } refresh();
   }
   document.addEventListener('change', e => {
     if (e.target.id === 'begfile') { const f = e.target.files && e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => readAny(String(rd.result)); rd.onerror = () => { BUI.msg = '✖ ファイルを読めませんでした'; refresh(); }; rd.readAsText(f); return; }
@@ -1145,17 +1150,17 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
     if (deckLocked()) return UI.toast('対戦中です。決着がつくまで始められません');
     const i = BEG_STAGES.findIndex(s => s.id === id), s = BEG_STAGES[i]; if (!s || !stageOpen(i)) return;
     const ids = decksOpen(), sel = BUI.sel[id] || {}, me = s.me || sel.me || ids[0], ai = s.ai || sel.ai || ids[0];
-    const dm = allDecks().find(d => d.id === me), da = allDecks().find(d => d.id === ai); if (!dm || !da) return;
+    const dm = findDeck(me), da = findDeck(ai); if (!dm || !da) return;
     if (BEGC.loadResume() && !(await confirmBox('中断した対戦があります。新しく始めると、中断した対戦は破棄されます。よろしいですか？'))) return;
-    BEGC.clearResume(); begin('stage', id); BEG.hints = s.hints && prog.verbosity !== 'off'; BEG.shop = s.shop; BEG.seat = 0; BEG.meDeck = me; BEG.aiDeck = ai; BEG.stageKey = id;
-    ONL = mkONL(0); AI.sides = new Set([1]); newGame(mk(dm.list), mk(da.list)); G.players[1].name = 'AI'; screen = 'battle'; show();
+    BEGC.clearResume(); begin('stage', id); BEG.hints = s.hints && prog.verbosity !== 'off'; BEG.shop = s.shop; BEG.seat = 0; BEG.meDeck = me; BEG.aiDeck = ai; BEG.stageKey = id; BEG._abSeen = {};
+    ONL = mkONL(0); AI.sides = new Set([1]); newGame(mk(dm.list), mk(da.list)); G.players[1].name = 'AI'; G.opt = { coach: true }; if (!s.shop) G.opt.noShop = true; screen = 'battle'; show();
     UI.toast(`あなたは先行です（相手：AI）。${s.shop ? '' : 'このステージではショップは使いません。'}`);
     startTurn(0).then(() => { UI.busy = false; runLoop(); paintCoach(); });
   }
   function resumeStage() {
     if (deckLocked()) return; const r = BEGC.loadResume(); if (!r || r.bad) return;
     const m = r.meta; begin('stage', m.id); BEG.hints = m.hints && prog.verbosity !== 'off'; BEG.shop = m.shop; BEG.seat = m.seat; BEG.meDeck = m.me; BEG.aiDeck = m.ai;
-    ONL = mkONL(m.seat); AI.sides = new Set([1 - m.seat]); BEGC.restore(r.snap); if (m.rev) Object.assign(BEGC.REV, m.rev);
+    ONL = mkONL(m.seat); AI.sides = new Set([1 - m.seat]); BEG._abSeen = {}; BEGC.restore(r.snap); if (m.rev) Object.assign(BEGC.REV, m.rev);
     screen = 'battle'; show(); UI.busy = false; UI.toast('中断した対戦を再開しました'); runLoop(); paintCoach();
   }
   function metaNow() { return { kind: 'stage', id: BEG.id, seat: BEG.seat, me: BEG.meDeck, ai: BEG.aiDeck, shop: BEG.shop, hints: BEG.hints, rev: { turns: BEGC.REV.turns, plays: BEGC.REV.plays, deadSeen: BEGC.REV.deadSeen } }; }
@@ -1246,6 +1251,10 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
   }
   function syncCoachH() { // スマホ：案内役は画面上部に固定。ページ全体をその高さだけ下げ、ボタン類と重ならないようにする
     const c = document.getElementById('coach'), on = c && c.style.display !== 'none' && document.body.classList.contains('coachon');
+    if (on && BEG.kind === 'stage') { // 対戦中は案内の枠の高さを縮めない（文章の長さで画面全体が上下に動かないように）
+      const key = (BEG.id || '') + '|' + !!BEG.collapsed + '|' + window.innerWidth; if (BEG._chKey !== key) { BEG._chKey = key; BEG._ch = 0; c.style.minHeight = ''; }
+      c.style.minHeight = BEG._ch + 'px'; if (c.offsetHeight > BEG._ch) BEG._ch = c.offsetHeight; c.style.minHeight = BEG._ch + 'px';
+    } else if (c) c.style.minHeight = '';
     document.body.style.setProperty('--coachh', on && window.innerWidth <= 1000 ? c.offsetHeight + 'px' : '0px');
     if (c && !c._ro && window.ResizeObserver) { c._ro = new ResizeObserver(() => syncCoachH()); c._ro.observe(c); }
   }
@@ -1254,7 +1263,8 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
     document.querySelectorAll('.coachhl').forEach(n => n.classList.remove('coachhl'));
     if (!(BEG.on && BEG.kind === 'lesson' && screen === 'battle' && G)) return; const s = BEGC.Coach.cur(); if (!s || !s.hl) return;
     if (s.hl.cells) for (const [x, y] of s.hl.cells) { const n = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); if (n) n.classList.add('coachhl'); }
-    if (s.hl.hand != null) document.querySelectorAll(`[data-act="hand"][data-i="${s.hl.hand}"], .hcard[data-i="${s.hl.hand}"]`).forEach(n => n.classList.add('coachhl'));
+    if (s.hl.card) { const hand = G.players[0].hand; document.querySelectorAll('.hcard[data-i]').forEach(n => { if (hand[+n.dataset.i] === s.hl.card) n.classList.add('coachhl'); }); } // カードIDで光らせる（選択中に手札の並びがずれても別のカードは光らない）
+    if (s.hl.hand != null) document.querySelectorAll(`.hcard[data-i="${s.hl.hand}"]`).forEach(n => n.classList.add('coachhl'));
     if (s.hl.btn) document.querySelectorAll(`[data-act="${s.hl.btn}"]`).forEach(n => n.classList.add('coachhl'));
   }
   const assistOn = () => prog.assist && !BEG.on && !!G && screen === 'battle' && G.over == null;
@@ -1272,12 +1282,20 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
       if (th) { d.style.display = 'block'; d.textContent = `⚠ アバターが狙われています：${th.by.map(e => `${CARDS[e.cid].name.replace(/（.*）/, '')}（${coord(e.x, e.y)}）`).join('・')}`; } else d.style.display = 'none';
       if (BEG.on && BEG.kind === 'stage' && BEG.hints && myTurn && screen === 'battle' && prog.verbosity !== 'off') {
         const p = G.players[mine], full = prog.verbosity === 'full', min = prog.verbosity === 'min';
-        if (p.deck.length <= 5 && !G.lap) say(BEG_HINTS.lap5.say, 'lap5', full);
         if (!min) {
+          if (p.deck.length <= 5 && !G.lap) say(BEG_HINTS.lap5.say, 'lap5', full);
           if (own(mine).some(u => !u.dead && !isAv(u) && u.acted > 0 && u.sc === 0)) say(BEG_HINTS.sc0.say, 'sc0', full);
           if (own(1 - mine).some(u => !u.dead && !isAv(u) && u.lp < baseLP(u))) say(BEG_HINTS.chip.say, 'chip', full);
+          { // 庇護・魔法耐性・飛翔（砂壁の近く）のキャラが盤に出たら、その試合で最初の1回は必ず説明する
+            const seen = BEG._abSeen || (BEG._abSeen = {}), alive = Object.values(G.units).filter(u => !u.dead && !u.hidden);
+            const walls = Object.keys(G.walls || {}).map(k => k.split(',').map(Number));
+            const nm = u => CARDS[u.cid].name.replace(/（.*）/, '');
+            const f = alive.find(u => !isAv(u) && abU(u, 'dwarf') && !seen.dwarf), r = alive.find(u => !isAv(u) && hasResist(u) && !seen.magicResist), fl = alive.find(u => abU(u, 'flight') && !seen.flight && walls.some(w => Math.max(Math.abs(w[0] - u.x), Math.abs(w[1] - u.y)) <= 2));
+            const ab = f ? ['dwarf', f] : r ? ['magicResist', r] : fl ? ['flight', fl] : null;
+            BEG._abTick = !!ab; if (ab) { seen[ab[0]] = true; BEG.bubble = `【${nm(ab[1])}（${coord(ab[1].x, ab[1].y)}）】` + BEG_ABIL[ab[0]]; BEG.collapsed = false; paintCoach(); }
+          }
           if (BEG.shop && G.turn >= 3) say(BEG_HINTS.shop.say, 'shop', false);
-          if (G.phase === 'main') for (const c of p.hand) if (BEG_CARD_GUIDE[c] && (full || !prog.guides[c])) { if (!prog.guides[c] || full) { const first = !prog.guides[c]; if (first) { prog.guides[c] = true; saveP(); } if (first || (full && BEG.bubble !== `【${CARDS[c].name.replace(/（.*）/, '')}】${BEG_CARD_GUIDE[c]}`)) { BEG.bubble = `【${CARDS[c].name.replace(/（.*）/, '')}】${BEG_CARD_GUIDE[c]}`; BEG.collapsed = false; paintCoach(); } break; } }
+          if (!BEG._abTick && G.phase === 'main') for (const c of p.hand) if (BEG_CARD_GUIDE[c] && (full || !prog.guides[c])) { if (!prog.guides[c] || full) { const first = !prog.guides[c]; if (first) { prog.guides[c] = true; saveP(); } if (first || (full && BEG.bubble !== `【${CARDS[c].name.replace(/（.*）/, '')}】${BEG_CARD_GUIDE[c]}`)) { BEG.bubble = `【${CARDS[c].name.replace(/（.*）/, '')}】${BEG_CARD_GUIDE[c]}`; BEG.collapsed = false; paintCoach(); } break; } }
         }
       }
     } catch (e) { console.error(e); }
