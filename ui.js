@@ -1243,10 +1243,10 @@ const BEG = { on: false, kind: null, id: null, seat: 0, hints: false, shop: true
       if (first && st.id === 'S5') msg += ' 🎓 卒業おめでとうございます。通常モードでも、ここで覚えたことが使えます。';
       saveP();
     }
-    const rev = BEGC.buildReview(BEG.seat, BEG.meDeck, won), box = document.querySelector('#gameover .gobox'); if (!box) return;
+    const box = document.querySelector('#gameover .gobox'); if (!box) return;
     const gb = box.querySelector('#goback'); if (gb) { gb.textContent = '入門メニューへ戻る'; BEG.ret = true; }
-    const ex = document.createElement('div'); ex.innerHTML = `${msg ? `<div class="gosub">${esc(msg)}</div>` : ''}<button class="btn" data-beg="review" style="margin:6px 0">📝 振り返りを見る</button>
-    <div id="begreview" class="panel" style="display:none;text-align:left;max-width:520px">${rev.map(l => `<p><b>${esc(l.k)}</b>：${esc(l.t)}</p>`).join('')}<p class="note">※ 記録に残った盤面から計算した事実だけを表示しています（勝つための正解を示すものではありません）。</p></div>`;
+    if (!msg) return; // 振り返りの表示は行わない（メッセージがある時だけ追加）
+    const ex = document.createElement('div'); ex.innerHTML = `<div class="gosub">${esc(msg)}</div>`;
     box.insertBefore(ex, gb || null);
   }
 

@@ -538,7 +538,10 @@ async function payCost(p, n, flt) {
   if (sc > 0) { u.noSpc = G.turn; log(`${lnm(u)}はSCを消費してスペルを使ったため、このターン終了時にSC・SpCを回復しない`); }
   return u;
 }
+/* AI：SCを使い切ると、そのターンに移動できるのに移動できなくなる（移動にはSC1が必要）。そうなる消費は避ける */
+const scDrain = (u, cost) => !isAv(u) && scAvail(u) - cost <= 0 && movesFor(u).length > 0;
 async function payTech(p, cands, prompt, costOf = () => 1) {
+  if (AI.is(p.i)) { cands = cands.filter(u => !scDrain(u, costOf(u))); if (!cands.length) return null; } // 移動可能なキャラのSCを0にしない（SCを1は残す）
   const r = await UI.pickBoard({ prompt, cells: cands.map(c => [c.x, c.y]), kind: 'pay', cancellable: true });
   if (!r) return null;
   const u = at(r[0][0], r[0][1]);
@@ -671,7 +674,7 @@ async function summon(p, idx) {
     if (free && (!wallAt(cc.x, cc.y) || abC(cid, 'flight'))) cells.push([cc.x, cc.y]);
   }
   if (!cells.length) { UI.toast('配置できるマスがありません'); return false; }
-  const pick = await UI.pickBoard({ prompt: '配置するマスを選択', cells, kind: 'place', cancellable: true });
+  const pick = await UI.pickBoard({ prompt: '配置するマスを選択', cells, kind: 'place', stealth, cancellable: true });
   if (!pick) return false;
   if (abC(cid, 'krakenCond')) { // 手札の水属性カード4枚を選んで相手に見せる
     const cands = p.hand.map((h, i) => i).filter(i => i !== idx && cardAttrs(p.hand[i]).includes('水'));
@@ -760,13 +763,24 @@ async function moonReset(u) {
   log('月光：互いに手札を山札に戻し、3枚ずつ引いた'); UI.render();
 }
 /* 神官：ヒール／キュア・ディジーズ（それぞれ1ターンに1度、SpC1を消費） */
+const PRIEST_NAME = { heal: 'ヒール', cure: 'キュア・ディジーズ', mail: 'ホーリーメール' };
+/* 光属性の術者の確認文：キャラクターが持つ術と、いまの盤面（傷ついた味方・状態異常の味方）に合わせて言葉を変える */
+function priestQ(u, choose) {
+  const ks = ['heal', 'cure', 'mail'].filter(k => priestCan(u, k)), mates = chars(u.owner);
+  const hurt = mates.filter(m => m.lp < healCap(m)).length, sick = mates.filter(m => statusList(m).length).length;
+  const sit = [hurt ? `傷ついた味方が${hurt}体` : '', sick ? `状態異常の味方が${sick}体` : ''].filter(Boolean).join('・');
+  const sub = sit ? `（${sit}）` : '（いまは回復や治療が必要な味方はいません）';
+  if (ks.length === 1 && ks[0] === 'heal') return choose ? `${nm(u)}：聖なる力で味方のLPを2000回復します。対象を選んでください${sub}` : `${nm(u)}：聖なる力で味方1体のLPを2000回復しますか？${sub}（SpC1を消費）`;
+  const own = ks.map(k => PRIEST_NAME[k]).join('・');
+  return choose ? `${nm(u)}：祈りを捧げます。どの術を使いますか？${sub}（SpC1を消費）` : `${nm(u)}：${own}のどれかを使いますか？${sub}（SpC1を消費）`;
+}
 const priestCan = (u, k) => !u.dead && !u.hidden && !isAv(u) && abU(u, { heal: 'healA', cure: 'cureA', mail: 'mailA' }[k]) && u.uses[k] !== G.turn && u.spc >= 1 && u.st.petrify == null;
 async function priestAct(u) {
   if (G.phase !== 'main' || u.owner !== G.active || u.dead) return;
   const ks = ['heal', 'cure', 'mail'].filter(k => priestCan(u, k));
   if (!ks.length) { UI.toast(abU(u, 'healA') ? 'ヒール・キュア・ディジーズ・ホーリーメールは1ターンに1度ずつ、SpCが1以上必要です' : ''); return; }
   const name = { heal: 'ヒール', cure: 'キュア・ディジーズ', mail: 'ホーリーメール' };
-  const a = await UI.ask(`${nm(u)}：どの効果を使いますか？（SpC1を消費）`, [...ks.map(k => name[k]), 'キャンセル']);
+  const a = await UI.ask(priestQ(u, true), [...ks.map(k => name[k]), 'キャンセル']);
   const k = ks.find(x => name[x] === a); if (!k) return;
   if (k === 'mail') { // ホーリーメール：SpC1を消費してサイコロを振り、6以上ならデッキから光属性のスペルをランダムに1枚手札に加える
     const p = G.players[u.owner]; if (UI.abilityCut) await UI.abilityCut(u); u.spc -= 1; u.uses.mail = G.turn;
@@ -778,7 +792,7 @@ async function priestAct(u) {
     } else log(`ホーリーメール：${lnm(u)}がSpC1を消費（出目${d}）、失敗`);
     afterAction(); return;
   }
-  const t = await pickUnit(chars(u.owner), `${name[k]}の対象（自分のキャラクター）を選択`); if (!t) return;
+  const t = await pickUnit(chars(u.owner), k === 'heal' ? `${nm(u)}のヒール：LPを2000回復する味方を選択` : `${nm(u)}のキュア・ディジーズ：状態異常を治療する味方を選択`); if (!t) return;
   if (k === 'cure' && !statusList(t).length) { UI.toast('対象に状態異常がありません'); return; }
   if (UI.abilityCut) await UI.abilityCut(u); u.spc -= 1; u.uses[k] = G.turn;
   if (k === 'heal') { const b = t.lp; heal(t, 2000); log(`ヒール：${lnm(u)}がSpC1を消費し、${lnm(t)}のLPを回復（${b}→${t.lp}）`); }
@@ -803,7 +817,7 @@ function mainAbility(u) {
   if (twoActCan(u)) return { t: 'twoAct', q: `${nm(u)}：SCを1消費して、このターン2回行動しますか？（残り${3 - (u.uses.twoN || 0)}回）` };
   const f = CARDS[u.cid].fetch;
   if (abU(u, 'angelFetch') && f && !p.angelUsed[u.cid] && scAvail(u) >= 2) return { t: 'angelFetch', q: `${nm(u)}：SCを2つ消費して、デッキ外から「${CARDS[f.cid].name}」を${f.n}枚手札に加えますか？（ゲーム中1度だけ）` };
-  if (['heal', 'cure', 'mail'].some(k => priestCan(u, k))) return { t: 'priest', q: `${nm(u)}：ヒール／キュア・ディジーズ／ホーリーメールを使いますか？（SpC1を消費）` };
+  if (['heal', 'cure', 'mail'].some(k => priestCan(u, k))) return { t: 'priest', q: priestQ(u, false) };
   if (abU(u, 'burnAct') && (u.uses.burnN || 0) < 3 && u.spc >= 1 && !(u.burn != null && G.turn === u.burn)) return { t: 'burn', q: `${nm(u)}：SpCを1つ消費して、次の自分のターンのはじめまで「焼却」を得ますか？（残り${3 - (u.uses.burnN || 0)}回）` };
   if (abU(u, 'frenzyGet') && !u.uses.frenzyGet && u.spc >= 2) return { t: 'frenzyGet', q: `${nm(u)}：SpCを2つ消費して、奥義「発狂」を1枚手札に加えますか？（ゲーム中1度だけ）` };
   if (abU(u, 'moonReset') && (u.uses.moon || 0) < 2 && u.spc >= 2) return { t: 'moon', q: `月光：SpCを2消費して、互いに手札を山札に戻し、3枚ずつ引きますか？（残り${2 - (u.uses.moon || 0)}回）` };
@@ -934,8 +948,25 @@ function whyNoEquip(u, cid) {
   return null;
 }
 const canEquip = (u, cid) => whyNoEquip(u, cid) === null;
+/* AI：潜伏（非公開）の公開は、①バトルできる距離に相手のキャラがいる、②公開することで本能解放の「ワイルド3体以上」を満たせる、のどちらかの時だけ */
+function snakeRevealOk(u, p) {
+  const was = u.hidden; u.hidden = false; let atk = false; // 公開した場合に、実際に相手のキャラクターへ攻撃（バトル）しに行けるか
+  try { atk = movesFor(u).some(m => m.type === 'attack'); } finally { u.hidden = was; }
+  if (atk) return true;
+  if (p.hand.includes('assault') && CARDS[u.cid].race && mine(p).filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length === 2) return true; // 突撃司令の「同じ種族3体以上」を満たすため
+  return p.hand.includes('instinct') && !p.instinctUsed && CARDS[u.cid].race === 'ワイルド' && mine(p).filter(v => CARDS[v.cid].race === 'ワイルド').length === 2;
+}
+/* AI：混沌の鎧（LP+1500／OP・DP−1000）でヴァンパイア・ロードがバトルに勝てる（LPが増えることで生き残り、かつ相手を倒せる）見込みがあるか */
+function vampArmorWins(v) {
+  if (v.cid !== 'vampire' || isAv(v)) return false;
+  return Object.values(G.units).some(e => !e.dead && !e.hidden && e.owner !== v.owner && !isAv(e) && Math.max(Math.abs(e.x - v.x), Math.abs(e.y - v.y)) <= 2 && (() => {
+    const hit = Math.max(0, OP(e) - (DP(v) - 1000)), back = Math.max(0, OP(v) - 1000 - DP(e));
+    return hit >= v.lp && hit < v.lp + 1500 && back >= e.lp;
+  })());
+}
 async function equipWeapon(p, cid) {
-  const cs = own(p.i).filter(u => !isAngel(u) && canEquip(u, cid));
+  let cs = own(p.i).filter(u => !isAngel(u) && canEquip(u, cid));
+  if (cid === 'chaosArmor' && AI.is(p.i) && cs.some(u => u.cid !== 'vampire')) cs = cs.filter(u => u.cid !== 'vampire' || vampArmorWins(u)); // AI：混沌の鎧をヴァンパイア・ロードに付けない（LP上昇でバトルに勝てる場合を除く）
   const u = await pickUnit(cs, cid === 'wandFine' ? '上等な魔杖を装備するキャラクター（SpC基礎値1以上）を選択' : '武器を装備するキャラクターを選択');
   if (!u) return false;
   await UI.cutIn(cid);
@@ -1047,10 +1078,10 @@ const ACT = {
     const u = at(r[0][0], r[0][1]);
     if (!(await payCost(p, 2))) return false; await UI.cutIn('breeze');
     u.attach.push({ cid: 'breeze', since: p.count, until: p.count + 2 }); log(`${lnm(u)}にブリーズ（移動に必要なSC-1）`); return 'kept'; } },
-  instinct: { async run(p) {
+  instinct: { can: p => p.instinctUsed ? 'このスペルはゲーム中1度しか使えません' : null, async run(p) {
     if (!(await payCost(p, 2))) return false; await UI.cutIn('instinct');
     const perm = mine(p).filter(u => CARDS[u.cid].race === 'ワイルド').length >= 3;
-    p.instinct = { until: p.count + 3, perm }; log(`本能解放${perm ? '（永続）' : ''}`); return true; } },
+    p.instinctUsed = true; p.instinct = { until: p.count + 3, perm }; log(`本能解放${perm ? '（永続）' : ''}`); return true; } },
   seaRoar: { can: p => (seaRoarTargets(p).length ? null : '対象にできる相手キャラクターがいません（相手のホームテリトリー／ボーダーゾーン内が対象）'), async run(p) {
     const t = await pickUnit(seaRoarTargets(p), '海竜の咆哮の対象を選択'); if (!t) return false;
     if (!(await payCost(p, 4))) return false;
@@ -1277,11 +1308,12 @@ const ACT = {
   ferocious: {
     can: p => (ferTargets(p).length ? null : '自分のホームテリトリーに、SCとSpCが1以上の種族ワイルドのモンスターが必要です'),
     async run(p, cid) {
-      const ts = ferTargets(p);
+      let ts = ferTargets(p);
+      if (AI.is(p.i)) { ts = ts.filter(u => !u.ferGot && !scDrain(u, 1)); const pref = ts.filter(u => u.cid !== 'stormEagle' && u.cid !== 'redBoar'); if (pref.length) ts = pref; } // AI：同じキャラには2回使わない／ストームイーグル・レッドボア以外を優先
       const t = await pickUnit(ts, '獰猛なる覇者の加護：対象のモンスターを選択（SCとSpCを1ずつ消費）'); if (!t) return false;
       await UI.cutIn('ferocious');
       draw(p, 1);
-      spendSC(t, 1); t.spc -= 1; t.extra = p.count + 1; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
+      spendSC(t, 1); t.spc -= 1; t.ferGot = true; t.extra = p.count + 1; t.lpBonus = (t.lpBonus || 0) + 500; t.lp += 500;
       log(`獰猛なる覇者の加護：${lnm(t)}の次の自分のターンの行動回数+1・LP+500（SC-1・SpC-1）`); return true; } },
   fairyDance: {
     can: p => (fairyTargets(p).length ? null : '自分の盤に、スペルドローまたはスペルコレクトをもち、SCとSpCが1以上のキャラクターが必要です'),
@@ -1506,7 +1538,7 @@ const AI = {
     if (/^⚠/.test(msg)) return btns.find(b => /いいえ|やめる|キャンセル/.test(b)) || btns[btns.length - 1];
     if (/打ち消しますか/.test(msg)) return btns[0];
     let order = btns.slice();
-    if (msg === HID_Q) order = [HID_A[1], HID_A[0]]; // 非公開は探索で別案として試す
+    if (msg === HID_Q) return HID_A[0]; // 潜伏できるキャラ（ブラッドスネーク）は必ず潜伏させる
     return order[AI.decide(a, order.length)];
   },
   cards(title, prompt, cids, min, who, max) { const n = Math.min(max || min || 1, cids.length); return Array.from({ length: n }, (_, i) => i); },
@@ -1705,6 +1737,7 @@ function aiRankCells(o, who, us) {
   const foe = us.filter(e => e.u && e.u.owner !== who), mine = us.filter(e => e.u && e.u.owner === who), empty = us.filter(e => !e.u);
   const byVal = (l, dir) => l.slice().sort((x, y) => dir * (aiUnitVal(y.u) - aiUnitVal(x.u)));
   let r;
+  if (o.kind === 'place' && o.stealth) return us.slice().sort((x, y) => (rowOf(who, y.c[1]) - rowOf(who, x.c[1])) || (Math.abs(x.c[0] - 3) - Math.abs(y.c[0] - 3))).map(e => e.c); // 潜伏：ホームの最前列の中央付近
   if (G.curSrc === 'shiftForm') { const ok = mine.filter(e => shiftUseful(e.u)); return byVal(ok, 1).map(e => e.c); } // 形質変化：自分の、進路が塞がれているキャラだけ
   if (o.kind === 'pay') {
     const need = +((/SpC(\d+)/.exec(o.prompt || '') || [])[1]) || 1;
@@ -1796,6 +1829,17 @@ function aiGen(state, me, F, deep) {
         if (c.kind !== 'char') { const A = ACT[cid]; if (!A || (A.can && A.can(p))) return; }
         seen.add('p' + cid);
         if (cid === 'shiftForm' && !own(me).some(shiftUseful)) return;
+        if (coachAI() && cid === 'normalGob' && p.summons < 1) { // ノーマルゴブリン：続けてゴブリンを出せず、このターンこれしか出せない見込みなら温存する
+          const others = p.hand.filter((h, j) => j !== i && CARDS[h].kind === 'char');
+          if (!(others.some(h => CARDS[h].race === 'ゴブリン' && CARDS[h].rank === 1) || (p.extra > 0 && others.length))) return;
+        }
+        if (coachAI() && cid === 'chaosArmor' && !own(me).some(u => !isAv(u) && !isAngel(u) && (u.cid !== 'vampire' || vampArmorWins(u)) && canEquip(u, cid))) return; // 混沌の鎧：ヴァンパイア・ロード（LP上昇でバトルに勝てる場合を除く）以外に付けられないなら使わない
+        if (coachAI() && cid === 'ferocious' && !ferTargets(p).some(u => !u.ferGot && !scDrain(u, 1))) return; // 獰猛なる覇者の加護：同じキャラクターには複数回使わない
+        if (coachAI() && cid === 'assault' && own(me).some(u => !u.dead && !u.hidden && u.extra === p.count)) { // 獰猛なる覇者の加護で2回行動できるターンは、突撃司令を使わなくてよい（相手を倒せるなど、使わないより得な場合だけ使う）
+          const ms = mine(p), dy = fwd(me);
+          const gain = ms.some(u => ms.filter(v => CARDS[v.cid].race === CARDS[u.cid].race).length >= 3 && [1, 2].some(k => { const e = at(u.x, u.y + dy * k); return e && e.owner !== me && !isAv(e) && !e.hidden && !e.dead && OP(u) - DP(e) >= e.lp; }));
+          if (!gain) return;
+        }
         if (TK_KEY[cid] && !allChars().some(u => !tkHas(u, TK_KEY[cid]))) return; // 対象になるキャラが全員すでに同じ効果を持っているなら使わない
         if (coachAI() && cid === 'sandWall') { // 砂壁：敵が自分のアバターの近く（3マス以内）に来てから。早く置くと崩れて意味がない
           const av = own(me).find(isAv), near = av && G.units && Object.values(G.units).some(e => !e.dead && !e.hidden && e.owner !== me && !isAv(e) && !abU(e, 'flight') && Math.max(Math.abs(e.x - av.x), Math.abs(e.y - av.y)) <= 3);
@@ -1808,6 +1852,16 @@ function aiGen(state, me, F, deep) {
     const k = out.find(e => e.t === 'play' && e.cid === 'signpost') || (gobAvail && out.find(e => e.t === 'play' && e.cid === 'gobFlute'));
     if (k) return { evs: [k], forced: false };
   }
+      if (coachAI()) { // ノーマルゴブリン：手札にこれで続けて出せるゴブリン（ランク1）がいるなら、他のキャラより先に出す
+        const k = out.find(e => e.t === 'play' && e.cid === 'normalGob' && (p.summons < 1 || p.goblinSlots > 0) && p.hand.some((h, j) => j !== e.i && CARDS[h].kind === 'char' && CARDS[h].race === 'ゴブリン' && CARDS[h].rank === 1));
+        if (k) return { evs: [k], forced: false };
+      }
+      if (coachAI() && p.summons < 1 && p.extra === 0 && p.goblinSlots === 0 && goblinCount(p) >= 9 && out.some(e => e.t === 'play' && e.cid === 'hobGob')) { // ゴブリンを1体だけ出して終えるなら、優先してホブゴブリン
+        for (let n = out.length - 1; n >= 0; n--) { const e = out[n]; if (e.t === 'play' && e.cid !== 'hobGob' && CARDS[e.cid].kind === 'char' && CARDS[e.cid].race === 'ゴブリン') out.splice(n, 1); }
+      }
+      if (coachAI() && !(p.instinct && p.instinct.perm) && own(me).filter(u => CARDS[u.cid].race === 'ワイルド').length >= 3) { // 本能解放：種族ワイルドが盤に3体以上いるなら永続になるので優先して使う
+        const k = out.find(e => e.t === 'play' && e.cid === 'instinct'); if (k) return { evs: [k], forced: false };
+      }
       if (!noShop() && canBuyRight(p)) shopItems().forEach((s, k) => { if (s && !s.sold && p.coins >= s.price) { const ev = { t: 'buy', k }; if (okEv(ev)) out.push(ev); } });
       if (!noShop() && !p.sellUsed) p.hand.forEach((cid, i) => { if (sellOf(cid) != null && !seen.has('s' + cid) && !coachAI()) { seen.add('s' + cid); const ev = { t: 'sell', i }; if (okEv(ev)) out.push(ev); } });
       const prioAb = []; // メインステップ中に発動するキャラの効果（優先して使う）
@@ -1815,11 +1869,12 @@ function aiGen(state, me, F, deep) {
         if (u.dead || isAv(u)) continue;
         let ma = mainAbility(u);
         if (ma && ma.t === 'moon' && !(p.hand.length <= 2 || G.players[1 - me].hand.length >= 8)) ma = null; // 月光：自分の手札が2枚以下、または相手の手札が8枚以上の時だけ
+        if (ma && ma.t === 'throw' && (u.extra === p.count || scDrain(u, 2))) ma = null; // グレートモンキー：獰猛なる覇者の加護で増えた行動の回は投擲しない（SCが足りなくなる）
         if (ma && ma.t === 'burn') { // レッドドラゴンの「焼却」は、目の前のマスに相手のキャラクターがいる時だけ（今いる場合、または移動した結果そうなった場合）
           const fe = at(u.x, u.y + fwd(u.owner)); if (!(fe && fe.owner !== u.owner && !fe.dead && !fe.hidden)) ma = null;
         }
         if (ma && !(ma.t === 'twoAct')) { const ev = { t: ma.t, uid: u.uid }; if (okEv(ev)) { out.push(ev); if (['burn', 'angelFetch', 'frenzyGet'].includes(ma.t)) prioAb.push(ev); } }
-        if (u.hidden && !u.sanct) { const ev = { t: 'reveal', uid: u.uid }; if (okEv(ev)) out.push(ev); }
+        if (u.hidden && !u.sanct && (!coachAI() || snakeRevealOk(u, p))) { const ev = { t: 'reveal', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (hasW(u, 'flameSword') && !u.flameUsed) { const ev = { t: 'flame', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (abU(u, 'archer') && !u.hidden) { const ev = { t: 'archer', uid: u.uid }; if (okEv(ev)) out.push(ev); }
         if (abU(u, 'scout') && !u.hidden) { const ev = { t: 'scout', uid: u.uid }; if (okEv(ev)) out.push(ev); }

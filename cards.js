@@ -78,7 +78,7 @@ SP('magicGuard', { name: '魔法壁（マジックガード）', cost: 'SpC1（�
 SP('chaosHand', { name: '混沌の手（ドレインハンド）', cost: 'SpC1', txt: ['自分と相手のキャラクター1体ずつを対象にする。相手のLPを1000減らし、自分のLPを2ターン後のターン終了時まで1000増やす。'] });
 SP('aquaReturn', { name: 'アクアリターン', cost: 'SpC2', attr: '水', txt: ['LP3000以下のキャラクター1体を対象に、手札に戻す。', '相手のキャラクターを戻した場合、相手は次のターン、そのキャラクターと同名のキャラクターを盤に出せない。'] });
 SP('goldenBody', { name: '黄金の体', rank: 2, cost: 'SpC3', txt: ['自分のキャラクターがバトルする際（相手のターンでも）使用でき、対象はバトルに必ず勝利する。', 'カテゴリがヒューマノイドのみのキャラクターしか対象にできない（モンスター、モンスター／ヒューマノイドなど、ヒューマノイド以外をもつキャラクターは対象にできない）。', 'カウンター：対象は「カウンター」を得る（以降ずっと）。相手のターン中にバトルに勝った時、自分の攻撃値（LP+OP）のダメージをバトルした相手に与える。', 'バトル前に手札にあれば、使うかどうか必ず確認される。'] });
-SP('instinct', { name: '本能解放', rank: 2, cost: 'SpC2', txt: ['使用から3回目の自分のターン終了時まで、自分のキャラクターがボーダーゾーンかエネミーテリトリーに入った時、そのキャラクターのLPを1000上げる（ステータス上昇。1体につき1度だけで、その後も残る）。', '自分の盤面に種族ワイルドが3体以上いるなら永続する。'] });
+SP('instinct', { name: '本能解放', rank: 2, cost: 'SpC2', txt: ['使用から3回目の自分のターン終了時まで、自分のキャラクターがボーダーゾーンかエネミーテリトリーに入った時、そのキャラクターのLPを1000上げる（ステータス上昇。1体につき1度だけで、その後も残る）。', '使用した時、種族にワイルドを持つ自分のキャラクターが盤に3体以上いるなら、この効果は永続する（3回目のターン終了時に消えない）。このスペルはゲーム中一度しか使えない。'] });
 SP('seaRoar', { name: '海竜の咆哮', rank: 2, cost: 'SpC4', attr: '水', txt: ['ホームテリトリーまたはボーダーゾーンにいる相手のキャラクター1体を対象に、現時点での自分の手札（このカードを除く）の枚数から1引いた数につき、1000ダメージを与える。'] });
 SP('blizzard', { name: '終焉のブリザード', rank: 2, cost: 'SpC4', attr: '風・雪', txt: ['自分から見てボーダーゾーンとエネミーテリトリーにいる相手のキャラクター全員を「しもやけ」状態にし、SCを3減らす。'] });
 CH('angelLow', { name: '下位天使', angel: true, token: true, cat: 'エンジェル', race: '天使', attr: '光・雷', rank: 0, ac: 6, lp: 5000, op: 0, dp: 0, sc: 4, spc: 1, rspc: 3, ab: ['omni', 'flight', 'magicResist'], mres: 2, txt: ['飛翔：設置カードの影響を受けない。', 'このキャラクターは、使用者の偶数ターンには前後左右に、奇数ターンには斜め前方と斜め後方にしか移動できない。', 'このキャラクターは、自分が使うスペル、アイテム、テクニックの対象外である。', '魔法耐性2：「魔法耐性」を1ターンに2度まで使える。（魔法耐性：相手のスペルが自分に効く時、消費SpC+1のSpCを支払って打ち消せる（SC代用不可）。）', 'エンジェル：キャラクターの中のもう1つの種類。デッキには入れられない。ランクという概念は無く、かわりにエンジェルカウント（AC）がある。通常のキャラクターとは別に、好きなタイミングで召喚でき、キャラクターの召喚制限の対象外。ホームテリトリーの、非公開カード以外のカードの無い好きな場所に出せる。デッキが2周目の時は盤に出せない。盤にいる状態でデッキが0になった時、再びデッキ外へ送られる。', 'エンジェルカウント（AC6）：エンジェルカウント（AC）は、APがACと同じ数になった時にデッキ外からこのカードを手札に加えるための指標。プレイヤーのAPがACに達すると、このエンジェルは瞬時にデッキ外から手札に加わる。その際ACは消費されない。'] });
@@ -143,7 +143,7 @@ const mk = o => Object.entries(o).flatMap(([k, n]) => Array(n).fill(k));
 const PRESETS = [
   { id: 'p_oudo', name: '王道デッキ', preset: true, list: { rookieAdv: 1, rookieMage: 2, vetAdv: 3, vetMage: 2, elfMage: 1, dwarf: 2, redDragon: 1, signpost: 3, fireball: 3, sandWall: 2, freezeWind: 2, shiftForm: 1, teleport: 1, goldenBody: 1, swordFine: 2, stoneThrow: 3 } },
   { id: 'p_gob', name: 'ゴブリンデッキ', preset: true, list: { normalGob: 3, hobGob: 3, gobWiz: 3, ogre: 2, vampire: 1, signpost: 3, freezeWind: 1, chaosHand: 2, chaosArmor: 2, reinforce: 2, gobFlute: 3, gobParade: 1, assault: 1, stoneThrow: 3 } },
-  { id: 'p_wild', name: 'ワイルドデッキ', preset: true, list: { stormEagle: 1, blackWolf: 3, killerTiger: 3, bloodSnake: 2, greatMonkey: 1, redBoar: 1, signpost: 3, windSlash: 2, sandWall: 1, freezeWind: 1, shiftForm: 1, teleport: 1, assault: 1, fightSpirit: 2, instinct: 1, ferocious: 3, stoneThrow: 3 } },
+  { id: 'p_wild', name: 'ワイルドデッキ', preset: true, list: { stormEagle: 1, blackWolf: 3, killerTiger: 3, bloodSnake: 2, greatMonkey: 1, redBoar: 1, signpost: 3, windSlash: 2, chaosHand: 2, freezeWind: 1, shiftForm: 1, assault: 1, fightSpirit: 2, instinct: 1, ferocious: 3, stoneThrow: 3 } },
 ];
 const deckSize = l => Object.values(l).reduce((a, b) => a + b, 0);
 function validateDeck(list) {

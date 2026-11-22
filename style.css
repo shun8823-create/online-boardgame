@@ -478,3 +478,6 @@ html{-webkit-text-size-adjust:100%}
 .smmeasure .card.sm{zoom:1!important;height:auto!important;min-height:0!important}
 .card.sm{min-height:var(--smh,0px);box-sizing:border-box}
 .card.sm .c-stats{margin-top:auto}
+/* 簡略カード：名前欄と種族・属性欄の高さを固定し、イラストと種族欄の位置をアイスウィッチ（名前2行・種族欄2行）に全カードそろえる */
+.card.sm .c-head{min-height:39px;box-sizing:border-box}
+.card.sm .c-type{min-height:30px;box-sizing:border-box;display:flex;align-items:center}
